@@ -15,8 +15,19 @@ export async function webAuthnHandlers(req: NextRequest) {
     req.method === "POST" &&
     pathname.endsWith("/api/auth/webauthn/verify-authentication")
   ) {
-    // TODO: Proxy to auth server
-    return NextResponse.json({ message: "Authentication verified" });
+    const authServerUrl =
+      process.env.AUTH_SERVER_URL + "/webAuthn/verify-authentication";
+
+    const proxyRes = await fetch(authServerUrl, {
+      method: "POST",
+      body: await req.text(),
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+
+    const data = await proxyRes.json();
+
+    return NextResponse.json(data, { status: proxyRes.status });
   }
 
   if (
