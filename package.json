@@ -1,6 +1,6 @@
 {
   "name": "@seamless-auth/server",
-  "version": "0.0.1-beta.0",
+  "version": "0.0.0",
   "description": "The server side package for seamless auth that can be used server side to validate and implement auth.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -9,26 +9,6 @@
       "import": "./dist/index.js",
       "require": "./dist/index.js",
       "types": "./dist/index.d.ts"
-    },
-    "./tokens": {
-      "import": "./dist/tokens.js",
-      "require": "./dist/tokens.js",
-      "types": "./dist/tokens.d.ts"
-    },
-    "./nextjs": {
-      "import": "./dist/nextjs.js",
-      "require": "./dist/nextjs.js",
-      "types": "./dist/nextjs.d.ts"
-    },
-    "./refresh": {
-      "import": "./dist/refresh.js",
-      "require": "./dist/refresh.js",
-      "types": "./dist/refresh.d.ts"
-    },
-    "./middleware": {
-      "import": "./dist/middleware.js",
-      "require": "./dist/middleware.js",
-      "types": "./dist/middleware.d.ts"
     }
   },
   "peerDependencies": {
@@ -37,7 +17,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "prepublish": "rimraf dist && tsc"
   },
   "dependencies": {
     "jose": "^5.2.0"
@@ -52,7 +33,7 @@
   },
   "license": "MIT",
   "author": "Brandon Corbett <brandon.corbett@fellscode.com>",
-  "type": "module",
+  "type": "commonjs",
   "devDependencies": {
     "typescript": "^5.8.3",
     "@types/node": "^24.0.6",
