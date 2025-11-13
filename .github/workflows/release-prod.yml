@@ -1,0 +1,32 @@
+name: Release Stable
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  publish-stable:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org/
+
+      - run: npm ci
+      - run: npm run build
+
+      # Increment patch
+      - name: Version Patch
+        run: |
+          npm version patch -m "chore(release): %s"
+          git push --follow-tags
+
+      - name: Publish Stable
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
