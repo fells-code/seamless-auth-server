@@ -1,6 +1,6 @@
 {
   "name": "@seamless-auth/express",
-  "version": "0.0.0",
+  "version": "0.0.1-beta.0",
   "description": "Express adapter for Seamless Auth passwordless authentication",
   "license": "MIT",
   "type": "module",
@@ -26,12 +26,9 @@
     "cookie-parser": "^1.4.6",
     "jose": "^6.1.1",
     "jsonwebtoken": "^9.0.2",
-    "node-fetch": "^3.3.2",
-    "version-packages": "changeset version",
-    "release": "changeset publish"
+    "node-fetch": "^3.3.2"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.29.7",
     "@types/cookie-parser": "^1.4.10",
     "@types/jsonwebtoken": "^9.0.10",
     "typescript": "^5.5.0"
