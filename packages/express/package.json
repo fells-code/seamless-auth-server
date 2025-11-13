@@ -1,0 +1,39 @@
+{
+  "name": "@seamless-auth/express",
+  "version": "0.0.1-beta.0",
+  "description": "Express adapter for Seamless Auth passwordless authentication",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "./dist/index.d.ts",
+  "author": "Fells Code LLC",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node build.mjs",
+    "dev": "tsc --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fells-code/seamless-auth-server"
+  },
+  "files": [
+    "dist"
+  ],
+  "peerDependencies": {
+    "@types/express": ">=5.0.0",
+    "express": ">=5.1.0"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.6",
+    "jose": "^6.1.1",
+    "jsonwebtoken": "^9.0.2",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
+    "@types/jsonwebtoken": "^9.0.10",
+    "typescript": "^5.5.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
