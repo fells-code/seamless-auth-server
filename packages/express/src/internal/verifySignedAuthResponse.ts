@@ -18,6 +18,7 @@ export async function verifySignedAuthResponse<T = any>(
     // Verify signature and algorithm
     const { payload } = await jwtVerify(token, JWKS, {
       algorithms: ["RS256"],
+      issuer: authServerUrl,
     });
 
     return payload as T;
