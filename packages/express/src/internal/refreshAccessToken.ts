@@ -1,5 +1,5 @@
 import { CookieRequest } from "../middleware/ensureCookies.js";
-import jwt from "jsonwebtoken";
+import jwt, { JwtPayload } from "jsonwebtoken";
 import { clearAllCookies } from "./cookie.js";
 
 const COOKIE_SECRET = process.env.SEAMLESS_COOKIE_SIGNING_KEY!;
@@ -32,7 +32,7 @@ export async function refreshAccessToken(
     // unwrap token with local key and rewrap with service key
     const payload = jwt.verify(refreshToken, COOKIE_SECRET, {
       algorithms: ["HS256"],
-    });
+    }) as JwtPayload;
 
     const token = jwt.sign(
       {
