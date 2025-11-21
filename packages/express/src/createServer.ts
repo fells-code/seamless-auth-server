@@ -20,10 +20,10 @@ export function createSeamlessAuthServer(
   const {
     authServerUrl,
     cookieDomain = "",
-    accesscookieName = "seamless-auth-access",
-    registrationCookieName = "seamless-auth-registration",
-    refreshCookieName = "seamless-auth-refresh",
-    preAuthCookieName = "seamless-auth-pre-auth",
+    accesscookieName = "seamless-access",
+    registrationCookieName = "seamless-ephemeral",
+    refreshCookieName = "seamless-refresh",
+    preAuthCookieName = "seamless-ephemeral",
   } = opts;
 
   const proxy =

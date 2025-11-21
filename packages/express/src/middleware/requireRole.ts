@@ -16,7 +16,7 @@ if (!COOKIE_SECRET) {
  */
 export function requireRole(
   role: string,
-  cookieName = "seamless-auth-access"
+  cookieName = "seamless-access"
 ): RequestHandler {
   return (req: Request, res: Response, next: NextFunction): void => {
     try {
@@ -31,7 +31,6 @@ export function requireRole(
         algorithms: ["HS256"],
       }) as JwtPayload;
 
-      console.log("required role payload", payload, cookieName);
       // Check role membership
       if (!payload.roles?.includes(role)) {
         res.status(403).json({ error: `Forbidden: ${role} role required` });
