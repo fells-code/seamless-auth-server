@@ -20,31 +20,39 @@ export function createSeamlessAuthServer(
   const {
     authServerUrl,
     cookieDomain = "",
-    accesscookieName = "seamless-auth-access",
-    registrationCookieName = "seamless-auth-registration",
-    refreshCookieName = "seamless-auth-refresh",
-    preAuthCookieName = "seamless-auth-pre-auth"
+    accesscookieName = "seamless-access",
+    registrationCookieName = "seamless-ephemeral",
+    refreshCookieName = "seamless-refresh",
+    preAuthCookieName = "seamless-ephemeral",
   } = opts;
 
+  const proxy =
+    (
+      path: string,
+      method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" = "POST"
+    ) =>
+    async (req: Request, res: Response) => {
+      try {
+        const response = await authFetch(req, `${authServerUrl}/${path}`, {
+          method,
+          body: req.body,
+        });
+        res.status(response.status).json(await response.json());
+      } catch (error) {
+        console.error(`Failed to proxy to route. Error: ${error}`);
+      }
+    };
 
-  const proxy = (path: string, method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"= "POST") => async (req: Request, res: Response) => {
-
-    try {
-      const response = await authFetch(req, `${authServerUrl}/${path}`, { method, body: req.body});
-      res.status(response.status).json(await response.json());
-    } catch (error) {
-      console.error(`Failed to proxy to route. Error: ${error}`);
-    }
-  };
-
-  r.use(createEnsureCookiesMiddleware({
-    authServerUrl,
-    cookieDomain,
-    accesscookieName,
-    registrationCookieName,
-    refreshCookieName,
-    preAuthCookieName
-  }));
+  r.use(
+    createEnsureCookiesMiddleware({
+      authServerUrl,
+      cookieDomain,
+      accesscookieName,
+      registrationCookieName,
+      refreshCookieName,
+      preAuthCookieName,
+    })
+  );
 
   r.post("/webAuthn/login/start", proxy("webAuthn/login/start"));
   r.post("/webAuthn/login/finish", finishLogin);
@@ -53,9 +61,10 @@ export function createSeamlessAuthServer(
   r.post("/otp/verify-phone-otp", proxy("otp/verify-phone-otp"));
   r.post("/otp/verify-email-otp", proxy("otp/verify-email-otp"));
   r.post("/login", login);
+  r.post("/users/update", proxy("users/update"));
   r.post("/registration/register", register);
-  r.post("/logout", logout);
   r.get("/users/me", me);
+  r.get("/logout", logout);
 
   return r;
 
@@ -113,14 +122,16 @@ export function createSeamlessAuthServer(
     const data = (await up.json()) as any;
     if (!up.ok) return res.status(up.status).json(data);
 
-    const verifiedAccessToken = await verifySignedAuthResponse(data.token, authServerUrl);
-    const verifiedRefreshToken = await verifySignedAuthResponse(data.refreshToken, authServerUrl);
+    const verifiedAccessToken = await verifySignedAuthResponse(
+      data.token,
+      authServerUrl
+    );
 
-    if (!verifiedAccessToken || !verifiedRefreshToken) {
+    if (!verifiedAccessToken) {
       throw new Error("Invalid signed response from Auth Server");
     }
 
-    if (verifiedAccessToken.sub !== data.sub || verifiedRefreshToken.sub !== data.sub) {
+    if (verifiedAccessToken.sub !== data.sub) {
       throw new Error("Signature mismatch with data payload");
     }
 
@@ -135,18 +146,23 @@ export function createSeamlessAuthServer(
     setSessionCookie(
       res,
       { sub: data.sub, refreshToken: data.refreshToken },
-      cookieDomain,
-      data.ttl,
+      req.hostname,
+      data.refreshTtl,
       refreshCookieName
-    )
+    );
+
     res.status(200).json(data).end();
   }
 
   async function finishRegister(req: Request, res: Response) {
-    const up = await authFetch(req, `${authServerUrl}/webAuthn/register/finish`, {
-      method: "POST",
-      body: req.body,
-    });
+    const up = await authFetch(
+      req,
+      `${authServerUrl}/webAuthn/register/finish`,
+      {
+        method: "POST",
+        body: req.body,
+      }
+    );
     const data = (await up.json()) as any;
     if (!up.ok) return res.status(up.status).json(data);
 
@@ -161,12 +177,10 @@ export function createSeamlessAuthServer(
   }
 
   async function logout(req: Request, res: Response) {
-    const sid = req.cookies[accesscookieName];
-    if (sid)
-      await authFetch(req, `${authServerUrl}/logout`, {
-        method: "POST",
-        body: { sid },
-      });
+    await authFetch(req, `${authServerUrl}/logout`, {
+      method: "GET",
+    });
+
     clearAllCookies(
       res,
       cookieDomain,
@@ -183,19 +197,7 @@ export function createSeamlessAuthServer(
     });
     const data = (await up.json()) as any;
 
-    console.log(data.token)
-
-     const verified = await verifySignedAuthResponse(data.token, authServerUrl);
-
-    if (!verified) {
-      throw new Error("Invalid signed response from Auth Server");
-    }
-
-    if (verified.sub !== data.sub) {
-      throw new Error("Signature mismatch with data payload");
-    }
-
-    clearSessionCookie(res, cookieDomain, preAuthCookieName)
+    clearSessionCookie(res, cookieDomain, preAuthCookieName);
     if (!data.user) return res.status(401).json({ error: "unauthenticated" });
     res.json({ user: data.user });
   }

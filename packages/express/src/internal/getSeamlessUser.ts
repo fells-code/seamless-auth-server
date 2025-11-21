@@ -1,6 +1,8 @@
 import type { Request } from "express";
 import { authFetch } from "./authFetch.js";
 import { verifySignedAuthResponse } from "./verifySignedAuthResponse.js";
+import { CookieRequest } from "../middleware/ensureCookies.js";
+import { verifyCookieJwt } from "./verifyCookieJwt.js";
 
 /**
  * Retrieves the Seamless Auth user information by calling the auth server's introspection endpoint.
@@ -11,10 +13,17 @@ import { verifySignedAuthResponse } from "./verifySignedAuthResponse.js";
  * @returns The user data object if valid, or null if invalid/unauthenticated
  */
 export async function getSeamlessUser<T = any>(
-  req: Request,
+  req: CookieRequest,
   authServerUrl: string,
+  cookieName: string = "seamless-auth-access"
 ): Promise<T | null> {
   try {
+    const payload = verifyCookieJwt(req.cookies[cookieName]);
+    if (!payload) {
+      throw new Error("Missing cookie");
+    }
+
+    req.cookiePayload = payload;
     const response = await authFetch(req, `${authServerUrl}/users/me`, {
       method: "GET",
     });
@@ -25,16 +34,6 @@ export async function getSeamlessUser<T = any>(
     }
 
     const data = (await response.json()) as any;
-
-    const verified = await verifySignedAuthResponse(data.token, authServerUrl);
-
-    if (!verified) {
-      throw new Error("Invalid signed response from Auth Server");
-    }
-
-    if (verified.sub !== data.sub) {
-      throw new Error("Signature mismatch with data payload");
-    }
 
     return data.user as T;
   } catch (err) {

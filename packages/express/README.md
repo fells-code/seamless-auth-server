@@ -10,7 +10,6 @@ It proxies all authentication flows, manages signed cookies, and gives you out-o
 > **Docs:** https://docs.seamlessauth.com  
 > **Repo:** https://github.com/fells-code/seamless-auth-server
 
-
 > Couple with https://github.com/fells-code/seamless-auth/react for an end to end seamless experience
 
 > Or get a full starter application with https://github.com/fells-code/create-seamless
@@ -27,25 +26,32 @@ npm install @seamless-auth/server-express
 yarn add @seamless-auth/server-express
 ```
 
-
 ## Quick Example
 
 ```ts
 import express from "express";
 import cookieParser from "cookie-parser";
-import createSeamlessAuthServer, { requireAuth, requireRole } from "@seamless-auth/server-express";
+import createSeamlessAuthServer, {
+  requireAuth,
+  requireRole,
+} from "@seamless-auth/server-express";
 
 const app = express();
 app.use(cookieParser());
 
 // Public Seamless Auth endpoints
-app.use("/auth", createSeamlessAuthServer({ authServerUrl: process.env.AUTH_SERVER_URL! }));
+app.use(
+  "/auth",
+  createSeamlessAuthServer({ authServerUrl: process.env.AUTH_SERVER_URL! })
+);
 
 // Everything after this line requires authentication
 app.use(requireAuth());
 
 app.get("/api/me", (req, res) => res.json({ user: (req as any).user }));
-app.get("/admin", requireRole("admin"), (req, res) => res.json({ message: "Welcome admin!" }));
+app.get("/admin", requireRole("admin"), (req, res) =>
+  res.json({ message: "Welcome admin!" })
+);
 
 app.listen(5000, () => console.log("Portal API running on :5000"));
 ```
@@ -60,15 +66,13 @@ app.listen(5000, () => console.log("Portal API running on :5000"));
 
 It transparently proxies and validates authentication flows so your frontend can use a single API endpoint for:
 
-- Login / Registration / Logout  
-- User introspection (`/auth/me`)  
-- Session cookies (signed JWTs)  
-- Role & permission guards  
+- Login / Registration / Logout
+- User introspection (`/auth/me`)
+- Session cookies (signed JWTs)
+- Role & permission guards
 - Internal Auth Server communication (JWKS + service tokens)
 
 Everything happens securely between your API and a private Seamless Auth Server.
-
-
 
 ---
 
@@ -92,13 +96,13 @@ Everything happens securely between your API and a private Seamless Auth Server.
 
 ## Environment Variables
 
-| Variable | Description | Example |
-|-----------|--------------|----------|
-| `AUTH_SERVER_URL` | Base URL of your Seamless Auth Server | `https://auth.client.com` |
-| `SEAMLESS_COOKIE_SIGNING_KEY` | Secret key for signing JWT cookies | `base64:...` |
-| `SERVICE_JWT_PRIVATE_KEY` | Private key for API → Auth Server JWTs | RSA PEM |
-| `SERVICE_JWT_KEYID` | Key ID for JWKS | `service-main` |
-| `COOKIE_DOMAIN` | Domain for cookies | `.client.com` |
+| Variable                      | Description                            | Example                   |
+| ----------------------------- | -------------------------------------- | ------------------------- |
+| `AUTH_SERVER_URL`             | Base URL of your Seamless Auth Server  | `https://auth.client.com` |
+| `SEAMLESS_COOKIE_SIGNING_KEY` | Secret key for signing JWT cookies     | `base64:...`              |
+| `SEAMLESS_SERVICE_TOKEN`      | Private key for API → Auth Server JWTs | RSA PEM                   |
+| `SERVICE_JWT_KEYID`           | Key ID for JWKS                        | `service-main`            |
+| `COOKIE_DOMAIN`               | Domain for cookies                     | `.client.com`             |
 
 ---
 
@@ -108,11 +112,11 @@ Everything happens securely between your API and a private Seamless Auth Server.
 
 Mounts an Express router exposing the full Seamless Auth flow:
 
-- `/auth/login/start`  
-- `/auth/login/finish`  
-- `/auth/webauthn/...`  
-- `/auth/registration/...`  
-- `/auth/me`  
+- `/auth/login/start`
+- `/auth/login/finish`
+- `/auth/webauthn/...`
+- `/auth/registration/...`
+- `/auth/me`
 - `/auth/logout`
 
 **Options**
@@ -167,6 +171,7 @@ const user = await getSeamlessUser(req, process.env.AUTH_SERVER_URL!);
 ```
 
 User shape
+
 ```ts
 {
   id: string;
@@ -223,17 +228,17 @@ app.use(requireAuth());
 
 ## Security Model
 
-| Layer | Auth Mechanism | Signed By |
-|--------|----------------|------------|
-| **Frontend ↔ API** | Signed JWT in HttpOnly cookie (HS256) | Client API |
-| **API ↔ Auth Server** | Bearer Service JWT (RS256) | API’s private key |
-| **Auth Server** | Validates service tokens via JWKS | Seamless Auth JWKS |
+| Layer                 | Auth Mechanism                        | Signed By          |
+| --------------------- | ------------------------------------- | ------------------ |
+| **Frontend ↔ API**    | Signed JWT in HttpOnly cookie (HS256) | Client API         |
+| **API ↔ Auth Server** | Bearer Service JWT (RS256)            | API’s private key  |
+| **Auth Server**       | Validates service tokens via JWKS     | Seamless Auth JWKS |
 
 All tokens and cookies are stateless and cryptographically verifiable.
 
 ---
 
-##  Testing
+## Testing
 
 You can mock `requireAuth` and test Express routes via `supertest`.
 
@@ -248,11 +253,11 @@ app.get("/api/test", requireAuth(), (req, res) => res.json({ ok: true }));
 
 ## Roadmap
 
-| Feature | Status |
-|----------|---------|
-| JWKS-verified response signing | ✅ |
-| OIDC discovery & SSO readiness |  planned |
-| Federation (Google / Okta) | future |
+| Feature                                      | Status      |
+| -------------------------------------------- | ----------- |
+| JWKS-verified response signing               | ✅          |
+| OIDC discovery & SSO readiness               | planned     |
+| Federation (Google / Okta)                   | future      |
 | Multi-framework adapters (Next.js / Fastify) | coming soon |
 
 ---
@@ -261,4 +266,3 @@ app.get("/api/test", requireAuth(), (req, res) => res.json({ ok: true }));
 
 MIT © 2025 Fells Code LLC  
 Part of the **Seamless Auth** ecosystem.
-

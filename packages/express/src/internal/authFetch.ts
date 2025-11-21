@@ -1,8 +1,7 @@
-import fetch from "node-fetch";
-import jwt, { JwtPayload } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import { CookieRequest } from "../middleware/ensureCookies";
 
-const privateKey = process.env.SERVICE_JWT_KEY
+const serviceKey = process.env.SEAMLESS_SERVICE_TOKEN;
 
 export interface AuthFetchOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -11,26 +10,46 @@ export interface AuthFetchOptions {
   headers?: Record<string, string>;
 }
 
-export async function authFetch(req: CookieRequest, url: string, { method = "POST", body, cookies, headers = {} }: AuthFetchOptions = {}) {
-  const token = privateKey
-    ? jwt.sign({ aud: "auth-internal", iss: "portal-api", sub: req.cookiePayload?.sub, role: req.cookiePayload?.roles }, privateKey, {
-        expiresIn: "60s",
-        keyid: "service-main",
-      })
-    : undefined;
-
-  if (!token) {
-    throw new Error("Cannot sign JWT for communications with Seamless Auth Server. Did you set your SERVICE_JWT_KEY?")
+export async function authFetch(
+  req: CookieRequest,
+  url: string,
+  { method = "POST", body, cookies, headers = {} }: AuthFetchOptions = {}
+) {
+  if (!serviceKey) {
+    throw new Error(
+      "Cannot sign service token. Missing SEAMLESS_SERVICE_TOKEN"
+    );
   }
+
+  // -------------------------------
+  // Issue short-lived machine token
+  // -------------------------------
+  const token = jwt.sign(
+    {
+      // Minimal, safe fields
+      iss: process.env.FRONTEND_URL,
+      aud: process.env.AUTH_SERVER,
+      sub: req.cookiePayload?.sub,
+      roles: req.cookiePayload?.roles ?? [],
+      iat: Math.floor(Date.now() / 1000),
+    },
+    serviceKey,
+    {
+      expiresIn: "60s", // Short-lived = safer
+      algorithm: "HS256", // HMAC-based
+      keyid: "dev-main", // For future rotation
+    }
+  );
 
   const finalHeaders: Record<string, string> = {
     ...(method !== "GET" && { "Content-Type": "application/json" }),
     ...(cookies ? { Cookie: cookies.join("; ") } : {}),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    Authorization: `Bearer ${token}`,
     ...headers,
   };
 
- let finalUrl = url;
+  let finalUrl = url;
+
   if (method === "GET" && body && typeof body === "object") {
     const qs = new URLSearchParams(body).toString();
     finalUrl += url.includes("?") ? `&${qs}` : `?${qs}`;
