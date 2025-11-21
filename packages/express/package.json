@@ -1,6 +1,6 @@
 {
   "name": "@seamless-auth/express",
-  "version": "0.0.1-beta.0",
+  "version": "0.0.1-beta.2",
   "description": "Express adapter for Seamless Auth passwordless authentication",
   "license": "MIT",
   "type": "module",
@@ -13,7 +13,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/fells-code/seamless-auth-server"
+    "url": "git+https://github.com/fells-code/seamless-auth-server.git"
   },
   "files": [
     "dist"
