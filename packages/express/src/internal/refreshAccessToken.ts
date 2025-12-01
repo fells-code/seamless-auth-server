@@ -1,14 +1,5 @@
 import { CookieRequest } from "../middleware/ensureCookies.js";
 import jwt, { JwtPayload } from "jsonwebtoken";
-import { clearAllCookies } from "./cookie.js";
-
-const COOKIE_SECRET = process.env.SEAMLESS_COOKIE_SIGNING_KEY!;
-if (!COOKIE_SECRET) {
-  console.warn(
-    "[SeamlessAuth] SEAMLESS_COOKIE_SIGNING_KEY missing — requireAuth will always fail."
-  );
-}
-const serviceKey = process.env.SEAMLESS_SERVICE_TOKEN;
 
 export async function refreshAccessToken(
   req: CookieRequest,
@@ -23,6 +14,14 @@ export async function refreshAccessToken(
   refreshTtl: number;
 } | null> {
   try {
+    const COOKIE_SECRET = process.env.SEAMLESS_COOKIE_SIGNING_KEY!;
+    if (!COOKIE_SECRET) {
+      console.warn(
+        "[SeamlessAuth] SEAMLESS_COOKIE_SIGNING_KEY missing — requireAuth will always fail."
+      );
+      throw new Error("Missing required env SEAMLESS_COOKIE_SIGNING_KEY");
+    }
+    const serviceKey = process.env.SEAMLESS_SERVICE_TOKEN;
     if (!serviceKey) {
       throw new Error(
         "Cannot sign service token. Missing SEAMLESS_SERVICE_TOKEN"

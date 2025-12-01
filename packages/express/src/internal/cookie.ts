@@ -1,16 +1,11 @@
 import jwt from "jsonwebtoken";
-import { Request, Response } from "express";
+import { Response } from "express";
 
 export interface CookiePayload {
   sub: string;
   token?: string;
   refreshToken?: string;
   roles?: string[];
-}
-
-const COOKIE_SECRET = process.env.SEAMLESS_COOKIE_SIGNING_KEY!;
-if (!COOKIE_SECRET) {
-  console.warn("[SeamlessAuth] Missing SEAMLESS_COOKIE_SIGNING_KEY env var!");
 }
 
 export function setSessionCookie(
@@ -20,6 +15,12 @@ export function setSessionCookie(
   ttlSeconds = 300,
   name = "sa_session"
 ) {
+  const COOKIE_SECRET = process.env.SEAMLESS_COOKIE_SIGNING_KEY!;
+  if (!COOKIE_SECRET) {
+    console.warn("[SeamlessAuth] Missing SEAMLESS_COOKIE_SIGNING_KEY env var!");
+    throw new Error("Missing required env SEAMLESS_COOKIE_SIGNING_KEY");
+  }
+
   const token = jwt.sign(payload, COOKIE_SECRET, {
     algorithm: "HS256",
     expiresIn: `${ttlSeconds}s`,

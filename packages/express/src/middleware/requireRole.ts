@@ -1,13 +1,6 @@
 import { Request, Response, NextFunction, RequestHandler } from "express";
 import jwt, { JwtPayload } from "jsonwebtoken";
 
-const COOKIE_SECRET = process.env.SEAMLESS_COOKIE_SIGNING_KEY!;
-if (!COOKIE_SECRET) {
-  console.warn(
-    "[PortalAPI] Missing SEAMLESS_COOKIE_SIGNING_KEY — role checks will fail."
-  );
-}
-
 /**
  * Express middleware to enforce a required role from Seamless Auth cookie JWT.
  *
@@ -20,6 +13,13 @@ export function requireRole(
 ): RequestHandler {
   return (req: Request, res: Response, next: NextFunction): void => {
     try {
+      const COOKIE_SECRET = process.env.SEAMLESS_COOKIE_SIGNING_KEY!;
+      if (!COOKIE_SECRET) {
+        console.warn(
+          "[SeamlessAuth] SEAMLESS_COOKIE_SIGNING_KEY missing — requireRole will always fail."
+        );
+        throw new Error("Missing required env SEAMLESS_COOKIE_SIGNING_KEY");
+      }
       const token = req.cookies?.[cookieName];
       if (!token) {
         res.status(401).json({ error: "Missing access cookie" });
@@ -39,7 +39,7 @@ export function requireRole(
 
       next();
     } catch (err: any) {
-      console.error(`[PortalAPI] requireRole(${role}) failed:`, err.message);
+      console.error(`[RequireRole] requireRole(${role}) failed:`, err.message);
       res.status(401).json({ error: "Invalid or expired access cookie" });
     }
   };

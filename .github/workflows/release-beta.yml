@@ -29,7 +29,6 @@ jobs:
       - name: Version Beta
         working-directory: packages/express
         run: |
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
           npm version prerelease --preid=beta -m "chore(release): beta %s"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

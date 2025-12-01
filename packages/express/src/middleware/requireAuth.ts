@@ -1,16 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+
 import { refreshAccessToken } from "../internal/refreshAccessToken.js";
 import { setSessionCookie } from "../internal/cookie.js";
-
-const COOKIE_SECRET = process.env.SEAMLESS_COOKIE_SIGNING_KEY!;
-if (!COOKIE_SECRET) {
-  console.warn(
-    "[SeamlessAuth] SEAMLESS_COOKIE_SIGNING_KEY missing — requireAuth will always fail."
-  );
-}
-
-const AUTH_SERVER_URL = process.env.AUTH_SERVER!;
 
 /**
  * Express middleware that verifies a Seamless Auth access cookie.
@@ -23,12 +15,26 @@ export function requireAuth(
   refreshCookieName = "seamless-auth-refresh",
   cookieDomain = "/"
 ) {
+  const COOKIE_SECRET = process.env.SEAMLESS_COOKIE_SIGNING_KEY!;
+  if (!COOKIE_SECRET) {
+    console.warn(
+      "[SeamlessAuth] SEAMLESS_COOKIE_SIGNING_KEY missing — requireAuth will always fail."
+    );
+    throw new Error("Missing required env SEAMLESS_COOKIE_SIGNING_KEY");
+  }
+
+  const AUTH_SERVER_URL = process.env.AUTH_SERVER!;
+
   return async (
     req: Request,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
     try {
+      if (!COOKIE_SECRET) {
+        throw new Error("Missing required SEAMLESS_COOKIE_SIGNING_KEY env");
+      }
+
       const token = req.cookies?.[cookieName];
       if (!token) {
         res.status(401).json({ error: "Missing access cookie" });

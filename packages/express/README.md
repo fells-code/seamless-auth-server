@@ -217,7 +217,7 @@ SEAMLESS_COOKIE_SIGNING_KEY=local-secret-key # Found in the portal
 
 ```ts
 const AUTH_SERVER_URL = process.env.AUTH_SERVER_URL!;
-app.use(cors({ origin: "https://localhost:5001", credentials: true }));
+app.use(cors({ origin: "http://localhost:5001", credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
 app.use("/auth", createSeamlessAuthServer({ authServerUrl: AUTH_SERVER_URL }));

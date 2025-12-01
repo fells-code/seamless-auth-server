@@ -1,8 +1,6 @@
 import jwt from "jsonwebtoken";
 import { CookieRequest } from "../middleware/ensureCookies";
 
-const serviceKey = process.env.SEAMLESS_SERVICE_TOKEN;
-
 export interface AuthFetchOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: any;
@@ -15,11 +13,17 @@ export async function authFetch(
   url: string,
   { method = "POST", body, cookies, headers = {} }: AuthFetchOptions = {}
 ) {
+  const serviceKey = process.env.SEAMLESS_SERVICE_TOKEN;
+
   if (!serviceKey) {
     throw new Error(
       "Cannot sign service token. Missing SEAMLESS_SERVICE_TOKEN"
     );
   }
+
+  console.debug(
+    "[SeamlessAuth] Performing authentication fetch to Auth server"
+  );
 
   // -------------------------------
   // Issue short-lived machine token
@@ -28,7 +32,7 @@ export async function authFetch(
     {
       // Minimal, safe fields
       iss: process.env.FRONTEND_URL,
-      aud: process.env.AUTH_SERVER,
+      aud: process.env.AUTH_SERVER_URL,
       sub: req.cookiePayload?.sub,
       roles: req.cookiePayload?.roles ?? [],
       iat: Math.floor(Date.now() / 1000),
@@ -44,12 +48,12 @@ export async function authFetch(
   const finalHeaders: Record<string, string> = {
     ...(method !== "GET" && { "Content-Type": "application/json" }),
     ...(cookies ? { Cookie: cookies.join("; ") } : {}),
-    Authorization: `Bearer ${token}`,
+    Authorization: `Bearer ${serviceKey}`,
     ...headers,
   };
 
   let finalUrl = url;
-
+  console.debug("[SeamlessAuth] URL ...", finalUrl);
   if (method === "GET" && body && typeof body === "object") {
     const qs = new URLSearchParams(body).toString();
     finalUrl += url.includes("?") ? `&${qs}` : `?${qs}`;

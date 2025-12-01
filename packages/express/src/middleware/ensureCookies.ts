@@ -1,20 +1,11 @@
 import { NextFunction, Request, Response } from "express";
 import { SeamlessAuthServerOptions } from "../types";
-import jwt from "jsonwebtoken";
 
 import { verifyCookieJwt } from "../internal/verifyCookieJwt.js";
 import { JwtPayload } from "jsonwebtoken";
 import { refreshAccessToken } from "../internal/refreshAccessToken";
 import { clearAllCookies, setSessionCookie } from "../internal/cookie";
 
-const AUTH_SERVER_URL = process.env.AUTH_SERVER!;
-
-const COOKIE_SECRET = process.env.SEAMLESS_COOKIE_SIGNING_KEY!;
-if (!COOKIE_SECRET) {
-  console.warn(
-    "[SeamlessAuth] SEAMLESS_COOKIE_SIGNING_KEY missing — requireAuth will always fail."
-  );
-}
 export interface CookieRequest extends Request {
   cookiePayload?: JwtPayload;
 }
@@ -58,7 +49,7 @@ export function createEnsureCookiesMiddleware(opts: SeamlessAuthServerOptions) {
     if (!match) return next();
 
     const [, { name, required }] = match;
-
+    const AUTH_SERVER_URL = process.env.AUTH_SERVER!;
     const cookieValue = req.cookies?.[name];
     const refreshCookieValue = req.cookies?.[opts.refreshCookieName!];
 
