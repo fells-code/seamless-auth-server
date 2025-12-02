@@ -49,7 +49,7 @@ export function createEnsureCookiesMiddleware(opts: SeamlessAuthServerOptions) {
     if (!match) return next();
 
     const [, { name, required }] = match;
-    const AUTH_SERVER_URL = process.env.AUTH_SERVER!;
+    const AUTH_SERVER_URL = process.env.AUTH_SERVER_URL!;
     const cookieValue = req.cookies?.[name];
     const refreshCookieValue = req.cookies?.[opts.refreshCookieName!];
 

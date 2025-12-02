@@ -37,7 +37,7 @@ export async function refreshAccessToken(
       {
         // Minimal, safe fields
         iss: process.env.FRONTEND_URL,
-        aud: process.env.AUTH_SERVER,
+        aud: process.env.AUTH_SERVER_URL,
         sub: payload.sub,
         refreshToken: payload.refreshToken,
         iat: Math.floor(Date.now() / 1000),
