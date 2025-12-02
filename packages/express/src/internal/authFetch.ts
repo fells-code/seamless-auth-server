@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 import { CookieRequest } from "../middleware/ensureCookies";
 
 export interface AuthFetchOptions {
-  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "DELETE";
   body?: any;
   cookies?: string[];
   headers?: Record<string, string>;
@@ -21,16 +21,11 @@ export async function authFetch(
     );
   }
 
-  console.debug(
-    "[SeamlessAuth] Performing authentication fetch to Auth server"
-  );
-
   // -------------------------------
   // Issue short-lived machine token
   // -------------------------------
   const token = jwt.sign(
     {
-      // Minimal, safe fields
       iss: process.env.FRONTEND_URL,
       aud: process.env.AUTH_SERVER_URL,
       sub: req.cookiePayload?.sub,
@@ -39,21 +34,20 @@ export async function authFetch(
     },
     serviceKey,
     {
-      expiresIn: "60s", // Short-lived = safer
+      expiresIn: "60s", // Short-lived
       algorithm: "HS256", // HMAC-based
-      keyid: "dev-main", // For future rotation
     }
   );
 
   const finalHeaders: Record<string, string> = {
     ...(method !== "GET" && { "Content-Type": "application/json" }),
     ...(cookies ? { Cookie: cookies.join("; ") } : {}),
-    Authorization: `Bearer ${serviceKey}`,
+    Authorization: `Bearer ${token}`,
     ...headers,
   };
 
   let finalUrl = url;
-  console.debug("[SeamlessAuth] URL ...", finalUrl);
+
   if (method === "GET" && body && typeof body === "object") {
     const qs = new URLSearchParams(body).toString();
     finalUrl += url.includes("?") ? `&${qs}` : `?${qs}`;

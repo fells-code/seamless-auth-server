@@ -53,12 +53,6 @@ export function createEnsureCookiesMiddleware(opts: SeamlessAuthServerOptions) {
     const cookieValue = req.cookies?.[name];
     const refreshCookieValue = req.cookies?.[opts.refreshCookieName!];
 
-    //
-    // --- NEW REFRESH-AWARE LOGIC ---
-    //
-    // If required cookie is missing BUT refresh cookie exists,
-    // allow request to proceed. requireAuth() will perform refresh.
-    //
     if (required && !cookieValue) {
       if (refreshCookieValue) {
         console.log("[SeamlessAuth] Access token expired — attempting refresh");
@@ -109,7 +103,7 @@ export function createEnsureCookiesMiddleware(opts: SeamlessAuthServerOptions) {
         return next();
       }
 
-      // No required cookie AND no refresh cookie → hard fail
+      // No required cookie AND no refresh cookie
       return res.status(400).json({
         error: `Missing required cookie "${name}" for route ${req.path}`,
         hint: "Did you forget to call /auth/login/start first?",

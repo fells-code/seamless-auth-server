@@ -10,6 +10,50 @@ import type { SeamlessAuthServerOptions } from "./types";
 import { createEnsureCookiesMiddleware } from "./middleware/ensureCookies";
 import { verifySignedAuthResponse } from "./internal/verifySignedAuthResponse";
 
+/**
+ * Creates an Express Router that proxies all authentication traffic to a Seamless Auth server.
+ *
+ * This helper wires your API backend to a Seamless Auth instance running in
+ * "server mode." It automatically forwards login, registration, WebAuthn,
+ * logout, token refresh, and session validation routes to the auth server
+ * and handles all cookie management required for a seamless login flow.
+ *
+ * ### Responsibilities
+ * - Proxies all `/auth/*` routes to the upstream Seamless Auth server
+ * - Manages `access`, `registration`, `pre-auth`, and `refresh` cookies
+ * - Normalizes cookie settings for cross-domain or same-domain deployments
+ * - Ensures authentication routes behave consistently across environments
+ * - Provides shared middleware for auth flows
+ *
+ * ### Cookie Types
+ * - **accessCookie** – long-lived session cookie for authenticated API requests
+ * - **registrationCookie** – ephemeral cookie used during registration and OTP/WebAuthn flows
+ * - **preAuthCookie** – short-lived cookie used during login initiation
+ * - **refreshCookie** – opaque refresh token cookie used to rotate session tokens
+ *
+ * All cookie names and their domains may be customized via the `opts` parameter.
+ *
+ * ### Example
+ * ```ts
+ * app.use("/auth", createSeamlessAuthServer({
+ *   authServerUrl: "https://identifier.seamlessauth.com",
+ *   cookieDomain: "mycompany.com",
+ *   accesscookieName: "sa_access",
+ *   registrationCookieName: "sa_registration",
+ *   refreshCookieName: "sa_refresh",
+ * }));
+ * ```
+ *
+ * @param opts - Configuration options for the Seamless Auth proxy:
+ *   - `authServerUrl` — Base URL of your Seamless Auth instance (required)
+ *   - `cookieDomain` — Domain attribute applied to all auth cookies
+ *   - `accesscookieName` — Name of the session access cookie
+ *   - `registrationCookieName` — Name of the ephemeral registration cookie
+ *   - `refreshCookieName` — Name of the refresh token cookie
+ *   - `preAuthCookieName` — Name of the cookie used during login initiation
+ *
+ * @returns An Express `Router` preconfigured with all Seamless Auth routes.
+ */
 export function createSeamlessAuthServer(
   opts: SeamlessAuthServerOptions
 ): Router {
@@ -27,10 +71,7 @@ export function createSeamlessAuthServer(
   } = opts;
 
   const proxy =
-    (
-      path: string,
-      method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" = "POST"
-    ) =>
+    (path: string, method: "GET" | "POST" | "PUT" | "DELETE" = "POST") =>
     async (req: Request, res: Response) => {
       try {
         const response = await authFetch(req, `${authServerUrl}/${path}`, {

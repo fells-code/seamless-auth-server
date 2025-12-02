@@ -96,13 +96,12 @@ Everything happens securely between your API and a private Seamless Auth Server.
 
 ## Environment Variables
 
-| Variable                      | Description                            | Example                   |
-| ----------------------------- | -------------------------------------- | ------------------------- |
-| `AUTH_SERVER_URL`             | Base URL of your Seamless Auth Server  | `https://auth.client.com` |
-| `SEAMLESS_COOKIE_SIGNING_KEY` | Secret key for signing JWT cookies     | `base64:...`              |
-| `SEAMLESS_SERVICE_TOKEN`      | Private key for API → Auth Server JWTs | RSA PEM                   |
-| `SERVICE_JWT_KEYID`           | Key ID for JWKS                        | `service-main`            |
-| `COOKIE_DOMAIN`               | Domain for cookies                     | `.client.com`             |
+| Variable                      | Description                                   | Example                        |
+| ----------------------------- | --------------------------------------------- | ------------------------------ |
+| `AUTH_SERVER_URL`             | Base URL of your Seamless Auth Server         | `https://auth.client.com`      |
+| `SEAMLESS_COOKIE_SIGNING_KEY` | Secret key for signing JWT cookies            | `base64:...`                   |
+| `SEAMLESS_SERVICE_TOKEN`      | Private key for API → Auth Server JWTs        | `Obtained via the auth portal` |
+| `FRONTEND_URL`                | URL of your website or https://localhost:5001 | `https://mySite.com`           |
 
 ---
 
@@ -188,7 +187,7 @@ User shape
    → sets short-lived pre-auth cookie.
 
 2. **Frontend** → `/auth/webauthn/finish`  
-   → API proxies, validates, sets access cookie (`seamless_auth_access`).
+   → API proxies, validates, sets access cookie (`seamless-access`).
 
 3. **Subsequent API calls** → `/api/...`  
    → `requireAuth()` verifies cookie and attaches user.  
@@ -206,9 +205,10 @@ In order to develop with your Seamless Auth server instance, you will need to ha
 Example env:
 
 ```bash
-AUTH_SERVER_URL=http://https://<identifier>.seamlessauth.com # Found in the portal
-COOKIE_DOMAIN=localhost # Or frontend domain in prod
-SEAMLESS_COOKIE_SIGNING_KEY=local-secret-key # Found in the portal
+AUTH_SERVER_URL=https://<identifier>.seamlessauth.com # Found in the portal
+SEAMLESS_SERVICE_TOKEN=32byte-secret # Created and rotated in the portal
+FRONTEND_URL=https://yourSite.com # Must match the value you have for Frontend Domain in the portal (Can be localhost:5001 when application is in demo mode)
+SEAMLESS_COOKIE_SIGNING_KEY=local-secret-key # A key you make for signing your API's distributed cookies
 ```
 
 ---
@@ -217,7 +217,7 @@ SEAMLESS_COOKIE_SIGNING_KEY=local-secret-key # Found in the portal
 
 ```ts
 const AUTH_SERVER_URL = process.env.AUTH_SERVER_URL!;
-app.use(cors({ origin: "http://localhost:5001", credentials: true }));
+app.use(cors({ origin: "https://localhost:5001", credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
 app.use("/auth", createSeamlessAuthServer({ authServerUrl: AUTH_SERVER_URL }));
@@ -266,3 +266,4 @@ app.get("/api/test", requireAuth(), (req, res) => res.json({ ok: true }));
 
 MIT © 2025 Fells Code LLC  
 Part of the **Seamless Auth** ecosystem.
+https://seamlessauth.com
