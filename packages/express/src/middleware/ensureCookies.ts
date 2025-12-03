@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { SeamlessAuthServerOptions } from "../types";
 
-import { verifyCookieJwt } from "../internal/verifyCookieJwt.js";
+import { verifyCookieJwt } from "../internal/verifyCookieJwt";
 import { JwtPayload } from "jsonwebtoken";
 import { refreshAccessToken } from "../internal/refreshAccessToken";
 import { clearAllCookies, setSessionCookie } from "../internal/cookie";

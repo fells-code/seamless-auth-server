@@ -8,7 +8,7 @@
   "types": "./dist/index.d.ts",
   "author": "Fells Code LLC",
   "scripts": {
-    "build": "tsc -p tsconfig.json && node build.mjs",
+    "build": "tsup src/index.ts --format esm --out-dir dist --splitting",
     "dev": "tsc --watch"
   },
   "repository": {
@@ -32,6 +32,7 @@
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",
     "@types/jsonwebtoken": "^9.0.10",
+    "tsup": "^8.5.1",
     "typescript": "^5.5.0"
   },
   "publishConfig": {
