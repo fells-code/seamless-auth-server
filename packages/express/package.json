@@ -1,6 +1,6 @@
 {
   "name": "@seamless-auth/express",
-  "version": "0.0.2-beta.0",
+  "version": "0.0.2-beta.3",
   "description": "Express adapter for Seamless Auth passwordless authentication",
   "license": "MIT",
   "type": "module",
@@ -8,7 +8,7 @@
   "types": "./dist/index.d.ts",
   "author": "Fells Code LLC",
   "scripts": {
-    "build": "tsup src/index.ts --format esm --out-dir dist --splitting",
+    "build": "tsup src/index.ts --format esm --out-dir dist --dts --splitting",
     "dev": "tsc --watch"
   },
   "repository": {

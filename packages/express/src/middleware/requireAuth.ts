@@ -126,7 +126,6 @@ export function requireAuth(
             token: refreshed.token,
             roles: refreshed.roles,
           },
-          cookieDomain,
           refreshed.ttl,
           cookieName
         );
@@ -134,7 +133,6 @@ export function requireAuth(
         setSessionCookie(
           res,
           { sub: refreshed.sub, refreshToken: refreshed.refreshToken },
-          req.hostname,
           refreshed.refreshTtl,
           refreshCookieName
         );

@@ -37,7 +37,6 @@ import { verifySignedAuthResponse } from "./internal/verifySignedAuthResponse";
  * ```ts
  * app.use("/auth", createSeamlessAuthServer({
  *   authServerUrl: "https://identifier.seamlessauth.com",
- *   cookieDomain: "mycompany.com",
  *   accesscookieName: "sa_access",
  *   registrationCookieName: "sa_registration",
  *   refreshCookieName: "sa_refresh",
@@ -46,7 +45,6 @@ import { verifySignedAuthResponse } from "./internal/verifySignedAuthResponse";
  *
  * @param opts - Configuration options for the Seamless Auth proxy:
  *   - `authServerUrl` — Base URL of your Seamless Auth instance (required)
- *   - `cookieDomain` — Domain attribute applied to all auth cookies
  *   - `accesscookieName` — Name of the session access cookie
  *   - `registrationCookieName` — Name of the ephemeral registration cookie
  *   - `refreshCookieName` — Name of the refresh token cookie
@@ -63,7 +61,6 @@ export function createSeamlessAuthServer(
 
   const {
     authServerUrl,
-    cookieDomain = "",
     accesscookieName = "seamless-access",
     registrationCookieName = "seamless-ephemeral",
     refreshCookieName = "seamless-refresh",
@@ -87,7 +84,6 @@ export function createSeamlessAuthServer(
   r.use(
     createEnsureCookiesMiddleware({
       authServerUrl,
-      cookieDomain,
       accesscookieName,
       registrationCookieName,
       refreshCookieName,
@@ -127,13 +123,7 @@ export function createSeamlessAuthServer(
       throw new Error("Signature mismatch with data payload");
     }
 
-    setSessionCookie(
-      res,
-      { sub: data.sub },
-      cookieDomain,
-      data.ttl,
-      preAuthCookieName
-    );
+    setSessionCookie(res, { sub: data.sub }, data.ttl, preAuthCookieName);
     res.status(204).end();
   }
 
@@ -145,13 +135,7 @@ export function createSeamlessAuthServer(
     const data = (await up.json()) as any;
     if (!up.ok) return res.status(up.status).json(data);
 
-    setSessionCookie(
-      res,
-      { sub: data.sub },
-      cookieDomain,
-      data.ttl,
-      registrationCookieName
-    );
+    setSessionCookie(res, { sub: data.sub }, data.ttl, registrationCookieName);
     res.status(200).json(data).end();
   }
 
@@ -179,7 +163,6 @@ export function createSeamlessAuthServer(
     setSessionCookie(
       res,
       { sub: data.sub, roles: data.roles },
-      cookieDomain,
       data.ttl,
       accesscookieName
     );
@@ -187,7 +170,6 @@ export function createSeamlessAuthServer(
     setSessionCookie(
       res,
       { sub: data.sub, refreshToken: data.refreshToken },
-      req.hostname,
       data.refreshTtl,
       refreshCookieName
     );
@@ -210,7 +192,6 @@ export function createSeamlessAuthServer(
     setSessionCookie(
       res,
       { sub: data.sub, roles: data.roles },
-      cookieDomain,
       data.ttl,
       accesscookieName
     );
@@ -224,7 +205,6 @@ export function createSeamlessAuthServer(
 
     clearAllCookies(
       res,
-      cookieDomain,
       accesscookieName,
       registrationCookieName,
       refreshCookieName
@@ -238,7 +218,7 @@ export function createSeamlessAuthServer(
     });
     const data = (await up.json()) as any;
 
-    clearSessionCookie(res, cookieDomain, preAuthCookieName);
+    clearSessionCookie(res, preAuthCookieName);
     if (!data.user) return res.status(401).json({ error: "unauthenticated" });
     res.json({ user: data.user });
   }

@@ -65,7 +65,6 @@ export function createEnsureCookiesMiddleware(opts: SeamlessAuthServerOptions) {
         if (!refreshed?.token) {
           clearAllCookies(
             res,
-            cookieDomain,
             name,
             opts.registrationCookieName!,
             opts.refreshCookieName!
@@ -82,7 +81,6 @@ export function createEnsureCookiesMiddleware(opts: SeamlessAuthServerOptions) {
             token: refreshed.token,
             roles: refreshed.roles,
           },
-          cookieDomain,
           refreshed.ttl,
           name
         );
@@ -90,7 +88,6 @@ export function createEnsureCookiesMiddleware(opts: SeamlessAuthServerOptions) {
         setSessionCookie(
           res,
           { sub: refreshed.sub, refreshToken: refreshed.refreshToken },
-          cookieDomain,
           refreshed.refreshTtl,
           opts.refreshCookieName!
         );
