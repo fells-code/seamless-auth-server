@@ -187,7 +187,7 @@ export function createSeamlessAuthServer(
     setSessionCookie(
       res,
       { sub: data.sub, refreshToken: data.refreshToken },
-      req.hostname,
+      cookieDomain,
       data.refreshTtl,
       refreshCookieName
     );

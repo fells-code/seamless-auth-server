@@ -21,6 +21,8 @@ export function setSessionCookie(
     throw new Error("Missing required env SEAMLESS_COOKIE_SIGNING_KEY");
   }
 
+  console.debug("[SeamlessAuth] Domain check... ", domain);
+
   const token = jwt.sign(payload, COOKIE_SECRET, {
     algorithm: "HS256",
     expiresIn: `${ttlSeconds}s`,
@@ -51,6 +53,7 @@ export function clearAllCookies(
   registrationCookieName: string,
   refreshCookieName: string
 ) {
+  console.debug("[SeamlessAuth] clearing cookies");
   res.clearCookie(accesscookieName, { domain, path: "/" });
   res.clearCookie(registrationCookieName, { domain, path: "/" });
   res.clearCookie(refreshCookieName, { domain, path: "/" });
