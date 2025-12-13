@@ -71,7 +71,10 @@ export function createSeamlessAuthServer(
   } = opts;
 
   const proxy =
-    (path: string, method: "GET" | "POST" | "PUT" | "DELETE" = "POST") =>
+    (
+      path: string,
+      method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" = "POST"
+    ) =>
     async (req: Request, res: Response) => {
       try {
         const response = await authFetch(req, `${authServerUrl}/${path}`, {
@@ -103,6 +106,8 @@ export function createSeamlessAuthServer(
   r.post("/otp/verify-email-otp", proxy("otp/verify-email-otp"));
   r.post("/login", login);
   r.post("/users/update", proxy("users/update"));
+  r.post("/users/credentials", proxy("users/credentials"));
+  r.delete("/users/credentials", proxy("users/credentials"));
   r.post("/registration/register", register);
   r.get("/users/me", me);
   r.get("/logout", logout);
@@ -240,6 +245,6 @@ export function createSeamlessAuthServer(
 
     clearSessionCookie(res, cookieDomain, preAuthCookieName);
     if (!data.user) return res.status(401).json({ error: "unauthenticated" });
-    res.json({ user: data.user });
+    res.json({ user: data.user, credentials: data.credentials });
   }
 }

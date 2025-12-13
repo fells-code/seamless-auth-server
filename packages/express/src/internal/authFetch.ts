@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 import { CookieRequest } from "../middleware/ensureCookies";
 
 export interface AuthFetchOptions {
-  method?: "GET" | "POST" | "PUT" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   body?: any;
   cookies?: string[];
   headers?: Record<string, string>;
