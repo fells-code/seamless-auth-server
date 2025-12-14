@@ -11,6 +11,7 @@ export interface CookiePayload {
 export function setSessionCookie(
   res: Response,
   payload: CookiePayload,
+  domain?: string,
   ttlSeconds = 300,
   name = "sa_session"
 ) {
@@ -19,6 +20,8 @@ export function setSessionCookie(
     console.warn("[SeamlessAuth] Missing SEAMLESS_COOKIE_SIGNING_KEY env var!");
     throw new Error("Missing required env SEAMLESS_COOKIE_SIGNING_KEY");
   }
+
+  console.debug("[SeamlessAuth] Domain check... ", domain);
 
   const token = jwt.sign(payload, COOKIE_SECRET, {
     algorithm: "HS256",
@@ -30,6 +33,7 @@ export function setSessionCookie(
     secure: process.env.NODE_ENV === "production",
     sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     path: "/",
+    domain,
     maxAge: ttlSeconds * 1000,
   });
 }
@@ -44,11 +48,13 @@ export function clearSessionCookie(
 
 export function clearAllCookies(
   res: Response,
+  domain: string,
   accesscookieName: string,
   registrationCookieName: string,
   refreshCookieName: string
 ) {
-  res.clearCookie(accesscookieName, { path: "/" });
-  res.clearCookie(registrationCookieName, { path: "/" });
-  res.clearCookie(refreshCookieName, { path: "/" });
+  console.debug("[SeamlessAuth] clearing cookies");
+  res.clearCookie(accesscookieName, { domain, path: "/" });
+  res.clearCookie(registrationCookieName, { domain, path: "/" });
+  res.clearCookie(refreshCookieName, { domain, path: "/" });
 }

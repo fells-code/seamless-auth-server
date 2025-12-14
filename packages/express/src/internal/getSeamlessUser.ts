@@ -1,6 +1,4 @@
-import type { Request } from "express";
 import { authFetch } from "./authFetch.js";
-import { verifySignedAuthResponse } from "./verifySignedAuthResponse.js";
 import { CookieRequest } from "../middleware/ensureCookies.js";
 import { verifyCookieJwt } from "./verifyCookieJwt.js";
 
