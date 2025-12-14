@@ -11,6 +11,7 @@ export interface CookiePayload {
 export function setSessionCookie(
   res: Response,
   payload: CookiePayload,
+  domain?: string,
   ttlSeconds = 300,
   name = "sa_session"
 ) {
@@ -30,6 +31,7 @@ export function setSessionCookie(
     secure: process.env.NODE_ENV === "production",
     sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     path: "/",
+    domain,
     maxAge: ttlSeconds * 1000,
   });
 }
@@ -44,11 +46,12 @@ export function clearSessionCookie(
 
 export function clearAllCookies(
   res: Response,
+  domain: string,
   accesscookieName: string,
   registrationCookieName: string,
   refreshCookieName: string
 ) {
-  res.clearCookie(accesscookieName, { path: "/" });
-  res.clearCookie(registrationCookieName, { path: "/" });
-  res.clearCookie(refreshCookieName, { path: "/" });
+  res.clearCookie(accesscookieName, { domain, path: "/" });
+  res.clearCookie(registrationCookieName, { domain, path: "/" });
+  res.clearCookie(refreshCookieName, { domain, path: "/" });
 }
