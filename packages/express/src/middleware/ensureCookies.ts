@@ -41,8 +41,9 @@ export function createEnsureCookiesMiddleware(opts: SeamlessAuthServerOptions) {
     req: CookieRequest,
     res: Response,
     next: NextFunction,
-    cookieDomain = ""
+    cookieDomain = opts.cookieDomain || ""
   ) {
+    console.debug("[SeamlessAuth] Ensuring cookies domain...", cookieDomain);
     const match = Object.entries(COOKIE_REQUIREMENTS).find(([path]) =>
       req.path.startsWith(path)
     );
