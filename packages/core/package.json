@@ -4,10 +4,11 @@
     "description": "Framework-agnostic core authentication logic for SeamlessAuth",
     "license": "AGPL-3.0-only",
     "author": "Fells Code, LLC",
+    "sideEffects": false,
     "homepage": "https://seamlessauth.com",
     "repository": {
         "type": "git",
-        "url": "https://github.com/fells-code/seamless-auth"
+        "url": "https://github.com/fells-code/seamless-auth-server/tree/main/packages/core"
     },
     "type": "module",
     "main": "./dist/index.js",
@@ -48,5 +49,8 @@
         "jest": "^29.7.0",
         "ts-node": "^10.9.2",
         "typescript": "^5.9.3"
+    },
+    "publishConfig": {
+        "access": "public"
     }
 }
