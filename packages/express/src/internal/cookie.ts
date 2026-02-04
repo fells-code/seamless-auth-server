@@ -1,60 +1,53 @@
-import jwt from "jsonwebtoken";
+import jwt, { JwtPayload } from "jsonwebtoken";
 import { Response } from "express";
 
-export interface CookiePayload {
-  sub: string;
-  token?: string;
-  refreshToken?: string;
-  roles?: string[];
+export interface CookieSignerOptions {
+  secret: string;
+  secure: boolean;
+  sameSite: "lax" | "none";
+}
+
+export interface SetCookieOptions {
+  name: string;
+  payload: JwtPayload;
+  domain?: string;
+  ttlSeconds: number;
 }
 
 export function setSessionCookie(
   res: Response,
-  payload: CookiePayload,
-  domain?: string,
-  ttlSeconds = 300,
-  name = "sa_session"
+  opts: SetCookieOptions,
+  signer: CookieSignerOptions,
 ) {
-  const COOKIE_SECRET = process.env.SEAMLESS_COOKIE_SIGNING_KEY!;
-  if (!COOKIE_SECRET) {
-    console.warn("[SeamlessAuth] Missing SEAMLESS_COOKIE_SIGNING_KEY env var!");
-    throw new Error("Missing required env SEAMLESS_COOKIE_SIGNING_KEY");
-  }
-
-  console.debug("[SeamlessAuth] Domain check... ", domain);
-
-  const token = jwt.sign(payload, COOKIE_SECRET, {
+  const token = jwt.sign(opts.payload, signer.secret, {
     algorithm: "HS256",
-    expiresIn: `${ttlSeconds}s`,
+    expiresIn: `${opts.ttlSeconds}s`,
   });
 
-  res.cookie(name, token, {
+  res.cookie(opts.name, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    secure: signer.secure,
+    sameSite: signer.sameSite,
     path: "/",
-    domain,
-    maxAge: ttlSeconds * 1000,
+    domain: opts.domain,
+    maxAge: Number(opts.ttlSeconds) * 1000,
   });
 }
 
 export function clearSessionCookie(
   res: Response,
-  domain: string,
-  name = "sa_session"
+  domain: string | undefined,
+  name: string,
 ) {
   res.clearCookie(name, { domain, path: "/" });
 }
 
 export function clearAllCookies(
   res: Response,
-  domain: string,
-  accesscookieName: string,
-  registrationCookieName: string,
-  refreshCookieName: string
+  domain: string | undefined,
+  ...cookieNames: string[]
 ) {
-  console.debug("[SeamlessAuth] clearing cookies");
-  res.clearCookie(accesscookieName, { domain, path: "/" });
-  res.clearCookie(registrationCookieName, { domain, path: "/" });
-  res.clearCookie(refreshCookieName, { domain, path: "/" });
+  for (const name of cookieNames) {
+    res.clearCookie(name, { domain, path: "/" });
+  }
 }

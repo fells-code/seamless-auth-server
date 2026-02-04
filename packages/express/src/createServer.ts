@@ -1,14 +1,33 @@
 import express, { Request, Response, Router } from "express";
 import cookieParser from "cookie-parser";
-import {
-  setSessionCookie,
-  clearAllCookies,
-  clearSessionCookie,
-} from "./internal/cookie";
-import { authFetch } from "./internal/authFetch";
+
 import type { SeamlessAuthServerOptions } from "./types";
 import { createEnsureCookiesMiddleware } from "./middleware/ensureCookies";
-import { verifySignedAuthResponse } from "./internal/verifySignedAuthResponse";
+
+import { login } from "./handlers/login";
+import { finishLogin } from "./handlers/finishLogin";
+import { register } from "./handlers/register";
+import { finishRegister } from "./handlers/finishRegister";
+import { me } from "./handlers/me";
+import { logout } from "./handlers/logout";
+
+import {
+  authFetch,
+  EnsureCookiesOptions,
+  createServiceToken,
+  AuthFetchOptions,
+} from "@seamless-auth/core";
+
+type ResolvedSeamlessAuthServerOptions = {
+  authServerUrl: string;
+  cookieDomain: string;
+  accessCookieName: string;
+  registrationCookieName: string;
+  refreshCookieName: string;
+  preAuthCookieName: string;
+};
+
+type IdentitySource = "preAuth" | "access";
 
 /**
  * Creates an Express Router that proxies all authentication traffic to a Seamless Auth server.
@@ -38,7 +57,7 @@ import { verifySignedAuthResponse } from "./internal/verifySignedAuthResponse";
  * app.use("/auth", createSeamlessAuthServer({
  *   authServerUrl: "https://identifier.seamlessauth.com",
  *   cookieDomain: "mycompany.com",
- *   accesscookieName: "sa_access",
+ *   accessCookieName: "sa_access",
  *   registrationCookieName: "sa_registration",
  *   refreshCookieName: "sa_refresh",
  * }));
@@ -47,7 +66,7 @@ import { verifySignedAuthResponse } from "./internal/verifySignedAuthResponse";
  * @param opts - Configuration options for the Seamless Auth proxy:
  *   - `authServerUrl` — Base URL of your Seamless Auth instance (required)
  *   - `cookieDomain` — Domain attribute applied to all auth cookies
- *   - `accesscookieName` — Name of the session access cookie
+ *   - `accessCookieName` — Name of the session access cookie
  *   - `registrationCookieName` — Name of the ephemeral registration cookie
  *   - `refreshCookieName` — Name of the refresh token cookie
  *   - `preAuthCookieName` — Name of the cookie used during login initiation
@@ -55,196 +74,147 @@ import { verifySignedAuthResponse } from "./internal/verifySignedAuthResponse";
  * @returns An Express `Router` preconfigured with all Seamless Auth routes.
  */
 export function createSeamlessAuthServer(
-  opts: SeamlessAuthServerOptions
+  opts: SeamlessAuthServerOptions,
 ): Router {
   const r = express.Router();
+
   r.use(express.json());
   r.use(cookieParser());
 
-  const {
-    authServerUrl,
-    cookieDomain = "",
-    accesscookieName = "seamless-access",
-    registrationCookieName = "seamless-ephemeral",
-    refreshCookieName = "seamless-refresh",
-    preAuthCookieName = "seamless-ephemeral",
-  } = opts;
+  const resolvedOpts: ResolvedSeamlessAuthServerOptions = {
+    authServerUrl: opts.authServerUrl,
+    cookieDomain: opts.cookieDomain ?? "",
+    accessCookieName: opts.accessCookieName ?? "seamless-access",
+    registrationCookieName: opts.registrationCookieName ?? "seamless-ephemeral",
+    refreshCookieName: opts.refreshCookieName ?? "seamless-refresh",
+    preAuthCookieName: opts.preAuthCookieName ?? "seamless-ephemeral",
+  };
 
-  const proxy =
+  const proxyWithIdentity =
     (
       path: string,
-      method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" = "POST"
+      identity: "preAuth" | "access" | "register",
+      method: AuthFetchOptions["method"] = "POST",
     ) =>
-    async (req: Request, res: Response) => {
-      try {
-        const response = await authFetch(req, `${authServerUrl}/${path}`, {
+    async (req: Request & { cookiePayload?: any }, res: Response) => {
+      if (!req.cookiePayload?.sub) {
+        res.status(401).json({ error: "unauthenticated" });
+        return;
+      }
+
+      if (
+        identity === "access" &&
+        !req.cookies[resolvedOpts.accessCookieName]
+      ) {
+        res.status(401).json({ error: "access session required" });
+        return;
+      }
+
+      if (
+        identity === "preAuth" &&
+        !req.cookies[resolvedOpts.preAuthCookieName]
+      ) {
+        res.status(401).json({ error: "pre-auth session required" });
+        return;
+      }
+
+      if (
+        identity === "register" &&
+        !req.cookies[resolvedOpts.registrationCookieName]
+      ) {
+        res.status(401).json({ error: "registeration session required" });
+        return;
+      }
+
+      const authorization = buildServiceAuthorization(req);
+
+      const upstream = await authFetch(
+        `${resolvedOpts.authServerUrl}/${path}`,
+        {
           method,
           body: req.body,
-        });
-        res.status(response.status).json(await response.json());
-      } catch (error) {
-        console.error(`Failed to proxy to route. Error: ${error}`);
-      }
+          authorization,
+        },
+      );
+
+      const data = await upstream.json();
+      res.status(upstream.status).json(data);
     };
 
   r.use(
     createEnsureCookiesMiddleware({
-      authServerUrl,
-      cookieDomain,
-      accesscookieName,
-      registrationCookieName,
-      refreshCookieName,
-      preAuthCookieName,
-    })
+      authServerUrl: resolvedOpts.authServerUrl,
+      cookieDomain: resolvedOpts.cookieDomain,
+      accessCookieName: resolvedOpts.accessCookieName,
+      registrationCookieName: resolvedOpts.registrationCookieName,
+      refreshCookieName: resolvedOpts.refreshCookieName,
+      preAuthCookieName: resolvedOpts.preAuthCookieName,
+      cookieSecret: process.env.COOKIE_SIGNING_KEY!,
+      serviceSecret: process.env.API_SERVICE_TOKEN!,
+      issuer: process.env.APP_ORIGIN!,
+      audience: process.env.AUTH_SERVER_URL!,
+      keyId: "dev-main",
+    } as EnsureCookiesOptions),
   );
 
-  r.post("/webAuthn/login/start", proxy("webAuthn/login/start"));
-  r.post("/webAuthn/login/finish", finishLogin);
-  r.get("/webAuthn/register/start", proxy("webAuthn/register/start", "GET"));
-  r.post("/webAuthn/register/finish", finishRegister);
-  r.post("/otp/verify-phone-otp", proxy("otp/verify-phone-otp"));
-  r.post("/otp/verify-email-otp", proxy("otp/verify-email-otp"));
-  r.post("/login", login);
-  r.post("/users/update", proxy("users/update"));
-  r.post("/users/credentials", proxy("users/credentials"));
-  r.delete("/users/credentials", proxy("users/credentials"));
-  r.post("/registration/register", register);
-  r.get("/users/me", me);
-  r.get("/logout", logout);
+  function buildServiceAuthorization(req: Request & { cookiePayload?: any }) {
+    if (!req.cookiePayload?.sub) {
+      return undefined;
+    }
+
+    const token = createServiceToken({
+      subject: req.cookiePayload.sub,
+      issuer: process.env.APP_ORIGIN!,
+      audience: process.env.AUTH_SERVER_URL!,
+      serviceSecret: process.env.API_SERVICE_TOKEN!,
+      keyId: "dev-main",
+    });
+
+    return `Bearer ${token}`;
+  }
+
+  r.post(
+    "/webAuthn/login/start",
+    proxyWithIdentity("webAuthn/login/start", "preAuth"),
+  );
+  r.post("/webAuthn/login/finish", (req, res) =>
+    finishLogin(req, res, resolvedOpts),
+  );
+
+  r.get(
+    "/webAuthn/register/start",
+    proxyWithIdentity("webAuthn/register/start", "preAuth", "GET"),
+  );
+  r.post("/webAuthn/register/finish", (req, res) =>
+    finishRegister(req, res, resolvedOpts),
+  );
+
+  r.post(
+    "/otp/verify-phone-otp",
+    proxyWithIdentity("otp/verify-phone-otp", "preAuth"),
+  );
+  r.post(
+    "/otp/verify-email-otp",
+    proxyWithIdentity("otp/verify-email-otp", "preAuth"),
+  );
+
+  r.post("/login", (req, res) => login(req, res, resolvedOpts));
+  r.post("/registration/register", (req, res) =>
+    register(req, res, resolvedOpts),
+  );
+
+  r.get("/users/me", (req, res) => me(req, res, resolvedOpts));
+  r.get("/logout", (req, res) => logout(req, res, resolvedOpts));
+
+  r.post("/users/update", proxyWithIdentity("users/update", "access"));
+  r.post(
+    "/users/credentials",
+    proxyWithIdentity("users/credentials", "access"),
+  );
+  r.delete(
+    "/users/credentials",
+    proxyWithIdentity("users/credentials", "access"),
+  );
 
   return r;
-
-  async function login(req: Request, res: Response) {
-    const up = await authFetch(req, `${authServerUrl}/login`, {
-      method: "POST",
-      body: req.body,
-    });
-    const data = (await up.json()) as any;
-    if (!up.ok) return res.status(up.status).json(data);
-
-    const verified = await verifySignedAuthResponse(data.token, authServerUrl);
-
-    if (!verified) {
-      throw new Error("Invalid signed response from Auth Server");
-    }
-
-    if (verified.sub !== data.sub) {
-      throw new Error("Signature mismatch with data payload");
-    }
-
-    setSessionCookie(
-      res,
-      { sub: data.sub },
-      cookieDomain,
-      data.ttl,
-      preAuthCookieName
-    );
-    res.status(204).end();
-  }
-
-  async function register(req: Request, res: Response) {
-    const up = await authFetch(req, `${authServerUrl}/registration/register`, {
-      method: "POST",
-      body: req.body,
-    });
-    const data = (await up.json()) as any;
-    if (!up.ok) return res.status(up.status).json(data);
-
-    setSessionCookie(
-      res,
-      { sub: data.sub },
-      cookieDomain,
-      data.ttl,
-      registrationCookieName
-    );
-    res.status(200).json(data).end();
-  }
-
-  async function finishLogin(req: Request, res: Response) {
-    const up = await authFetch(req, `${authServerUrl}/webAuthn/login/finish`, {
-      method: "POST",
-      body: req.body,
-    });
-    const data = (await up.json()) as any;
-    if (!up.ok) return res.status(up.status).json(data);
-
-    const verifiedAccessToken = await verifySignedAuthResponse(
-      data.token,
-      authServerUrl
-    );
-
-    if (!verifiedAccessToken) {
-      throw new Error("Invalid signed response from Auth Server");
-    }
-
-    if (verifiedAccessToken.sub !== data.sub) {
-      throw new Error("Signature mismatch with data payload");
-    }
-
-    setSessionCookie(
-      res,
-      { sub: data.sub, roles: data.roles },
-      cookieDomain,
-      data.ttl,
-      accesscookieName
-    );
-
-    setSessionCookie(
-      res,
-      { sub: data.sub, refreshToken: data.refreshToken },
-      cookieDomain,
-      data.refreshTtl,
-      refreshCookieName
-    );
-
-    res.status(200).json(data).end();
-  }
-
-  async function finishRegister(req: Request, res: Response) {
-    const up = await authFetch(
-      req,
-      `${authServerUrl}/webAuthn/register/finish`,
-      {
-        method: "POST",
-        body: req.body,
-      }
-    );
-    const data = (await up.json()) as any;
-    if (!up.ok) return res.status(up.status).json(data);
-
-    setSessionCookie(
-      res,
-      { sub: data.sub, roles: data.roles },
-      cookieDomain,
-      data.ttl,
-      accesscookieName
-    );
-    res.status(204).end();
-  }
-
-  async function logout(req: Request, res: Response) {
-    await authFetch(req, `${authServerUrl}/logout`, {
-      method: "GET",
-    });
-
-    clearAllCookies(
-      res,
-      cookieDomain,
-      accesscookieName,
-      registrationCookieName,
-      refreshCookieName
-    );
-    res.status(204).end();
-  }
-
-  async function me(req: Request, res: Response) {
-    const up = await authFetch(req, `${authServerUrl}/users/me`, {
-      method: "GET",
-    });
-    const data = (await up.json()) as any;
-
-    clearSessionCookie(res, cookieDomain, preAuthCookieName);
-    if (!data.user) return res.status(401).json({ error: "unauthenticated" });
-    res.json({ user: data.user, credentials: data.credentials });
-  }
 }

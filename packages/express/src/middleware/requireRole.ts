@@ -49,16 +49,16 @@ import jwt, { JwtPayload } from "jsonwebtoken";
  */
 export function requireRole(
   role: string,
-  cookieName = "seamless-access"
+  cookieName = "seamless-access",
 ): RequestHandler {
   return (req: Request, res: Response, next: NextFunction): void => {
     try {
-      const COOKIE_SECRET = process.env.SEAMLESS_COOKIE_SIGNING_KEY!;
+      const COOKIE_SECRET = process.env.COOKIE_SIGNING_KEY!;
       if (!COOKIE_SECRET) {
         console.warn(
-          "[SeamlessAuth] SEAMLESS_COOKIE_SIGNING_KEY missing — requireRole will always fail."
+          "[SeamlessAuth] COOKIE_SIGNING_KEY missing — requireRole will always fail.",
         );
-        throw new Error("Missing required env SEAMLESS_COOKIE_SIGNING_KEY");
+        throw new Error("Missing required env COOKIE_SIGNING_KEY");
       }
       const token = req.cookies?.[cookieName];
       if (!token) {
