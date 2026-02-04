@@ -48,7 +48,8 @@ jobs:
           node-version: 20
           registry-url: https://registry.npmjs.org/
 
-      - name: Install dependencies (workspace)
+      - name: Install dependencies
+        working-directory: packages/express
         run: npm ci
 
       - name: Build
