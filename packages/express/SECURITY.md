@@ -33,7 +33,8 @@ This policy applies to:
 - @seamless-auth/core
 - @seamless-auth/express
 - @seamless-auth/react
-- Seamless Auth Server
+- Seamless Auth Api
+- Create seamless
 - Official Docker images published under the Seamless Auth organization
 
 Third-party dependencies are not covered, but reports identifying vulnerable dependency usage are appreciated.
