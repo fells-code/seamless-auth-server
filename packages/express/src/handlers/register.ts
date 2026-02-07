@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { registerHandler } from "@seamless-auth/core/handlers/register";
 import { setSessionCookie } from "../internal/cookie";
-import { SeamlessAuthServerOptions } from "../types";
+import { SeamlessAuthServerOptions } from "../createServer";
 
 export async function register(
   req: Request,

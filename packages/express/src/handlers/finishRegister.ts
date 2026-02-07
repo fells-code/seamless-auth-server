@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { finishRegisterHandler } from "@seamless-auth/core/handlers/finishRegister";
 import { setSessionCookie } from "../internal/cookie";
-import { SeamlessAuthServerOptions } from "../types";
 import { buildServiceAuthorization } from "../internal/buildAuthorization";
+import { SeamlessAuthServerOptions } from "../createServer";
 
 export async function finishRegister(
   req: Request & { cookiePayload?: any },

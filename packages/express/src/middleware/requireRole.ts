@@ -37,7 +37,7 @@ export function requireRole(requiredRoles: string | string[]): RequestHandler {
   const roles = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
 
   return (req: Request, res: Response, next: NextFunction): void => {
-    const user = (req as any).user;
+    const user = req.user;
 
     if (!user) {
       res.status(401).json({

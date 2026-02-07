@@ -26,14 +26,6 @@ type ResolvedSeamlessAuthServerOptions = {
   preAuthCookieName: string;
 };
 
-declare global {
-  namespace Express {
-    interface Request {
-      user?: SeamlessAuthUser;
-    }
-  }
-}
-
 export interface SeamlessAuthServerOptions {
   authServerUrl: string;
   cookieDomain?: string;
