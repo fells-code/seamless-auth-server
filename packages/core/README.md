@@ -139,5 +139,3 @@ This license ensures:
 - sustainability of the managed service offering
 
 See [`LICENSE`](./LICENSE) for details.
-
-testing
