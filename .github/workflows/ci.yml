@@ -1,0 +1,35 @@
+name: tests
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - main
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Core dependencies
+        working-directory: packages/core
+        run: npm ci
+
+      - name: Install Express dependencies
+        working-directory: packages/express
+        run: npm ci
+
+      - name: Test Core
+        working-directory: packages/core
+        run: npm test
+
+      - name: Test Express
+        working-directory: packages/express
+        run: npm test
