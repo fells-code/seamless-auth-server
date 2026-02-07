@@ -1,74 +1,92 @@
-# @seamless-auth/server-express
+# @seamless-auth/express
 
-### Seamless Auth Express Adapter
+[![npm version](https://img.shields.io/npm/v/@seamless-auth/express.svg)](https://www.npmjs.com/package/@seamless-auth/express)
+[![test coverage](https://img.shields.io/badge/coverage-coming%20soon-lightgrey)](#testing)
+[![license](https://img.shields.io/badge/license-AGPL--3.0-blue)](#license)
 
-A secure, passwordless **server-side adapter** that connects your Express API to a private Seamless Auth Server.
+### Seamless Auth – Express Adapter
 
-It proxies all authentication flows, manages signed cookies, and gives you out-of-the-box middleware for verifying users and enforcing roles.
+A secure, passwordless **server-side adapter** for Express that connects your API to a private **Seamless Auth Server**.
+
+This package:
+
+- Proxies authentication flows
+- Manages signed, HttpOnly session cookies
+- Enforces authentication and authorization in your API
+- Handles all API ↔ Auth Server communication via short-lived service tokens
 
 > **npm:** https://www.npmjs.com/package/@seamless-auth/express  
 > **Docs:** https://docs.seamlessauth.com  
 > **Repo:** https://github.com/fells-code/seamless-auth-server
 
+Pair this with:
 
-> Couple with https://github.com/fells-code/seamless-auth/react for an end to end seamless experience
-
-> Or get a full starter application with https://github.com/fells-code/create-seamless
-
----
+- **React SDK:** https://github.com/fells-code/seamless-auth-react
+- **Starter app:** https://github.com/fells-code/create-seamless
 
 ---
 
 ## Installation
 
 ```bash
-npm install @seamless-auth/server-express
+npm install @seamless-auth/express
 # or
-yarn add @seamless-auth/server-express
-```
-
-
-## Quick Example
-
-```ts
-import express from "express";
-import cookieParser from "cookie-parser";
-import createSeamlessAuthServer, { requireAuth, requireRole } from "@seamless-auth/server-express";
-
-const app = express();
-app.use(cookieParser());
-
-// Public Seamless Auth endpoints
-app.use("/auth", createSeamlessAuthServer({ authServerUrl: process.env.AUTH_SERVER_URL! }));
-
-// Everything after this line requires authentication
-app.use(requireAuth());
-
-app.get("/api/me", (req, res) => res.json({ user: (req as any).user }));
-app.get("/admin", requireRole("admin"), (req, res) => res.json({ message: "Welcome admin!" }));
-
-app.listen(5000, () => console.log("Portal API running on :5000"));
+yarn add @seamless-auth/express
 ```
 
 ---
 
-# Full Documentation
+## Quick Start
+
+```ts
+import express from "express";
+import cookieParser from "cookie-parser";
+import {
+  createSeamlessAuthServer,
+  requireAuth,
+  requireRole,
+} from "@seamless-auth/express";
+
+const app = express();
+app.use(express.json());
+app.use(cookieParser());
+
+// Mount Seamless Auth routes
+app.use(
+  "/auth",
+  createSeamlessAuthServer({
+    authServerUrl: process.env.AUTH_SERVER_URL!,
+  }),
+);
+
+// Everything below requires authentication
+app.use(requireAuth());
+
+app.get("/api/me", (req, res) => {
+  res.json({ user: req.user });
+});
+
+app.get("/admin", requireRole("admin"), (req, res) => {
+  res.json({ message: "Welcome admin!" });
+});
+
+app.listen(5000, () => console.log("API running on http://localhost:3000"));
+```
+
+---
 
 ## Overview
 
-`@seamless-auth/express` lets your backend API act as an authentication and authorization server using Seamless Auth.
+`@seamless-auth/express` lets your backend API act as the **security boundary** for authentication and authorization.
 
-It transparently proxies and validates authentication flows so your frontend can use a single API endpoint for:
+Your API:
 
-- Login / Registration / Logout  
-- User introspection (`/auth/me`)  
-- Session cookies (signed JWTs)  
-- Role & permission guards  
-- Internal Auth Server communication (JWKS + service tokens)
+- owns user session cookies
+- verifies identity locally
+- asserts identity upstream using service tokens
+- never forwards browser cookies to the Auth Server
 
-Everything happens securely between your API and a private Seamless Auth Server.
-
-
+This keeps trust boundaries clean and auditable.
 
 ---
 
@@ -80,9 +98,9 @@ Everything happens securely between your API and a private Seamless Auth Server.
      ▼
 [Your Express API]
    ├─ createSeamlessAuthServer()  ← mounts /auth routes
-   ├─ requireAuth()               ← verifies signed cookie JWT
-   ├─ requireRole('admin')        ← role-based guard
-   └─ getSeamlessUser()           ← calls Auth Server
+   ├─ requireAuth()               ← verifies access cookie
+   ├─ requireRole("admin")        ← role-based guard
+   └─ getSeamlessUser()           ← optional user hydration
      │
      ▼
 [Private Seamless Auth Server]
@@ -92,13 +110,14 @@ Everything happens securely between your API and a private Seamless Auth Server.
 
 ## Environment Variables
 
-| Variable | Description | Example |
-|-----------|--------------|----------|
-| `AUTH_SERVER_URL` | Base URL of your Seamless Auth Server | `https://auth.client.com` |
-| `SEAMLESS_COOKIE_SIGNING_KEY` | Secret key for signing JWT cookies | `base64:...` |
-| `SERVICE_JWT_PRIVATE_KEY` | Private key for API → Auth Server JWTs | RSA PEM |
-| `SERVICE_JWT_KEYID` | Key ID for JWKS | `service-main` |
-| `COOKIE_DOMAIN` | Domain for cookies | `.client.com` |
+| Variable             | Description                               | Example                                                |
+| -------------------- | ----------------------------------------- | ------------------------------------------------------ |
+| `AUTH_SERVER_URL`    | Base URL of your Seamless Auth Server     | `https://auth.client.com`                              |
+| `COOKIE_SIGNING_KEY` | Secret for signing API session cookies    | `local-dev-secret`                                     |
+| `API_SERVICE_TOKEN`  | API → Auth Server service secret          | `shared-m2m-value`                                     |
+| `APP_ORIGIN`         | Your site URL (or localhost in demo mode) | `https://myapp.com`                                    |
+| `DATABASE_URL`       | Database URL for your API                 | `postgres://myuser:mypassword@localhost:5432/seamless` |
+| `DB_NAME`            | Name of your database                     | `seamless`                                             |
 
 ---
 
@@ -106,35 +125,35 @@ Everything happens securely between your API and a private Seamless Auth Server.
 
 ### `createSeamlessAuthServer(options)`
 
-Mounts an Express router exposing the full Seamless Auth flow:
+Mounts an Express router that exposes the full Seamless Auth flow under `/auth`.
 
-- `/auth/login/start`  
-- `/auth/login/finish`  
-- `/auth/webauthn/...`  
-- `/auth/registration/...`  
-- `/auth/me`  
+Routes include:
+
+- `/auth/login/start`
+- `/auth/login/finish`
+- `/auth/webauthn/*`
+- `/auth/registration/*`
+- `/auth/users/me`
 - `/auth/logout`
 
 **Options**
 
 ```ts
 {
-  authServerUrl: string;        // required
-  cookieDomain?: string;
-  cookieNameOverrides?: {
-    preauth?: string;
-    registration?: string;
-    access?: string;
-  };
+  authServerUrl: string;   // required
+  cookieDomain?: string;  // optional (defaults to host)
+  accessCookieName?: string;
+  registrationCookieName?: string;
+  refreshCookieName?: string;
+  preAuthCookieName?: string;
 }
 ```
 
 ---
 
-### `requireAuth(cookieName?: string)`
+### `requireAuth(options?)`
 
-Middleware that validates the signed access cookie (`seamless_auth_access` by default)  
-and attaches the decoded user payload to `req.user`.
+Express middleware that verifies a signed access cookie and attaches the decoded user payload to `req.user`.
 
 ```ts
 app.get("/api/profile", requireAuth(), (req, res) => {
@@ -144,10 +163,11 @@ app.get("/api/profile", requireAuth(), (req, res) => {
 
 ---
 
-### `requireRole(role: string, cookieName?: string)`
+### `requireRole(role: string)`
 
-Role-based authorization guard.  
-Blocks non-matching roles with HTTP 403.
+Role-based authorization middleware.
+
+Blocks requests when the authenticated user does not have the required role.
 
 ```ts
 app.get("/admin", requireRole("admin"), (req, res) => {
@@ -159,106 +179,67 @@ app.get("/admin", requireRole("admin"), (req, res) => {
 
 ### `getSeamlessUser(req, authServerUrl, cookieName?)`
 
-Calls the Auth Server’s `/internal/session/introspect` endpoint using a signed service JWT  
-and returns the Seamless user object.
+Optional helper that calls the Auth Server to retrieve the **fully hydrated user object**.
+
+This does **not** enforce authentication.
 
 ```ts
-const user = await getSeamlessUser(req, process.env.AUTH_SERVER_URL!);
+const user = await getSeamlessUser(req, process.env.AUTH_SERVER_URL);
 ```
 
-User shape
+Returned shape (example):
+
 ```ts
 {
   id: string;
   email: string;
   phone: string;
-  roles: string[]
+  roles: string[];
 }
 ```
+
+---
 
 ## End-to-End Flow
 
 1. **Frontend** → `/auth/login/start`  
-   → API proxies to Seamless Auth Server  
-   → sets short-lived pre-auth cookie.
+   API proxies request and sets a short-lived _pre-auth_ cookie.
 
 2. **Frontend** → `/auth/webauthn/finish`  
-   → API proxies, validates, sets access cookie (`seamless_auth_access`).
+   API verifies response and sets a signed access cookie.
 
-3. **Subsequent API calls** → `/api/...`  
-   → `requireAuth()` verifies cookie and attaches user.  
-   → Role routes use `requireRole()`.
+3. **API routes** → `/api/*`  
+   `requireAuth()` verifies the cookie and attaches `req.user`.
 
 ---
 
 ## Local Development
 
-In order to develop with your Seamless Auth server instance, you will need to have:
-
-- Created an account @ https://dashboard.seamlessauth.com
-- Created a new Seamless Auth application
-
-Example env:
-
 ```bash
-AUTH_SERVER_URL=http://https://<identifier>.seamlessauth.com # Found in the portal
-COOKIE_DOMAIN=localhost # Or frontend domain in prod
-SEAMLESS_COOKIE_SIGNING_KEY=local-secret-key # Found in the portal
+AUTH_SERVER_URL=http://localhost:5312
+SEAMLESS_SERVICE_TOKEN=generated-secret
+COOKIE_SIGNING_KEY=local-dev-key
+FRONTEND_URL=https://localhost:5001
 ```
 
 ---
 
-## Example Middleware Stack
+## Testing
 
-```ts
-const AUTH_SERVER_URL = process.env.AUTH_SERVER_URL!;
-app.use(cors({ origin: "https://localhost:5001", credentials: true }));
-app.use(express.json());
-app.use(cookieParser());
-app.use("/auth", createSeamlessAuthServer({ authServerUrl: AUTH_SERVER_URL }));
-app.use(requireAuth());
-```
+This package includes **Express smoke tests** using `supertest`.
 
----
-
-## Security Model
-
-| Layer | Auth Mechanism | Signed By |
-|--------|----------------|------------|
-| **Frontend ↔ API** | Signed JWT in HttpOnly cookie (HS256) | Client API |
-| **API ↔ Auth Server** | Bearer Service JWT (RS256) | API’s private key |
-| **Auth Server** | Validates service tokens via JWKS | Seamless Auth JWKS |
-
-All tokens and cookies are stateless and cryptographically verifiable.
-
----
-
-##  Testing
-
-You can mock `requireAuth` and test Express routes via `supertest`.
-
-Example:
-
-```ts
-import { requireAuth } from "@seamless-auth/server-express";
-app.get("/api/test", requireAuth(), (req, res) => res.json({ ok: true }));
-```
-
----
-
-## Roadmap
-
-| Feature | Status |
-|----------|---------|
-| JWKS-verified response signing | ✅ |
-| OIDC discovery & SSO readiness |  planned |
-| Federation (Google / Okta) | future |
-| Multi-framework adapters (Next.js / Fastify) | coming soon |
+Core authentication logic is tested separately in `@seamless-auth/core`.
 
 ---
 
 ## License
 
-MIT © 2025 Fells Code LLC  
-Part of the **Seamless Auth** ecosystem.
+**AGPL-3.0-only** © 2026 Fells Code LLC
 
+This license ensures:
+
+- transparency of security-critical code
+- freedom to self-host and modify
+- sustainability of the managed service offering
+
+See [`LICENSE`](./LICENSE) for details.

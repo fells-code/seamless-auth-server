@@ -1,36 +1,54 @@
 {
   "name": "@seamless-auth/express",
-  "version": "0.0.1-beta.0",
+  "version": "0.0.2-beta.7",
   "description": "Express adapter for Seamless Auth passwordless authentication",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "type": "module",
   "main": "dist/index.js",
   "types": "./dist/index.d.ts",
   "author": "Fells Code LLC",
+  "files": [
+    "dist",
+    "LICENSE",
+    "LICENSE.md",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
-    "build": "tsc -p tsconfig.json && node build.mjs",
-    "dev": "tsc --watch"
+    "build": "tsup src/index.ts --format esm --out-dir dist --dts --splitting",
+    "dev": "tsc --watch",
+    "test": "npm run build && NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:watch": "npm run build && NODE_OPTIONS=--experimental-vm-modules jest --watch"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/fells-code/seamless-auth-server"
+    "url": "https://github.com/fells-code/seamless-auth-server/tree/main/packages/express"
   },
-  "files": [
-    "dist"
-  ],
   "peerDependencies": {
-    "@types/express": ">=5.0.0",
-    "express": ">=5.1.0"
+    "express": ">=4.18.0",
+    "@types/express": ">=4.17.0"
   },
   "dependencies": {
+    "@seamless-auth/core": "^0.1.0",
     "cookie-parser": "^1.4.6",
-    "jose": "^6.1.1",
-    "jsonwebtoken": "^9.0.2",
-    "node-fetch": "^3.3.2"
+    "jsonwebtoken": "^9.0.3"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",
+    "@types/jest": "^29.5.14",
     "@types/jsonwebtoken": "^9.0.10",
+    "jest": "^29.7.0",
+    "ts-node": "^10.9.2",
+    "supertest": "^7.2.2",
+    "tsup": "^8.5.1",
     "typescript": "^5.5.0"
   },
   "publishConfig": {

@@ -1,47 +1,108 @@
-import { NextFunction, Request, Response } from "express";
-import { SeamlessAuthServerOptions } from "../types";
-import { verifyCookieJwt } from "../internal/verifyCookieJwt.js";
-import { JwtPayload } from "jsonwebtoken";
+import { Request, Response, NextFunction } from "express";
+import { ensureCookies, EnsureCookiesResult } from "@seamless-auth/core";
 
-export interface CookieRequest extends Request {
-  cookiePayload?: JwtPayload;
+import { setSessionCookie, clearAllCookies } from "../internal/cookie";
+
+export interface EnsureCookiesMiddlewareOptions {
+  authServerUrl: string;
+  cookieDomain?: string;
+
+  accessCookieName: string;
+  registrationCookieName: string;
+  refreshCookieName: string;
+  preAuthCookieName: string;
+  cookieSecret: string;
+  serviceSecret: string;
+  issuer: string;
+  audience: string;
+  keyId: string;
 }
 
-export function createEnsureCookiesMiddleware(opts: SeamlessAuthServerOptions) {
- const COOKIE_REQUIREMENTS: Record<string, { name: string; required: boolean }> = {
-    "/webAuthn/login/finish": { name: opts.preAuthCookieName!, required: true },
-    "/webAuthn/login/start": { name: opts.preAuthCookieName!, required: true },
-    "/webAuthn/register/start": { name: opts.registrationCookieName!, required: true },
-    "/webAuthn/register/finish": { name: opts.registrationCookieName!, required: true },
-    "/otp/verify-email-otp": { name: opts.registrationCookieName!, required: true },
-    "/otp/verify-phone-otp": { name: opts.registrationCookieName!, required: true },
-    "/logout": { name: opts.accesscookieName!, required: true },
-    "/users/me": { name: opts.accesscookieName!, required: true },
-  };
-    return function ensureCookies(
-    req: CookieRequest,
-    res: Response,
-    next: NextFunction
-  ) {
-  const match = Object.entries(COOKIE_REQUIREMENTS).find(([path]) => req.path.startsWith(path));
-  if (!match) return next();
-
-  const [, { name, required }] = match;
-  const cookieValue = req.cookies?.[name];
-
-  if (required && !cookieValue) {
-    return res.status(400).json({
-      error: `Missing required cookie "${name}" for route ${req.path}`,
-      hint: "Did you forget to call /auth/login/start first?",
-    });
+export function createEnsureCookiesMiddleware(
+  opts: EnsureCookiesMiddlewareOptions,
+) {
+  if (!opts.cookieSecret) {
+    throw new Error("Missing cookieSecret");
+  }
+  if (!opts.serviceSecret) {
+    throw new Error("Missing serviceSecret");
   }
 
-  const payload = verifyCookieJwt(cookieValue);
-    if (!payload) {
-      return res.status(401).json({ error: `Invalid or expired ${name} cookie` });
-    }
+  const cookieSigner = {
+    secret: opts.cookieSecret,
+    secure: process.env.NODE_ENV === "production",
+    sameSite:
+      process.env.NODE_ENV === "production"
+        ? "none"
+        : ("lax" as const as "lax" | "none"),
+  };
 
-  req.cookiePayload = payload;
-  next();
+  return async function ensureCookiesMiddleware(
+    req: Request & { cookiePayload?: any },
+    res: Response,
+    next: NextFunction,
+  ) {
+    const result = await ensureCookies(
+      {
+        path: req.path,
+        cookies: req.cookies ?? {},
+      },
+      {
+        authServerUrl: opts.authServerUrl,
+        cookieDomain: opts.cookieDomain,
+        accessCookieName: opts.accessCookieName,
+        registrationCookieName: opts.registrationCookieName,
+        refreshCookieName: opts.refreshCookieName,
+        preAuthCookieName: opts.preAuthCookieName,
+        cookieSecret: opts.cookieSecret,
+        serviceSecret: opts.serviceSecret,
+        issuer: opts.issuer,
+        audience: opts.audience,
+        keyId: opts.keyId,
+      },
+    );
+
+    applyResult(res, req, result, opts, cookieSigner);
+    if (result.type === "error") return;
+    next();
+  };
 }
+
+function applyResult(
+  res: Response,
+  req: any,
+  result: EnsureCookiesResult,
+  opts: EnsureCookiesMiddlewareOptions,
+  cookieSigner: {
+    secret: string;
+    secure: boolean;
+    sameSite: "none" | "lax";
+  },
+) {
+  if (result.clearCookies?.length) {
+    clearAllCookies(res, opts.cookieDomain, ...result.clearCookies);
+  }
+
+  if (result.setCookies) {
+    for (const c of result.setCookies) {
+      setSessionCookie(
+        res,
+        {
+          name: c.name,
+          payload: c.value,
+          domain: c.domain,
+          ttlSeconds: c.ttl,
+        },
+        cookieSigner,
+      );
+    }
+  }
+
+  if (result.user) {
+    req.cookiePayload = result.user;
+  }
+
+  if (result.type === "error") {
+    res.status(result.status ?? 401).json({ error: result.error });
+  }
 }
