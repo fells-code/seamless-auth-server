@@ -1,30 +1,19 @@
 import { Request, Response, NextFunction, RequestHandler } from "express";
-import jwt, { JwtPayload } from "jsonwebtoken";
 
 /**
- * Express middleware that enforces role-based authorization for Seamless Auth sessions.
+ * Express middleware that enforces role-based authorization for Seamless Auth.
  *
- * This guard assumes that `requireAuth()` has already validated the request
- * and populated `req.user` with the decoded Seamless Auth session payload.
- * It then checks whether the user’s roles include the required role (or any
- * of several, when an array is provided).
+ * This middleware assumes `requireAuth()` has already:
+ * - authenticated the request
+ * - populated `req.user` with the authenticated session payload
  *
- * If the user possesses the required authorization, the request proceeds.
- * Otherwise, the middleware responds with a 403 Forbidden error.
+ * `requireRole` performs **authorization only**. It does not inspect cookies,
+ * verify tokens, or read environment variables.
  *
- * ### Responsibilities
- * - Validates that `req.user` is present (enforced upstream by `requireAuth`)
- * - Ensures the authenticated user includes the specified role(s)
- * - Blocks unauthorized access with a standardized JSON 403 response
+ * If any of the required roles are present on the user, access is granted.
+ * Otherwise, a 403 Forbidden response is returned.
  *
- * ### Parameters
- * - **requiredRole** — A role (string) or list of roles the user must have.
- *   If an array is provided, *any* matching role grants access.
- * - **cookieName** — Optional name of the access cookie to inspect.
- *   Defaults to `"seamless-access"`, but typically not needed because
- *   `requireAuth` is expected to run first.
- *
- * ### Example
+ *  * ### Example
  * ```ts
  * // Require a single role
  * app.get("/admin/users",
@@ -41,46 +30,40 @@ import jwt, { JwtPayload } from "jsonwebtoken";
  *   requireRole(["admin", "supervisor"]),
  *   updateSettingsHandler
  * );
- * ```
  *
- * @param requiredRole - A role or list of roles required to access the route.
- * @param cookieName - Optional access cookie name (defaults to `seamless-access`).
- * @returns An Express middleware function enforcing role-based access control.
+ * @param requiredRoles - A role or list of roles required to access the route
  */
-export function requireRole(
-  role: string,
-  cookieName = "seamless-access",
-): RequestHandler {
+export function requireRole(requiredRoles: string | string[]): RequestHandler {
+  const roles = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
+
   return (req: Request, res: Response, next: NextFunction): void => {
-    try {
-      const COOKIE_SECRET = process.env.COOKIE_SIGNING_KEY!;
-      if (!COOKIE_SECRET) {
-        console.warn(
-          "[SeamlessAuth] COOKIE_SIGNING_KEY missing — requireRole will always fail.",
-        );
-        throw new Error("Missing required env COOKIE_SIGNING_KEY");
-      }
-      const token = req.cookies?.[cookieName];
-      if (!token) {
-        res.status(401).json({ error: "Missing access cookie" });
-        return;
-      }
+    const user = (req as any).user;
 
-      // Verify JWT signature
-      const payload = jwt.verify(token, COOKIE_SECRET, {
-        algorithms: ["HS256"],
-      }) as JwtPayload;
-
-      // Check role membership
-      if (!payload.roles?.includes(role)) {
-        res.status(403).json({ error: `Forbidden: ${role} role required` });
-        return;
-      }
-
-      next();
-    } catch (err: any) {
-      console.error(`[RequireRole] requireRole(${role}) failed:`, err.message);
-      res.status(401).json({ error: "Invalid or expired access cookie" });
+    if (!user) {
+      res.status(401).json({
+        error: "Authentication required",
+      });
+      return;
     }
+
+    if (!Array.isArray(user.roles)) {
+      res.status(403).json({
+        error: "User has no roles assigned",
+      });
+      return;
+    }
+
+    const hasRole = roles.some((role) => user.roles.includes(role));
+
+    if (!hasRole) {
+      res.status(403).json({
+        error: "Insufficient role",
+        required: roles,
+        actual: user.roles,
+      });
+      return;
+    }
+
+    next();
   };
 }

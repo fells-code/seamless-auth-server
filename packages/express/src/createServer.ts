@@ -1,7 +1,6 @@
 import express, { Request, Response, Router } from "express";
 import cookieParser from "cookie-parser";
 
-import type { SeamlessAuthServerOptions } from "./types";
 import { createEnsureCookiesMiddleware } from "./middleware/ensureCookies";
 
 import { login } from "./handlers/login";
@@ -27,8 +26,31 @@ type ResolvedSeamlessAuthServerOptions = {
   preAuthCookieName: string;
 };
 
-type IdentitySource = "preAuth" | "access";
+declare global {
+  namespace Express {
+    interface Request {
+      user?: SeamlessAuthUser;
+    }
+  }
+}
 
+export interface SeamlessAuthServerOptions {
+  authServerUrl: string;
+  cookieDomain?: string;
+  accessCookieName?: string;
+  registrationCookieName?: string;
+  refreshCookieName?: string;
+  preAuthCookieName?: string;
+}
+
+export interface SeamlessAuthUser {
+  sub: string;
+  roles: string[];
+  email?: string;
+  phone?: string;
+  iat?: number;
+  exp?: number;
+}
 /**
  * Creates an Express Router that proxies all authentication traffic to a Seamless Auth server.
  *
