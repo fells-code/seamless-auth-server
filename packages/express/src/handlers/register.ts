@@ -9,7 +9,7 @@ export async function register(
   opts: SeamlessAuthServerOptions,
 ) {
   const cookieSigner = {
-    secret: process.env.COOKIE_SIGNING_KEY!,
+    secret: opts.cookieSecret,
     secure: process.env.NODE_ENV === "production",
     sameSite:
       process.env.NODE_ENV === "production"

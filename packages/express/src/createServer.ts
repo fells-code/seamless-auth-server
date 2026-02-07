@@ -16,9 +16,13 @@ import {
   createServiceToken,
   AuthFetchOptions,
 } from "@seamless-auth/core";
+import { buildServiceAuthorization } from "./internal/buildAuthorization";
 
 type ResolvedSeamlessAuthServerOptions = {
   authServerUrl: string;
+  cookieSecret: string;
+  serviceSecret: string;
+  jwksKid: string;
   cookieDomain: string;
   accessCookieName: string;
   registrationCookieName: string;
@@ -26,20 +30,23 @@ type ResolvedSeamlessAuthServerOptions = {
   preAuthCookieName: string;
 };
 
-export interface SeamlessAuthServerOptions {
+export type SeamlessAuthServerOptions = {
   authServerUrl: string;
+  cookieSecret: string;
+  serviceSecret: string;
+  jwksKid?: string;
   cookieDomain?: string;
   accessCookieName?: string;
   registrationCookieName?: string;
   refreshCookieName?: string;
   preAuthCookieName?: string;
-}
+};
 
 export interface SeamlessAuthUser {
   sub: string;
   roles: string[];
-  email?: string;
-  phone?: string;
+  email: string;
+  phone: string;
   iat?: number;
   exp?: number;
 }
@@ -71,6 +78,9 @@ export interface SeamlessAuthUser {
  * app.use("/auth", createSeamlessAuthServer({
  *   authServerUrl: "https://identifier.seamlessauth.com",
  *   cookieDomain: "mycompany.com",
+ *   cookieSecret: "someLongRandomValue"
+ *   serviceSecret: "someLongRandomValueToo"
+ *   jwksKid: "dev-main"
  *   accessCookieName: "sa_access",
  *   registrationCookieName: "sa_registration",
  *   refreshCookieName: "sa_refresh",
@@ -79,6 +89,9 @@ export interface SeamlessAuthUser {
  *
  * @param opts - Configuration options for the Seamless Auth proxy:
  *   - `authServerUrl` — Base URL of your Seamless Auth instance (required)
+ *   - `cookieSecret` — The value to encode your cookies secrets with (required)
+ *   - `serviceSecret` - An machine to machine shared secret that matches your auth servers (required)
+ *   - `jwksKid` - The active jwks KID
  *   - `cookieDomain` — Domain attribute applied to all auth cookies
  *   - `accessCookieName` — Name of the session access cookie
  *   - `registrationCookieName` — Name of the ephemeral registration cookie
@@ -97,6 +110,9 @@ export function createSeamlessAuthServer(
 
   const resolvedOpts: ResolvedSeamlessAuthServerOptions = {
     authServerUrl: opts.authServerUrl,
+    cookieSecret: opts.cookieSecret,
+    serviceSecret: opts.serviceSecret,
+    jwksKid: opts.jwksKid ?? "dev-main",
     cookieDomain: opts.cookieDomain ?? "",
     accessCookieName: opts.accessCookieName ?? "seamless-access",
     registrationCookieName: opts.registrationCookieName ?? "seamless-ephemeral",
@@ -163,29 +179,13 @@ export function createSeamlessAuthServer(
       registrationCookieName: resolvedOpts.registrationCookieName,
       refreshCookieName: resolvedOpts.refreshCookieName,
       preAuthCookieName: resolvedOpts.preAuthCookieName,
-      cookieSecret: process.env.COOKIE_SIGNING_KEY!,
-      serviceSecret: process.env.API_SERVICE_TOKEN!,
+      cookieSecret: resolvedOpts.cookieSecret,
+      serviceSecret: resolvedOpts.serviceSecret,
       issuer: process.env.APP_ORIGIN!,
-      audience: process.env.AUTH_SERVER_URL!,
-      keyId: "dev-main",
+      audience: resolvedOpts.authServerUrl,
+      keyId: resolvedOpts.jwksKid,
     } as EnsureCookiesOptions),
   );
-
-  function buildServiceAuthorization(req: Request & { cookiePayload?: any }) {
-    if (!req.cookiePayload?.sub) {
-      return undefined;
-    }
-
-    const token = createServiceToken({
-      subject: req.cookiePayload.sub,
-      issuer: process.env.APP_ORIGIN!,
-      audience: process.env.AUTH_SERVER_URL!,
-      serviceSecret: process.env.API_SERVICE_TOKEN!,
-      keyId: "dev-main",
-    });
-
-    return `Bearer ${token}`;
-  }
 
   r.post(
     "/webAuthn/login/start",

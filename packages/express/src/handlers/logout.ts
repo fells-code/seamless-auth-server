@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { logoutHandler } from "@seamless-auth/core/handlers/logout";
 import { clearAllCookies } from "../internal/cookie";
-import { SeamlessAuthServerOptions } from "../types";
+import { SeamlessAuthServerOptions } from "../createServer";
 
 export async function logout(
   req: Request,

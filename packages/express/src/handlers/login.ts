@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { loginHandler } from "@seamless-auth/core/handlers/login";
 import { setSessionCookie } from "../internal/cookie";
-import { SeamlessAuthServerOptions } from "../types";
+import { SeamlessAuthServerOptions } from "../createServer";
 
 export async function login(
   req: Request,
@@ -9,7 +9,7 @@ export async function login(
   opts: SeamlessAuthServerOptions,
 ) {
   const cookieSigner = {
-    secret: process.env.COOKIE_SIGNING_KEY!,
+    secret: opts.cookieSecret,
     secure: process.env.NODE_ENV === "production",
     sameSite:
       process.env.NODE_ENV === "production"

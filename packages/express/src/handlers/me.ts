@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { meHandler } from "@seamless-auth/core/handlers/me";
 import { clearSessionCookie } from "../internal/cookie";
-import { SeamlessAuthServerOptions } from "../types";
 import { buildServiceAuthorization } from "../internal/buildAuthorization";
+import { SeamlessAuthServerOptions } from "../createServer";
 
 export async function me(
   req: Request & { cookiePayload?: any },
