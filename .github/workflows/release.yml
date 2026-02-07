@@ -15,6 +15,7 @@ jobs:
     name: Run Tests
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
+
     steps:
       - uses: actions/checkout@v4
 
@@ -22,13 +23,13 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install express dependencies
-        working-directory: packages/express
-        run: npm install
-
-      - name: Install core dependencies
+      - name: Install Core dependencies
         working-directory: packages/core
-        run: npm install
+        run: npm ci
+
+      - name: Install Express dependencies
+        working-directory: packages/express
+        run: npm ci
 
       - name: Test Core
         working-directory: packages/core
@@ -42,9 +43,13 @@ jobs:
     name: Publish Express Beta
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/dev'
+    concurrency:
+      group: beta-release-dev
+      cancel-in-progress: false
     permissions:
       contents: write
       id-token: write
+
     steps:
       - uses: actions/checkout@v4
 
@@ -61,15 +66,17 @@ jobs:
         working-directory: packages/express
         run: npm run build
 
-      - name: Bump beta version
+      - name: Bump beta version (no tag)
         working-directory: packages/express
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          npm version prerelease --preid=beta
-          git push --follow-tags origin dev
+          npm version prerelease --preid=beta --no-git-tag-version
+          git add package.json package-lock.json
+          git commit -m "chore(express): bump beta version"
+          git push origin dev
 
-      - name: Publish beta
+      - name: Publish beta to npm
         working-directory: packages/express
         run: npm publish --tag beta --access public
         env:
@@ -79,9 +86,13 @@ jobs:
     name: Publish Core Beta
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/dev'
+    concurrency:
+      group: beta-release-dev
+      cancel-in-progress: false
     permissions:
       contents: write
       id-token: write
+
     steps:
       - uses: actions/checkout@v4
 
@@ -98,26 +109,30 @@ jobs:
         working-directory: packages/core
         run: npm run build
 
-      - name: Bump beta version
+      - name: Bump beta version (no tag)
         working-directory: packages/core
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          npm version prerelease --preid=beta
-          git push --follow-tags origin dev
+          npm version prerelease --preid=beta --no-git-tag-version
+          git add package.json package-lock.json
+          git commit -m "chore(core): bump beta version"
+          git push origin dev
 
-      - name: Publish beta
+      - name: Publish beta to npm
         working-directory: packages/core
         run: npm publish --tag beta --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
   publish-stable:
     name: Publish Stable Release
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/core-v') || startsWith(github.ref, 'refs/tags/express-v')
     permissions:
-      contents: write
+      contents: read
       id-token: write
+
     steps:
       - uses: actions/checkout@v4
 
@@ -129,11 +144,12 @@ jobs:
       - name: Determine package
         id: pkg
         run: |
-          if [[ "${GITHUB_REF}" == refs/tags/core-* ]]; then
+          if [[ "${GITHUB_REF}" == refs/tags/core-v* ]]; then
             echo "package=core" >> $GITHUB_OUTPUT
-          elif [[ "${GITHUB_REF}" == refs/tags/express-* ]]; then
+          elif [[ "${GITHUB_REF}" == refs/tags/express-v* ]]; then
             echo "package=express" >> $GITHUB_OUTPUT
           else
+            echo "Unknown tag format"
             exit 1
           fi
 
@@ -145,7 +161,7 @@ jobs:
         working-directory: packages/${{ steps.pkg.outputs.package }}
         run: npm run build
 
-      - name: Publish stable
+      - name: Publish stable to npm
         working-directory: packages/${{ steps.pkg.outputs.package }}
         run: npm publish --access public
         env:
