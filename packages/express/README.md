@@ -110,14 +110,17 @@ This keeps trust boundaries clean and auditable.
 
 ## Environment Variables
 
-| Variable             | Description                               | Example                                                |
-| -------------------- | ----------------------------------------- | ------------------------------------------------------ |
-| `AUTH_SERVER_URL`    | Base URL of your Seamless Auth Server     | `https://auth.client.com`                              |
-| `COOKIE_SIGNING_KEY` | Secret for signing API session cookies    | `local-dev-secret`                                     |
-| `API_SERVICE_TOKEN`  | API → Auth Server service secret          | `shared-m2m-value`                                     |
-| `APP_ORIGIN`         | Your site URL (or localhost in demo mode) | `https://myapp.com`                                    |
-| `DATABASE_URL`       | Database URL for your API                 | `postgres://myuser:mypassword@localhost:5432/seamless` |
-| `DB_NAME`            | Name of your database                     | `seamless`                                             |
+| Variable             | Description                               | Example                   |
+| -------------------- | ----------------------------------------- | ------------------------- |
+| `AUTH_SERVER_URL`    | Base URL of your Seamless Auth Server     | `https://auth.client.com` |
+| `COOKIE_SIGNING_KEY` | Secret for signing API session cookies    | `local-dev-secret`        |
+| `API_SERVICE_TOKEN`  | API → Auth Server service secret          | `shared-m2m-value`        |
+| `APP_ORIGIN`         | Your site URL (or localhost in demo mode) | `https://myapp.com`       |
+| `DB_HOST`            | Database Host                             | `localhost`               |
+| `DB_PORT`            | Database Port                             | `5432`                    |
+| `DB_USER`            | Database user                             | `myuser`                  |
+| `DB_PASSWORD`        | Database password                         | `mypassword`              |
+| `DB_NAME`            | Name of your database                     | `seamless`                |
 
 ---
 
