@@ -13,7 +13,6 @@ import { logout } from "./handlers/logout";
 import {
   authFetch,
   EnsureCookiesOptions,
-  createServiceToken,
   AuthFetchOptions,
 } from "@seamless-auth/core";
 import { buildServiceAuthorization } from "./internal/buildAuthorization";
@@ -157,14 +156,14 @@ export function createSeamlessAuthServer(
       }
 
       const authorization = buildServiceAuthorization(req);
+      const options =
+        method == "GET"
+          ? { method, authorization }
+          : { method, authorization, body: req.body };
 
       const upstream = await authFetch(
         `${resolvedOpts.authServerUrl}/${path}`,
-        {
-          method,
-          body: req.body,
-          authorization,
-        },
+        options,
       );
 
       const data = await upstream.json();
