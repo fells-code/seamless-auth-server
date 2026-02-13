@@ -222,7 +222,7 @@ Returned shape (example):
 AUTH_SERVER_URL=http://localhost:5312
 SEAMLESS_SERVICE_TOKEN=generated-secret
 COOKIE_SIGNING_KEY=local-dev-key
-FRONTEND_URL=https://localhost:5001
+FRONTEND_URL=http://localhost:5001
 ```
 
 ---
