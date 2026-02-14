@@ -9,7 +9,7 @@ export async function me(
   res: Response,
   opts: SeamlessAuthServerOptions,
 ) {
-  const authorization = buildServiceAuthorization(req);
+  const authorization = buildServiceAuthorization(req, opts);
   const result = await meHandler({
     authServerUrl: opts.authServerUrl,
     preAuthCookieName: opts.preAuthCookieName!,

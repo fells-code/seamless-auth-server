@@ -4,21 +4,18 @@ import {
   GetSeamlessUserOptions,
 } from "@seamless-auth/core";
 import { buildServiceAuthorization } from "./internal/buildAuthorization";
+import { SeamlessAuthServerOptions } from "./createServer";
 
 export async function getSeamlessUser(
   req: Request,
-  opts: {
-    authServerUrl: string;
-    cookieSecret: string;
-    cookieName?: string;
-  },
+  opts: SeamlessAuthServerOptions,
 ) {
-  const authorization = buildServiceAuthorization(req);
+  const authorization = buildServiceAuthorization(req, opts);
 
   return getSeamlessUserCore(req.cookies ?? {}, {
     authServerUrl: opts.authServerUrl,
     cookieSecret: opts.cookieSecret,
-    cookieName: opts.cookieName ?? "seamless-access",
+    cookieName: opts.accessCookieName ?? "seamless-access",
     authorization,
   } as GetSeamlessUserOptions);
 }

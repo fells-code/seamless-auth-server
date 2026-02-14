@@ -18,7 +18,7 @@ export async function finishRegister(
         : ("lax" as "none" | "lax"),
   };
 
-  const authorization = buildServiceAuthorization(req);
+  const authorization = buildServiceAuthorization(req, opts);
 
   const result = await finishRegisterHandler(
     { body: req.body, authorization },

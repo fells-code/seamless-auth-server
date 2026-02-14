@@ -21,6 +21,7 @@ type ResolvedSeamlessAuthServerOptions = {
   authServerUrl: string;
   cookieSecret: string;
   serviceSecret: string;
+  issuer: string;
   jwksKid: string;
   cookieDomain: string;
   accessCookieName: string;
@@ -33,6 +34,7 @@ export type SeamlessAuthServerOptions = {
   authServerUrl: string;
   cookieSecret: string;
   serviceSecret: string;
+  issuer: string;
   jwksKid?: string;
   cookieDomain?: string;
   accessCookieName?: string;
@@ -109,6 +111,7 @@ export function createSeamlessAuthServer(
 
   const resolvedOpts: ResolvedSeamlessAuthServerOptions = {
     authServerUrl: opts.authServerUrl,
+    issuer: opts.issuer,
     cookieSecret: opts.cookieSecret,
     serviceSecret: opts.serviceSecret,
     jwksKid: opts.jwksKid ?? "dev-main",
@@ -155,7 +158,7 @@ export function createSeamlessAuthServer(
         return;
       }
 
-      const authorization = buildServiceAuthorization(req);
+      const authorization = buildServiceAuthorization(req, resolvedOpts);
       const options =
         method == "GET"
           ? { method, authorization }
@@ -180,7 +183,7 @@ export function createSeamlessAuthServer(
       preAuthCookieName: resolvedOpts.preAuthCookieName,
       cookieSecret: resolvedOpts.cookieSecret,
       serviceSecret: resolvedOpts.serviceSecret,
-      issuer: process.env.APP_ORIGIN!,
+      issuer: resolvedOpts.issuer,
       audience: resolvedOpts.authServerUrl,
       keyId: resolvedOpts.jwksKid,
     } as EnsureCookiesOptions),

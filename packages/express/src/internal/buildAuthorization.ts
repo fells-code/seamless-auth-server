@@ -1,8 +1,10 @@
 import { createServiceToken } from "@seamless-auth/core";
 import { Request } from "express";
+import { SeamlessAuthServerOptions } from "../createServer";
 
 export function buildServiceAuthorization(
   req: Request & { cookiePayload?: any },
+  opts: SeamlessAuthServerOptions,
 ) {
   if (!req.cookiePayload?.sub && !req.user.sub) {
     return undefined;
@@ -10,10 +12,10 @@ export function buildServiceAuthorization(
 
   const token = createServiceToken({
     subject: req.cookiePayload?.sub || req.user.sub,
-    issuer: process.env.APP_ORIGIN!,
-    audience: process.env.AUTH_SERVER_URL!,
-    serviceSecret: process.env.API_SERVICE_TOKEN!,
-    keyId: "dev-main",
+    issuer: opts.issuer,
+    audience: opts.authServerUrl,
+    serviceSecret: opts.serviceSecret,
+    keyId: opts.jwksKid,
   });
 
   return `Bearer ${token}`;
