@@ -13,7 +13,7 @@ export function buildServiceAuthorization(
   const token = createServiceToken({
     subject: req.cookiePayload?.sub || req.user.sub,
     issuer: opts.issuer,
-    audience: opts.authServerUrl,
+    audience: opts.audience,
     serviceSecret: opts.serviceSecret,
     keyId: opts.jwksKid,
   });

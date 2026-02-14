@@ -22,6 +22,7 @@ type ResolvedSeamlessAuthServerOptions = {
   cookieSecret: string;
   serviceSecret: string;
   issuer: string;
+  audience: string;
   jwksKid: string;
   cookieDomain: string;
   accessCookieName: string;
@@ -35,6 +36,7 @@ export type SeamlessAuthServerOptions = {
   cookieSecret: string;
   serviceSecret: string;
   issuer: string;
+  audience: string;
   jwksKid?: string;
   cookieDomain?: string;
   accessCookieName?: string;
@@ -112,6 +114,7 @@ export function createSeamlessAuthServer(
   const resolvedOpts: ResolvedSeamlessAuthServerOptions = {
     authServerUrl: opts.authServerUrl,
     issuer: opts.issuer,
+    audience: opts.audience,
     cookieSecret: opts.cookieSecret,
     serviceSecret: opts.serviceSecret,
     jwksKid: opts.jwksKid ?? "dev-main",
