@@ -53,5 +53,5 @@ export async function finishRegister(
     return res.status(result.status).json(result.error);
   }
 
-  res.status(result.status).end();
+  res.status(result.status).json({ message: "success" });
 }
