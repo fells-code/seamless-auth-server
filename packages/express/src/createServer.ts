@@ -46,6 +46,7 @@ export type SeamlessAuthServerOptions = {
 };
 
 export interface SeamlessAuthUser {
+  id: string;
   sub: string;
   roles: string[];
   email: string;

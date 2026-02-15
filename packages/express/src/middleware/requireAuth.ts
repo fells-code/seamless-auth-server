@@ -97,7 +97,8 @@ export function requireAuth(opts: RequireAuthOptions) {
     }
 
     const user: SeamlessAuthUser = {
-      sub: payload.sub,
+      id: payload.sub,
+      sub: payload.sub, // TODO: Silly to store the same value twice. Search every where its used and phase this out.
       roles: Array.isArray(payload.roles) ? payload.roles : [],
       email: payload.email,
       phone: payload.phone,
