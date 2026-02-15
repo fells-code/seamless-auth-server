@@ -15,7 +15,7 @@ export function buildServiceAuthorization(
     issuer: opts.issuer,
     audience: opts.audience,
     serviceSecret: opts.serviceSecret,
-    keyId: opts.jwksKid,
+    keyId: opts.jwksKid || "dev-main",
   });
 
   return `Bearer ${token}`;
