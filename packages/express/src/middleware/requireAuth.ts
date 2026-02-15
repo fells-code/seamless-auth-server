@@ -2,10 +2,6 @@ import { Request, Response, NextFunction } from "express";
 import { verifyCookieJwt } from "@seamless-auth/core";
 import { SeamlessAuthUser } from "../createServer";
 
-export interface AuthenticatedRequest extends Request {
-  user?: SeamlessAuthUser;
-}
-
 export interface RequireAuthOptions {
   cookieName?: string;
   cookieSecret: string;
