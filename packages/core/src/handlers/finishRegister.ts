@@ -65,6 +65,8 @@ export async function finishRegisterHandler(
         value: {
           sub: data.sub,
           roles: data.roles,
+          email: data.email,
+          phone: data.phone,
         },
         ttl: data.ttl,
         domain: opts.cookieDomain,
