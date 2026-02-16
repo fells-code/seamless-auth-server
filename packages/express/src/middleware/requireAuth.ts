@@ -1,7 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyCookieJwt } from "@seamless-auth/core";
-import type { JwtPayload } from "jsonwebtoken";
+import { SeamlessAuthUser } from "../createServer";
 
+export interface RequireAuthOptions {
+  cookieName?: string;
+  cookieSecret: string;
+}
 /**
  * Express middleware that enforces authentication using Seamless Auth cookies.
  *
@@ -53,10 +57,6 @@ import type { JwtPayload } from "jsonwebtoken";
  *          authentication on incoming requests.
  */
 
-export interface AuthenticatedRequest extends Request {
-  user?: JwtPayload;
-}
-
 export interface RequireAuthOptions {
   cookieName?: string;
   cookieSecret: string;
@@ -77,26 +77,36 @@ export function requireAuth(opts: RequireAuthOptions) {
     throw new Error("requireAuth: missing cookieSecret");
   }
 
-  return function (
-    req: AuthenticatedRequest,
-    res: Response,
-    next: NextFunction,
-  ) {
+  return function (req: Request, res: Response, next: NextFunction) {
     const token = req.cookies?.[cookieName];
 
     if (!token) {
-      res.status(401).json({ error: "Missing access cookie" });
+      res.status(401).json({
+        error: "Authentication required",
+      });
       return;
     }
 
     const payload = verifyCookieJwt(token, cookieSecret);
 
-    if (!payload) {
-      res.status(401).json({ error: "Invalid or expired access cookie" });
+    if (!payload || !payload.sub) {
+      res.status(401).json({
+        error: "Invalid or expired session",
+      });
       return;
     }
 
-    req.user = payload;
+    const user: SeamlessAuthUser = {
+      id: payload.sub,
+      sub: payload.sub, // TODO: Silly to store the same value twice. Search every where its used and phase this out.
+      roles: Array.isArray(payload.roles) ? payload.roles : [],
+      email: payload.email,
+      phone: payload.phone,
+      iat: payload.iat,
+      exp: payload.exp,
+    };
+
+    req.user = user;
     next();
   };
 }

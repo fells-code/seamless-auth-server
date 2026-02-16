@@ -1,12 +1,23 @@
-import { authFetch } from "./authFetch.js";
 import { verifyCookieJwt } from "./verifyCookieJwt.js";
+import { authFetch } from "./authFetch.js";
 
 export interface GetSeamlessUserOptions {
   authServerUrl: string;
   cookieSecret: string;
+  authorization: string;
   cookieName?: string;
 }
 
+/**
+ * Resolves the authenticated Seamless Auth user from an access cookie.
+ *
+ * This function:
+ * - Verifies the access cookie locally
+ * - Uses the verified token to authenticate a request to the auth server
+ * - Returns the canonical user object, or null if authentication fails
+ *
+ * This is intended for server-side usage (SSR, API routes, edge functions).
+ */
 export async function getSeamlessUser<T = any>(
   cookies: Record<string, string | undefined>,
   opts: GetSeamlessUserOptions,
@@ -21,6 +32,9 @@ export async function getSeamlessUser<T = any>(
 
   const response = await authFetch(`${opts.authServerUrl}/users/me`, {
     method: "GET",
+    headers: {
+      Authorization: opts.authorization,
+    },
   });
 
   if (!response.ok) return null;

@@ -38,7 +38,7 @@ export function createEnsureCookiesMiddleware(
   };
 
   return async function ensureCookiesMiddleware(
-    req: Request & { cookiePayload?: any },
+    req: Request,
     res: Response,
     next: NextFunction,
   ) {

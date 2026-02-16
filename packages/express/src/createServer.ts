@@ -1,7 +1,6 @@
 import express, { Request, Response, Router } from "express";
 import cookieParser from "cookie-parser";
 
-import type { SeamlessAuthServerOptions } from "./types";
 import { createEnsureCookiesMiddleware } from "./middleware/ensureCookies";
 
 import { login } from "./handlers/login";
@@ -14,12 +13,17 @@ import { logout } from "./handlers/logout";
 import {
   authFetch,
   EnsureCookiesOptions,
-  createServiceToken,
   AuthFetchOptions,
 } from "@seamless-auth/core";
+import { buildServiceAuthorization } from "./internal/buildAuthorization";
 
 type ResolvedSeamlessAuthServerOptions = {
   authServerUrl: string;
+  cookieSecret: string;
+  serviceSecret: string;
+  issuer: string;
+  audience: string;
+  jwksKid: string;
   cookieDomain: string;
   accessCookieName: string;
   registrationCookieName: string;
@@ -27,8 +31,29 @@ type ResolvedSeamlessAuthServerOptions = {
   preAuthCookieName: string;
 };
 
-type IdentitySource = "preAuth" | "access";
+export type SeamlessAuthServerOptions = {
+  authServerUrl: string;
+  cookieSecret: string;
+  serviceSecret: string;
+  issuer: string;
+  audience: string;
+  jwksKid?: string;
+  cookieDomain?: string;
+  accessCookieName?: string;
+  registrationCookieName?: string;
+  refreshCookieName?: string;
+  preAuthCookieName?: string;
+};
 
+export interface SeamlessAuthUser {
+  id: string;
+  sub: string;
+  roles: string[];
+  email: string;
+  phone: string;
+  iat?: number;
+  exp?: number;
+}
 /**
  * Creates an Express Router that proxies all authentication traffic to a Seamless Auth server.
  *
@@ -57,6 +82,9 @@ type IdentitySource = "preAuth" | "access";
  * app.use("/auth", createSeamlessAuthServer({
  *   authServerUrl: "https://identifier.seamlessauth.com",
  *   cookieDomain: "mycompany.com",
+ *   cookieSecret: "someLongRandomValue"
+ *   serviceSecret: "someLongRandomValueToo"
+ *   jwksKid: "dev-main"
  *   accessCookieName: "sa_access",
  *   registrationCookieName: "sa_registration",
  *   refreshCookieName: "sa_refresh",
@@ -65,6 +93,9 @@ type IdentitySource = "preAuth" | "access";
  *
  * @param opts - Configuration options for the Seamless Auth proxy:
  *   - `authServerUrl` — Base URL of your Seamless Auth instance (required)
+ *   - `cookieSecret` — The value to encode your cookies secrets with (required)
+ *   - `serviceSecret` - An machine to machine shared secret that matches your auth servers (required)
+ *   - `jwksKid` - The active jwks KID
  *   - `cookieDomain` — Domain attribute applied to all auth cookies
  *   - `accessCookieName` — Name of the session access cookie
  *   - `registrationCookieName` — Name of the ephemeral registration cookie
@@ -83,6 +114,11 @@ export function createSeamlessAuthServer(
 
   const resolvedOpts: ResolvedSeamlessAuthServerOptions = {
     authServerUrl: opts.authServerUrl,
+    issuer: opts.issuer,
+    audience: opts.audience,
+    cookieSecret: opts.cookieSecret,
+    serviceSecret: opts.serviceSecret,
+    jwksKid: opts.jwksKid ?? "dev-main",
     cookieDomain: opts.cookieDomain ?? "",
     accessCookieName: opts.accessCookieName ?? "seamless-access",
     registrationCookieName: opts.registrationCookieName ?? "seamless-ephemeral",
@@ -126,15 +162,15 @@ export function createSeamlessAuthServer(
         return;
       }
 
-      const authorization = buildServiceAuthorization(req);
+      const authorization = buildServiceAuthorization(req, resolvedOpts);
+      const options =
+        method == "GET"
+          ? { method, authorization }
+          : { method, authorization, body: req.body };
 
       const upstream = await authFetch(
         `${resolvedOpts.authServerUrl}/${path}`,
-        {
-          method,
-          body: req.body,
-          authorization,
-        },
+        options,
       );
 
       const data = await upstream.json();
@@ -149,29 +185,13 @@ export function createSeamlessAuthServer(
       registrationCookieName: resolvedOpts.registrationCookieName,
       refreshCookieName: resolvedOpts.refreshCookieName,
       preAuthCookieName: resolvedOpts.preAuthCookieName,
-      cookieSecret: process.env.COOKIE_SIGNING_KEY!,
-      serviceSecret: process.env.API_SERVICE_TOKEN!,
-      issuer: process.env.APP_ORIGIN!,
-      audience: process.env.AUTH_SERVER_URL!,
-      keyId: "dev-main",
+      cookieSecret: resolvedOpts.cookieSecret,
+      serviceSecret: resolvedOpts.serviceSecret,
+      issuer: resolvedOpts.issuer,
+      audience: resolvedOpts.authServerUrl,
+      keyId: resolvedOpts.jwksKid,
     } as EnsureCookiesOptions),
   );
-
-  function buildServiceAuthorization(req: Request & { cookiePayload?: any }) {
-    if (!req.cookiePayload?.sub) {
-      return undefined;
-    }
-
-    const token = createServiceToken({
-      subject: req.cookiePayload.sub,
-      issuer: process.env.APP_ORIGIN!,
-      audience: process.env.AUTH_SERVER_URL!,
-      serviceSecret: process.env.API_SERVICE_TOKEN!,
-      keyId: "dev-main",
-    });
-
-    return `Bearer ${token}`;
-  }
 
   r.post(
     "/webAuthn/login/start",

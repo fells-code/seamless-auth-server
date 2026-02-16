@@ -11,6 +11,8 @@ export interface CookiePayload {
   token?: string;
   refreshToken?: string;
   roles?: string[];
+  email?: string;
+  phone?: string;
 }
 
 export interface CookieInstruction {

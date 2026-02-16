@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { finishRegisterHandler } from "@seamless-auth/core/handlers/finishRegister";
 import { setSessionCookie } from "../internal/cookie";
-import { SeamlessAuthServerOptions } from "../types";
 import { buildServiceAuthorization } from "../internal/buildAuthorization";
+import { SeamlessAuthServerOptions } from "../createServer";
 
 export async function finishRegister(
   req: Request & { cookiePayload?: any },
@@ -10,7 +10,7 @@ export async function finishRegister(
   opts: SeamlessAuthServerOptions,
 ) {
   const cookieSigner = {
-    secret: process.env.COOKIE_SIGNING_KEY!,
+    secret: opts.cookieSecret,
     secure: process.env.NODE_ENV === "production",
     sameSite:
       process.env.NODE_ENV === "production"
@@ -18,7 +18,7 @@ export async function finishRegister(
         : ("lax" as "none" | "lax"),
   };
 
-  const authorization = buildServiceAuthorization(req);
+  const authorization = buildServiceAuthorization(req, opts);
 
   const result = await finishRegisterHandler(
     { body: req.body, authorization },
@@ -53,5 +53,5 @@ export async function finishRegister(
     return res.status(result.status).json(result.error);
   }
 
-  res.status(result.status).end();
+  res.status(result.status).json({ message: "success" });
 }
