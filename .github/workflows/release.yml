@@ -1,51 +1,72 @@
 name: Release
 
 on:
-  pull_request:
   push:
     tags:
       - "core-v*"
       - "express-v*"
 
 jobs:
-  publish-stable:
-    name: Publish Stable Release
+  publish:
+    name: Publish Package
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/core-v') || startsWith(github.ref, 'refs/tags/express-v')
+
     permissions:
       contents: read
       id-token: write
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org/
 
-      - name: Determine package
-        id: pkg
+      - name: Determine package and version
+        id: meta
         run: |
-          if [[ "${GITHUB_REF}" == refs/tags/core-v* ]]; then
-            echo "package=core" >> $GITHUB_OUTPUT
-          elif [[ "${GITHUB_REF}" == refs/tags/express-v* ]]; then
-            echo "package=express" >> $GITHUB_OUTPUT
+          TAG="${GITHUB_REF#refs/tags/}"
+
+          if [[ "$TAG" == core-v* ]]; then
+            PACKAGE="core"
+            VERSION="${TAG#core-v}"
+          elif [[ "$TAG" == express-v* ]]; then
+            PACKAGE="express"
+            VERSION="${TAG#express-v}"
           else
-            echo "Unknown tag format"
+            echo "Invalid tag format"
+            exit 1
+          fi
+
+          echo "package=$PACKAGE" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          echo "Publishing $PACKAGE version $VERSION"
+
+      - name: Validate package.json version matches tag
+        working-directory: packages/${{ steps.meta.outputs.package }}
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          if [ "$PACKAGE_VERSION" != "${{ steps.meta.outputs.version }}" ]; then
+            echo "Version mismatch!"
+            echo "Tag version: ${{ steps.meta.outputs.version }}"
+            echo "package.json version: $PACKAGE_VERSION"
             exit 1
           fi
 
       - name: Install dependencies
-        working-directory: packages/${{ steps.pkg.outputs.package }}
+        working-directory: packages/${{ steps.meta.outputs.package }}
         run: npm ci
 
       - name: Build
-        working-directory: packages/${{ steps.pkg.outputs.package }}
+        working-directory: packages/${{ steps.meta.outputs.package }}
         run: npm run build
 
-      - name: Publish stable to npm
-        working-directory: packages/${{ steps.pkg.outputs.package }}
+      - name: Publish to npm
+        working-directory: packages/${{ steps.meta.outputs.package }}
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
