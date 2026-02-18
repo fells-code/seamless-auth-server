@@ -6,7 +6,7 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "./dist/index.d.ts",
-  "author": "Fells Code LLC",
+  "author": "Fells Code, LLC",
   "files": [
     "dist",
     "LICENSE",
