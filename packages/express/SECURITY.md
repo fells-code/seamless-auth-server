@@ -30,12 +30,9 @@ Encrypted reports are welcome. If you need a public PGP key, request one in your
 
 This policy applies to:
 
-- @seamless-auth/core
-- @seamless-auth/express
-- @seamless-auth/react
-- Seamless Auth Api
-- Create seamless
-- Official Docker images published under the Seamless Auth organization
+- Repositories published under the Fells Code organization
+- All artifacts produced directly or indirectly under the Fells Code organization
+- Official Docker images published under the Fells Code organization
 
 Third-party dependencies are not covered, but reports identifying vulnerable dependency usage are appreciated.
 

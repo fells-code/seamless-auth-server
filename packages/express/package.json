@@ -1,12 +1,12 @@
 {
   "name": "@seamless-auth/express",
-  "version": "0.0.3-beta.0",
+  "version": "0.0.3-beta.2",
   "description": "Express adapter for Seamless Auth passwordless authentication",
   "license": "AGPL-3.0-only",
   "type": "module",
   "main": "dist/index.js",
   "types": "./dist/index.d.ts",
-  "author": "Fells Code LLC",
+  "author": "Fells Code, LLC",
   "files": [
     "dist",
     "LICENSE",
