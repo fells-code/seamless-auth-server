@@ -70,6 +70,14 @@ const COOKIE_REQUIREMENTS: Record<
     name: "registrationCookieName",
     required: true,
   },
+  "/otp/generate-email-otp": {
+    name: "registrationCookieName",
+    required: true,
+  },
+  "/otp/generate-phone-otp": {
+    name: "registrationCookieName",
+    required: true,
+  },
   "/logout": { name: "accessCookieName", required: true },
   "/users/me": { name: "accessCookieName", required: true },
 };
@@ -83,6 +91,10 @@ export async function ensureCookies(
   );
 
   if (!match) {
+    console.debug(
+      "[SEAMLESS-AUTH-CORE] - (ensureCookies) - No cookie requirements for this path. Path: ",
+      input.path,
+    );
     return { type: "ok" };
   }
 

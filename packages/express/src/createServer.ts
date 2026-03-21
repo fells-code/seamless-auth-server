@@ -135,7 +135,11 @@ export function createSeamlessAuthServer(
     ) =>
     async (req: Request & { cookiePayload?: any }, res: Response) => {
       if (!req.cookiePayload?.sub) {
-        res.status(401).json({ error: "unauthenticated" });
+        console.warn(
+          "[SEAMLESS-AUTH-EXPRESS] - (proxyWithIdentity) - Missing expected cookie payload/sub.",
+          req.cookiePayload,
+        );
+        res.status(401).json({ error: "Unauthenticated request" });
         return;
       }
 
@@ -221,11 +225,11 @@ export function createSeamlessAuthServer(
 
   r.get(
     "/otp/generate-phone-otp",
-    proxyWithIdentity("otp/generate-phone-otp", "preAuth"),
+    proxyWithIdentity("otp/generate-phone-otp", "preAuth", "GET"),
   );
   r.get(
     "/otp/generate-email-otp",
-    proxyWithIdentity("otp/generate-email-otp", "preAuth"),
+    proxyWithIdentity("otp/generate-email-otp", "preAuth", "GET"),
   );
 
   r.post("/login", (req, res) => login(req, res, resolvedOpts));
