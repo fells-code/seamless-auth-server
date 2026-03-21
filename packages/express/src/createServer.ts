@@ -219,6 +219,15 @@ export function createSeamlessAuthServer(
     proxyWithIdentity("otp/verify-email-otp", "preAuth"),
   );
 
+  r.get(
+    "/otp/generate-phone-otp",
+    proxyWithIdentity("otp/generate-phone-otp", "preAuth"),
+  );
+  r.get(
+    "/otp/generate-email-otp",
+    proxyWithIdentity("otp/generate-email-otp", "preAuth"),
+  );
+
   r.post("/login", (req, res) => login(req, res, resolvedOpts));
   r.post("/registration/register", (req, res) =>
     register(req, res, resolvedOpts),
