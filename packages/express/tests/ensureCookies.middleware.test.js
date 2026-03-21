@@ -2,7 +2,6 @@ import { jest } from "@jest/globals";
 import express from "express";
 import request from "supertest";
 
-// Mock core ensureCookies
 const ensureCookiesMock = jest.fn();
 
 const { createEnsureCookiesMiddleware } = await import("../dist/index.js");
