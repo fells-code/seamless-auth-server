@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { pollMagicLinkConfirmationHandler } from "@seamless-auth/core/handlers/magicLink/pollMagicLinkConfirmation";
+import { pollMagicLinkConfirmationHandler } from "@seamless-auth/core/handlers/pollMagicLinkConfirmationHandler";
 import { setSessionCookie } from "../internal/cookie";
 import { buildServiceAuthorization } from "../internal/buildAuthorization";
 import { SeamlessAuthServerOptions } from "../createServer";
