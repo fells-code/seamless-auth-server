@@ -81,8 +81,12 @@ export function requireAuth(opts: RequireAuthOptions) {
     const token = req.cookies?.[cookieName];
 
     if (!token) {
+      console.error(
+        "[SEAMLESS-AUTH-EXPRESS] - (requireAuth) - Missing expected cookie. Ensure you are using `cookieParser` in your express server",
+        cookieName,
+      );
       res.status(401).json({
-        error: "Authentication required",
+        error: "Failed to find authentication token required",
       });
       return;
     }

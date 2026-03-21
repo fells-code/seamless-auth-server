@@ -9,6 +9,7 @@ import { register } from "./handlers/register";
 import { finishRegister } from "./handlers/finishRegister";
 import { me } from "./handlers/me";
 import { logout } from "./handlers/logout";
+import { pollMagicLinkConfirmation } from "./handlers/pollMagicLinkConfirmation";
 
 import {
   authFetch,
@@ -234,6 +235,19 @@ export function createSeamlessAuthServer(
   r.delete(
     "/users/credentials",
     proxyWithIdentity("users/credentials", "access"),
+  );
+  r.get("/magic-link", proxyWithIdentity("magic-link", "preAuth", "GET"));
+  r.get("/magic-link/verify/:token", async (req, res) => {
+    const upstream = await authFetch(
+      `${resolvedOpts.authServerUrl}/magic-link/verify/${req.params.token}`,
+      { method: "GET" },
+    );
+
+    const data = await upstream.json();
+    res.status(upstream.status).json(data);
+  });
+  r.get("/magic-link/check", (req, res) =>
+    pollMagicLinkConfirmation(req, res, resolvedOpts),
   );
 
   return r;
