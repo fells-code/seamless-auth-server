@@ -35,9 +35,9 @@ export async function register(
       setSessionCookie(
         res,
         {
-          name: opts.registrationCookieName || "seamless-auth-registraion",
+          name: c.name,
           payload: c.value,
-          domain: c.domain,
+          domain: c.domain ?? opts.cookieDomain,
           ttlSeconds: c.ttl,
         },
         cookieSigner,

@@ -4,6 +4,7 @@ import { verifySignedAuthResponse } from "../verifySignedAuthResponse.js";
 
 export interface FinishRegisterInput {
   authorization?: string;
+  headers?: Record<string, string>;
   body: unknown;
 }
 
@@ -31,8 +32,9 @@ export async function finishRegisterHandler(
 ): Promise<FinishRegisterResult> {
   const up = await authFetch(`${opts.authServerUrl}/webAuthn/register/finish`, {
     method: "POST",
-    body: input.body,
     authorization: input.authorization,
+    headers: input.headers,
+    body: input.body,
   });
 
   const data = await up.json();
