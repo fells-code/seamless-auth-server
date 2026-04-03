@@ -80,6 +80,42 @@ const COOKIE_REQUIREMENTS: Record<
   },
   "/logout": { name: "accessCookieName", required: true },
   "/users/me": { name: "accessCookieName", required: true },
+  "/internal/metrics/dashboard": { name: "accessCookieName", required: true },
+  "/internal/auth-events/timeseries": {
+    name: "accessCookieName",
+    required: true,
+  },
+
+  "/internal/auth-events/grouped": { name: "accessCookieName", required: true },
+  "/internal/auth-events/login-stats": {
+    name: "accessCookieName",
+    required: true,
+  },
+
+  "/internal/security/anomalies": { name: "accessCookieName", required: true },
+
+  "/admin/user": {
+    name: "accessCookieName",
+    required: true,
+  },
+  "/admin/sessions": {
+    name: "accessCookieName",
+    required: true,
+  },
+  "/admin/auth-events": {
+    name: "accessCookieName",
+    required: true,
+  },
+
+  "/system-config/admin": {
+    name: "accessCookieName",
+    required: true,
+  },
+
+  "/system-config/roles": {
+    name: "accessCookieName",
+    required: true,
+  },
 };
 
 export async function ensureCookies(

@@ -10,13 +10,32 @@ import { finishRegister } from "./handlers/finishRegister";
 import { me } from "./handlers/me";
 import { logout } from "./handlers/logout";
 import { pollMagicLinkConfirmation } from "./handlers/pollMagicLinkConfirmation";
-
+import * as admin from "./handlers/admin";
 import {
   authFetch,
   EnsureCookiesOptions,
   AuthFetchOptions,
 } from "@seamless-auth/core";
 import { buildServiceAuthorization } from "./internal/buildAuthorization";
+import { bootstrapAdminInvite } from "./handlers/bootstrapAdmininvite";
+import {
+  getAvailableRoles,
+  getSystemConfigAdmin,
+  updateSystemConfig,
+} from "./handlers/systemConfig";
+import {
+  getAuthEventSummary,
+  getAuthEventTimeseries,
+  getDashboardMetrics,
+  getGroupedEventSummary,
+  getLoginStats,
+  getSecurityAnomalies,
+} from "./handlers/internalMetrics";
+import {
+  listSessions,
+  revokeAllSessions,
+  revokeSession,
+} from "./handlers/sessions";
 
 type ResolvedSeamlessAuthServerOptions = {
   authServerUrl: string;
@@ -261,6 +280,88 @@ export function createSeamlessAuthServer(
   });
   r.get("/magic-link/check", (req, res) =>
     pollMagicLinkConfirmation(req, res, resolvedOpts),
+  );
+  r.post("/internal/bootstrap/admin-invite", (req, res) =>
+    bootstrapAdminInvite(req, res, resolvedOpts),
+  );
+  r.get("/system-config/roles", (req, res) =>
+    getAvailableRoles(req, res, resolvedOpts),
+  );
+
+  r.get("/system-config/admin", (req, res) =>
+    getSystemConfigAdmin(req, res, resolvedOpts),
+  );
+
+  r.patch("/system-config/admin", (req, res) =>
+    updateSystemConfig(req, res, resolvedOpts),
+  );
+
+  r.get("/internal/auth-events/summary", (req, res) =>
+    getAuthEventSummary(req, res, resolvedOpts),
+  );
+
+  r.get("/internal/auth-events/timeseries", (req, res) =>
+    getAuthEventTimeseries(req, res, resolvedOpts),
+  );
+
+  r.get("/internal/auth-events/login-stats", (req, res) =>
+    getLoginStats(req, res, resolvedOpts),
+  );
+
+  r.get("/internal/security/anomalies", (req, res) =>
+    getSecurityAnomalies(req, res, resolvedOpts),
+  );
+
+  r.get("/internal/metrics/dashboard", (req, res) =>
+    getDashboardMetrics(req, res, resolvedOpts),
+  );
+
+  r.get("/internal/auth-events/grouped", (req, res) =>
+    getGroupedEventSummary(req, res, resolvedOpts),
+  );
+
+  r.get("/admin/users", (req, res) => admin.getUsers(req, res, resolvedOpts));
+  r.post("/admin/users", (req, res) =>
+    admin.createUser(req, res, resolvedOpts),
+  );
+  r.delete("/admin/users", (req, res) =>
+    admin.deleteUser(req, res, resolvedOpts),
+  );
+  r.patch("/admin/users/:userId", (req, res) =>
+    admin.updateUser(req, res, resolvedOpts),
+  );
+  r.get("/admin/users/:userId", (req, res) =>
+    admin.getUserDetail(req, res, resolvedOpts),
+  );
+  r.get("/admin/users/:userId/anomalies", (req, res) =>
+    admin.getUserAnomalies(req, res, resolvedOpts),
+  );
+
+  r.get("/admin/auth-events", (req, res) =>
+    admin.getAuthEvents(req, res, resolvedOpts),
+  );
+  r.get("/admin/credential-count", (req, res) =>
+    admin.getCredentialCount(req, res, resolvedOpts),
+  );
+
+  r.get("/admin/sessions", (req, res) =>
+    admin.listAllSessions(req, res, resolvedOpts),
+  );
+  r.get("/admin/sessions/:userId", (req, res) =>
+    admin.listUserSessions(req, res, resolvedOpts),
+  );
+  r.delete("/admin/sessions/:userId/revoke-all", (req, res) =>
+    admin.revokeAllUserSessions(req, res, resolvedOpts),
+  );
+
+  r.get("/sessions", (req, res) => listSessions(req, res, resolvedOpts));
+
+  r.delete("/sessions/:id", (req, res) =>
+    revokeSession(req, res, resolvedOpts),
+  );
+
+  r.delete("/sessions", (req, res) =>
+    revokeAllSessions(req, res, resolvedOpts),
   );
 
   return r;

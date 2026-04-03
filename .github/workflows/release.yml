@@ -22,7 +22,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           registry-url: https://registry.npmjs.org/
 
       - name: Determine package and version
@@ -68,5 +68,3 @@ jobs:
       - name: Publish to npm
         working-directory: packages/${{ steps.meta.outputs.package }}
         run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
