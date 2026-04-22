@@ -76,7 +76,7 @@ describe("refreshAccessToken", () => {
     expect(authFetchMock).toHaveBeenCalledWith(
       "https://auth.example.com/refresh",
       expect.objectContaining({
-        method: "GET",
+        method: "POST",
         headers: { Authorization: "Bearer service.jwt" },
       }),
     );
