@@ -6,12 +6,14 @@ export function buildServiceAuthorization(
   req: Request & { cookiePayload?: any },
   opts: SeamlessAuthServerOptions,
 ) {
-  if (!req.cookiePayload?.sub && !req.user.sub) {
+  const subject = req.cookiePayload?.sub || req.user?.sub;
+
+  if (!subject) {
     return undefined;
   }
 
   const token = createServiceToken({
-    subject: req.cookiePayload?.sub || req.user.sub,
+    subject,
     issuer: opts.issuer,
     audience: opts.audience,
     serviceSecret: opts.serviceSecret,

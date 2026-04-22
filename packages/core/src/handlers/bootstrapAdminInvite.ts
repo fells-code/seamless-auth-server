@@ -4,6 +4,7 @@ export interface BootstrapAdminInviteOptions {
   authServerUrl: string;
   email: string;
   authorization?: string;
+  externalDelivery?: boolean;
 }
 
 export interface BootstrapAdminInviteResult {
@@ -25,6 +26,11 @@ export async function bootstrapAdminInviteHandler(
       method: "POST",
       headers: {
         authorization: opts.authorization || "",
+        ...(opts.externalDelivery
+          ? {
+              "x-seamless-auth-delivery-mode": "external",
+            }
+          : {}),
       },
       body: { email: opts.email },
     },

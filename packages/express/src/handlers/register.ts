@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { registerHandler } from "@seamless-auth/core/handlers/register";
 import { setSessionCookie } from "../internal/cookie";
+import { deliverAuthMessage, stripDelivery } from "../internal/deliverAuthMessage";
 import { SeamlessAuthServerOptions } from "../createServer";
 
 export async function register(
@@ -23,6 +24,7 @@ export async function register(
       authServerUrl: opts.authServerUrl,
       cookieDomain: opts.cookieDomain,
       registrationCookieName: opts.registrationCookieName!,
+      externalDelivery: Boolean(opts.messaging),
     },
   );
 
@@ -47,6 +49,14 @@ export async function register(
 
   if (result.error) {
     return res.status(result.status).json(result.error);
+  }
+
+  if (result.body && typeof result.body === "object" && "delivery" in result.body) {
+    await deliverAuthMessage(
+      opts.messaging,
+      (result.body as { delivery?: any }).delivery,
+    );
+    return res.status(result.status).json(stripDelivery(result.body as any)).end();
   }
 
   res.status(result.status).json(result.body).end();
