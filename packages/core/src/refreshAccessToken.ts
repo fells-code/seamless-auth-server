@@ -35,7 +35,7 @@ export async function refreshAccessToken(
   });
 
   const response = await authFetch(`${opts.authServerUrl}/refresh`, {
-    method: "GET",
+    method: "POST",
     headers: {
       Authorization: `Bearer ${serviceToken}`,
     },
