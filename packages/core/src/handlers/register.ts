@@ -9,6 +9,7 @@ export interface RegisterOptions {
   authServerUrl: string;
   cookieDomain?: string;
   registrationCookieName: string;
+  externalDelivery?: boolean;
 }
 
 export interface RegisterResult {
@@ -30,6 +31,13 @@ export async function registerHandler(
   const up = await authFetch(`${opts.authServerUrl}/registration/register`, {
     method: "POST",
     body: input.body,
+    ...(opts.externalDelivery
+      ? {
+          headers: {
+            "x-seamless-auth-delivery-mode": "external",
+          },
+        }
+      : {}),
   });
 
   const data = await up.json();

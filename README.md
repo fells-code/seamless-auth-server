@@ -73,6 +73,13 @@ It builds on the core package and adds:
 
 The Express adapter intentionally keeps authentication and authorization concerns separate from business logic.
 
+It is also the natural initializer boundary for adopter-supplied auth messaging configuration such as:
+
+- email transports
+- SMS transports
+- custom auth-message handlers
+- optional auth template overrides
+
 Location:
 
 ```
@@ -121,7 +128,8 @@ This repository uses a staged release model:
   Automatically published from the `dev` branch under the `beta` npm dist-tag.
 
 - **Stable releases**
-  Published only when explicit version tags are created (for example `core-v1.0.0` or `express-v1.0.0`).
+  Published when a GitHub Release is published for an explicit package tag
+  (for example `core-v1.0.0` or `express-v1.0.0`).
 
 Each package is versioned and released independently.
 

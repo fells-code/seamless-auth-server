@@ -1,10 +1,9 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "core-v*"
-      - "express-v*"
+  release:
+    types:
+      - published
 
 jobs:
   publish:
@@ -22,13 +21,13 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 20
           registry-url: https://registry.npmjs.org/
 
       - name: Determine package and version
         id: meta
         run: |
-          TAG="${GITHUB_REF#refs/tags/}"
+          TAG="${{ github.event.release.tag_name }}"
 
           if [[ "$TAG" == core-v* ]]; then
             PACKAGE="core"
@@ -57,14 +56,38 @@ jobs:
             exit 1
           fi
 
-      - name: Install dependencies
-        working-directory: packages/${{ steps.meta.outputs.package }}
-        run: npm ci
+      - name: Validate express core dependency
+        if: steps.meta.outputs.package == 'express'
+        working-directory: packages/express
+        run: |
+          CORE_RANGE=$(node -p "require('./package.json').dependencies['@seamless-auth/core']")
+          CORE_VERSION=$(node -p "require('../core/package.json').version")
+          EXPECTED="^${CORE_VERSION}"
 
-      - name: Build
-        working-directory: packages/${{ steps.meta.outputs.package }}
-        run: npm run build
+          if [ "$CORE_RANGE" != "$EXPECTED" ]; then
+            echo "Express must depend on @seamless-auth/core ${EXPECTED}, found ${CORE_RANGE}"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: |
+          if [ "${{ steps.meta.outputs.package }}" = "express" ]; then
+            npm --prefix packages/core ci
+            npm --prefix packages/express ci
+          else
+            npm --prefix packages/core ci
+          fi
+
+      - name: Test package
+        run: |
+          if [ "${{ steps.meta.outputs.package }}" = "express" ]; then
+            npm --prefix packages/express test
+          else
+            npm --prefix packages/core test
+          fi
 
       - name: Publish to npm
         working-directory: packages/${{ steps.meta.outputs.package }}
-        run: npm publish --access public
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

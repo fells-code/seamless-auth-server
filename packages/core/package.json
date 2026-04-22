@@ -1,6 +1,6 @@
 {
     "name": "@seamless-auth/core",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "description": "Framework-agnostic core authentication logic for SeamlessAuth",
     "license": "AGPL-3.0-only",
     "author": "Fells Code, LLC",

@@ -25,8 +25,8 @@
   "scripts": {
     "build": "tsup src/index.ts --format esm --out-dir dist --dts --splitting",
     "dev": "tsc --watch",
-    "test": "npm run build && NODE_OPTIONS=--experimental-vm-modules jest",
-    "test:watch": "npm run build && NODE_OPTIONS=--experimental-vm-modules jest --watch"
+    "test": "npm --prefix ../core run build && npm run build && NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:watch": "npm --prefix ../core run build && npm run build && NODE_OPTIONS=--experimental-vm-modules jest --watch"
   },
   "repository": {
     "type": "git",

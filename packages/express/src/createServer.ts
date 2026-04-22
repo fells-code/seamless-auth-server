@@ -2,14 +2,17 @@ import express, { Request, Response, Router } from "express";
 import cookieParser from "cookie-parser";
 
 import { createEnsureCookiesMiddleware } from "./middleware/ensureCookies";
+import type { SeamlessAuthMessagingOptions } from "./messaging";
 
 import { login } from "./handlers/login";
 import { finishLogin } from "./handlers/finishLogin";
 import { register } from "./handlers/register";
+import { requestOtp } from "./handlers/requestOtp";
 import { finishRegister } from "./handlers/finishRegister";
 import { me } from "./handlers/me";
 import { logout } from "./handlers/logout";
 import { pollMagicLinkConfirmation } from "./handlers/pollMagicLinkConfirmation";
+import { requestMagicLink } from "./handlers/requestMagicLink";
 import * as admin from "./handlers/admin";
 import {
   authFetch,
@@ -49,6 +52,7 @@ type ResolvedSeamlessAuthServerOptions = {
   registrationCookieName: string;
   refreshCookieName: string;
   preAuthCookieName: string;
+  messaging?: SeamlessAuthMessagingOptions;
 };
 
 export type SeamlessAuthServerOptions = {
@@ -63,6 +67,7 @@ export type SeamlessAuthServerOptions = {
   registrationCookieName?: string;
   refreshCookieName?: string;
   preAuthCookieName?: string;
+  messaging?: SeamlessAuthMessagingOptions;
 };
 
 export interface SeamlessAuthUser {
@@ -121,6 +126,7 @@ export interface SeamlessAuthUser {
  *   - `registrationCookieName` — Name of the ephemeral registration cookie
  *   - `refreshCookieName` — Name of the refresh token cookie
  *   - `preAuthCookieName` — Name of the cookie used during login initiation
+ *   - `messaging` — Optional auth-messaging transports, handlers, and overrides
  *
  * @returns An Express `Router` preconfigured with all Seamless Auth routes.
  */
@@ -144,6 +150,7 @@ export function createSeamlessAuthServer(
     registrationCookieName: opts.registrationCookieName ?? "seamless-ephemeral",
     refreshCookieName: opts.refreshCookieName ?? "seamless-refresh",
     preAuthCookieName: opts.preAuthCookieName ?? "seamless-ephemeral",
+    messaging: opts.messaging,
   };
 
   const proxyWithIdentity =
@@ -244,11 +251,11 @@ export function createSeamlessAuthServer(
 
   r.get(
     "/otp/generate-phone-otp",
-    proxyWithIdentity("otp/generate-phone-otp", "preAuth", "GET"),
+    (req, res) => requestOtp(req, res, resolvedOpts, "phone"),
   );
   r.get(
     "/otp/generate-email-otp",
-    proxyWithIdentity("otp/generate-email-otp", "preAuth", "GET"),
+    (req, res) => requestOtp(req, res, resolvedOpts, "email"),
   );
 
   r.post("/login", (req, res) => login(req, res, resolvedOpts));
@@ -268,7 +275,9 @@ export function createSeamlessAuthServer(
     "/users/credentials",
     proxyWithIdentity("users/credentials", "access"),
   );
-  r.get("/magic-link", proxyWithIdentity("magic-link", "preAuth", "GET"));
+  r.get("/magic-link", (req, res) =>
+    requestMagicLink(req, res, resolvedOpts),
+  );
   r.get("/magic-link/verify/:token", async (req, res) => {
     const upstream = await authFetch(
       `${resolvedOpts.authServerUrl}/magic-link/verify/${req.params.token}`,

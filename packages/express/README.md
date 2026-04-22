@@ -14,6 +14,7 @@ This package:
 - Manages signed, HttpOnly session cookies
 - Enforces authentication and authorization in your API
 - Handles all API ↔ Auth Server communication via short-lived service tokens
+- Establishes the initializer surface for adopter-supplied auth messaging
 
 > **npm:** https://www.npmjs.com/package/@seamless-auth/express  
 > **Docs:** https://docs.seamlessauth.com  
@@ -149,8 +150,25 @@ Routes include:
   registrationCookieName?: string;
   refreshCookieName?: string;
   preAuthCookieName?: string;
+  messaging?: {
+    email?: EmailTransport;
+    sms?: SmsTransport;
+    handlers?: Partial<AuthMessagingHandlers>;
+    overrides?: AuthMessageOverrides;
+  };
 }
 ```
+
+`messaging` is the initializer-facing contract for adopter-supplied auth messaging capabilities.
+
+When `messaging` is provided, `@seamless-auth/express` requests external-delivery payloads from the upstream auth server for auth-message flows and completes delivery locally through the configured transports or handlers.
+
+This currently applies to:
+
+- OTP email
+- OTP SMS
+- magic-link email
+- bootstrap invite email
 
 ---
 
