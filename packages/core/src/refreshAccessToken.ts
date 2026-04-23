@@ -22,25 +22,39 @@ type RefreshAccessTokenResult = {
 };
 
 const inFlightRefreshes = new Map<string, Promise<RefreshAccessTokenResult | null>>();
+const recentRefreshResults = new Map<
+  string,
+  { result: RefreshAccessTokenResult; expiresAt: number }
+>();
+const RECENT_REFRESH_RESULT_TTL_MS = 5000;
 
 export async function refreshAccessToken(
   refreshCookie: string,
   opts: RefreshAccessTokenOptions,
 ): Promise<RefreshAccessTokenResult | null> {
+  const now = Date.now();
+  const recentRefresh = recentRefreshResults.get(refreshCookie);
+  if (recentRefresh && recentRefresh.expiresAt > now) {
+    return recentRefresh.result;
+  }
+  if (recentRefresh) {
+    recentRefreshResults.delete(refreshCookie);
+  }
+
   const existingRefresh = inFlightRefreshes.get(refreshCookie);
   if (existingRefresh) {
     return existingRefresh;
   }
 
   const refreshPromise = (async () => {
-  const payload = verifyRefreshCookie(refreshCookie, opts.cookieSecret);
-  if (!payload) return null;
+    const payload = verifyRefreshCookie(refreshCookie, opts.cookieSecret);
+    if (!payload) return null;
 
-  const response = await authFetch(`${opts.authServerUrl}/refresh`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${payload.refreshToken}`,
-    },
+    const response = await authFetch(`${opts.authServerUrl}/refresh`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${payload.refreshToken}`,
+      },
   });
 
   if (!response.ok) return null;
@@ -51,7 +65,14 @@ export async function refreshAccessToken(
   inFlightRefreshes.set(refreshCookie, refreshPromise);
 
   try {
-    return await refreshPromise;
+    const result = await refreshPromise;
+    if (result) {
+      recentRefreshResults.set(refreshCookie, {
+        result,
+        expiresAt: Date.now() + RECENT_REFRESH_RESULT_TTL_MS,
+      });
+    }
+    return result;
   } finally {
     inFlightRefreshes.delete(refreshCookie);
   }

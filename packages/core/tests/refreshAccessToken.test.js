@@ -109,7 +109,7 @@ describe("refreshAccessToken", () => {
     });
 
     const [first, second] = await Promise.all([
-      refreshAccessToken("good.cookie", {
+      refreshAccessToken("good-concurrent.cookie", {
         authServerUrl: "https://auth.example.com",
         cookieSecret: "cookie-secret",
         serviceSecret: "service-secret",
@@ -117,7 +117,7 @@ describe("refreshAccessToken", () => {
         audience: "https://auth.example.com",
         keyId: "dev-main",
       }),
-      refreshAccessToken("good.cookie", {
+      refreshAccessToken("good-concurrent.cookie", {
         authServerUrl: "https://auth.example.com",
         cookieSecret: "cookie-secret",
         serviceSecret: "service-secret",
@@ -126,6 +126,51 @@ describe("refreshAccessToken", () => {
         keyId: "dev-main",
       }),
     ]);
+
+    expect(first).toEqual(second);
+    expect(authFetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("reuses the freshly-rotated result for an immediate follow-up call with the stale cookie", async () => {
+    const { refreshAccessToken } =
+      await import("../dist/refreshAccessToken.js");
+
+    verifyRefreshCookieMock.mockReturnValue({
+      sub: "user-123",
+      refreshToken: "refresh-token",
+    });
+
+    authFetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        sub: "user-123",
+        token: "new-access",
+        refreshToken: "new-refresh",
+        roles: ["user"],
+        email: "test@example.com",
+        phone: "+14155552671",
+        ttl: 300,
+        refreshTtl: 3600,
+      }),
+    });
+
+    const first = await refreshAccessToken("good-sequential.cookie", {
+      authServerUrl: "https://auth.example.com",
+      cookieSecret: "cookie-secret",
+      serviceSecret: "service-secret",
+      issuer: "https://frontend.example.com",
+      audience: "https://auth.example.com",
+      keyId: "dev-main",
+    });
+
+    const second = await refreshAccessToken("good-sequential.cookie", {
+      authServerUrl: "https://auth.example.com",
+      cookieSecret: "cookie-secret",
+      serviceSecret: "service-secret",
+      issuer: "https://frontend.example.com",
+      audience: "https://auth.example.com",
+      keyId: "dev-main",
+    });
 
     expect(first).toEqual(second);
     expect(authFetchMock).toHaveBeenCalledTimes(1);
