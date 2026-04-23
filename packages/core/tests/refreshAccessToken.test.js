@@ -58,6 +58,8 @@ describe("refreshAccessToken", () => {
         token: "new-access",
         refreshToken: "new-refresh",
         roles: ["user"],
+        email: "test@example.com",
+        phone: "+14155552671",
         ttl: 300,
         refreshTtl: 3600,
       }),
@@ -73,6 +75,7 @@ describe("refreshAccessToken", () => {
     });
 
     expect(result.token).toBe("new-access");
+    expect(result.email).toBe("test@example.com");
     expect(authFetchMock).toHaveBeenCalledWith(
       "https://auth.example.com/refresh",
       expect.objectContaining({
@@ -80,5 +83,51 @@ describe("refreshAccessToken", () => {
         headers: { Authorization: "Bearer refresh-token" },
       }),
     );
+  });
+
+  it("deduplicates concurrent refresh calls for the same refresh cookie", async () => {
+    const { refreshAccessToken } =
+      await import("../dist/refreshAccessToken.js");
+
+    verifyRefreshCookieMock.mockReturnValue({
+      sub: "user-123",
+      refreshToken: "refresh-token",
+    });
+
+    authFetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        sub: "user-123",
+        token: "new-access",
+        refreshToken: "new-refresh",
+        roles: ["user"],
+        email: "test@example.com",
+        phone: "+14155552671",
+        ttl: 300,
+        refreshTtl: 3600,
+      }),
+    });
+
+    const [first, second] = await Promise.all([
+      refreshAccessToken("good.cookie", {
+        authServerUrl: "https://auth.example.com",
+        cookieSecret: "cookie-secret",
+        serviceSecret: "service-secret",
+        issuer: "https://frontend.example.com",
+        audience: "https://auth.example.com",
+        keyId: "dev-main",
+      }),
+      refreshAccessToken("good.cookie", {
+        authServerUrl: "https://auth.example.com",
+        cookieSecret: "cookie-secret",
+        serviceSecret: "service-secret",
+        issuer: "https://frontend.example.com",
+        audience: "https://auth.example.com",
+        keyId: "dev-main",
+      }),
+    ]);
+
+    expect(first).toEqual(second);
+    expect(authFetchMock).toHaveBeenCalledTimes(1);
   });
 });

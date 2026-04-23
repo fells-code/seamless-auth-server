@@ -12,7 +12,7 @@ export interface CookiePayload {
   refreshToken?: string;
   roles?: string[];
   email?: string;
-  phone?: string;
+  phone?: string | null;
 }
 
 export interface CookieInstruction {
@@ -190,6 +190,8 @@ export async function ensureCookies(
           value: {
             sub: refreshed.sub,
             roles: refreshed.roles,
+            email: refreshed.email,
+            phone: refreshed.phone,
           },
           ttl: refreshed.ttl,
           domain: opts.cookieDomain,

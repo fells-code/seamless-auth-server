@@ -10,17 +10,29 @@ export interface RefreshAccessTokenOptions {
   keyId: string;
 }
 
-export async function refreshAccessToken(
-  refreshCookie: string,
-  opts: RefreshAccessTokenOptions,
-): Promise<{
+type RefreshAccessTokenResult = {
   sub: string;
   token: string;
   refreshToken: string;
-  roles: string[];
+  roles?: string[];
+  email?: string;
+  phone?: string | null;
   ttl: number;
   refreshTtl: number;
-} | null> {
+};
+
+const inFlightRefreshes = new Map<string, Promise<RefreshAccessTokenResult | null>>();
+
+export async function refreshAccessToken(
+  refreshCookie: string,
+  opts: RefreshAccessTokenOptions,
+): Promise<RefreshAccessTokenResult | null> {
+  const existingRefresh = inFlightRefreshes.get(refreshCookie);
+  if (existingRefresh) {
+    return existingRefresh;
+  }
+
+  const refreshPromise = (async () => {
   const payload = verifyRefreshCookie(refreshCookie, opts.cookieSecret);
   if (!payload) return null;
 
@@ -34,4 +46,13 @@ export async function refreshAccessToken(
   if (!response.ok) return null;
 
   return response.json();
+  })();
+
+  inFlightRefreshes.set(refreshCookie, refreshPromise);
+
+  try {
+    return await refreshPromise;
+  } finally {
+    inFlightRefreshes.delete(refreshCookie);
+  }
 }

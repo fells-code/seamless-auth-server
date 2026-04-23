@@ -88,6 +88,8 @@ describe("ensureCookies", () => {
       token: "new-access",
       refreshToken: "new-refresh",
       roles: ["user"],
+      email: "test@example.com",
+      phone: "+14155552671",
       ttl: 300,
       refreshTtl: 3600,
     });
@@ -107,6 +109,12 @@ describe("ensureCookies", () => {
 
     const [accessCookie, refreshCookie] = result.setCookies;
     expect(accessCookie.name).toBe("access");
+    expect(accessCookie.value).toEqual({
+      sub: "user-123",
+      roles: ["user"],
+      email: "test@example.com",
+      phone: "+14155552671",
+    });
     expect(refreshCookie.name).toBe("refresh");
   });
 
