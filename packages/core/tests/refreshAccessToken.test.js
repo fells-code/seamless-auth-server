@@ -77,7 +77,7 @@ describe("refreshAccessToken", () => {
       "https://auth.example.com/refresh",
       expect.objectContaining({
         method: "POST",
-        headers: { Authorization: "Bearer service.jwt" },
+        headers: { Authorization: "Bearer refresh-token" },
       }),
     );
   });
