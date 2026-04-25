@@ -152,4 +152,27 @@ describe("ensureCookies", () => {
     expect(result.type).toBe("error");
     expect(result.status).toBe(401);
   });
+
+  it("requires the pre-auth cookie for magic-link continuation routes", async () => {
+    const { ensureCookies } = await import("../dist/ensureCookies.js");
+
+    verifyCookieJwtMock.mockReturnValue({
+      sub: "user-123",
+      roles: ["user"],
+    });
+
+    const result = await ensureCookies(
+      {
+        path: "/magic-link",
+        cookies: { preauth: "valid.preauth.jwt" },
+      },
+      BASE_OPTS,
+    );
+
+    expect(result.type).toBe("ok");
+    expect(result.user).toEqual({
+      sub: "user-123",
+      roles: ["user"],
+    });
+  });
 });

@@ -1,5 +1,6 @@
 import { jest } from "@jest/globals";
 import express from "express";
+import jwt from "jsonwebtoken";
 import request from "supertest";
 
 const { default: createSeamlessAuthServer } = await import("../dist/index.js");
@@ -10,6 +11,15 @@ function createJsonResponse(status, body) {
     status,
     json: async () => body,
   };
+}
+
+function createPreAuthCookie(subject = "user-123") {
+  const token = jwt.sign({ sub: subject }, "cookie-secret", {
+    algorithm: "HS256",
+    expiresIn: "300s",
+  });
+
+  return `seamless-ephemeral=${token}`;
 }
 
 function createApp(emailTransport) {
@@ -48,7 +58,7 @@ describe("messaging delivery routes", () => {
     global.fetch = originalFetch;
   });
 
-  it("delivers magic links through the configured email transport for public requests", async () => {
+  it("delivers magic links through the configured email transport for pre-authenticated requests", async () => {
     const emailTransport = {
       name: "test-email",
       send: jest.fn().mockResolvedValue({
@@ -70,7 +80,9 @@ describe("messaging delivery routes", () => {
       }),
     );
 
-    const res = await request(createApp(emailTransport)).get("/auth/magic-link");
+    const res = await request(createApp(emailTransport))
+      .get("/auth/magic-link")
+      .set("Cookie", createPreAuthCookie());
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
@@ -84,10 +96,10 @@ describe("messaging delivery routes", () => {
         headers: expect.objectContaining({
           "Content-Type": "application/json",
           "x-seamless-auth-delivery-mode": "external",
+          Authorization: expect.stringMatching(/^Bearer /),
         }),
       }),
     );
-    expect(global.fetch.mock.calls[0][1].headers.Authorization).toBeUndefined();
 
     expect(emailTransport.send).toHaveBeenCalledWith(
       expect.objectContaining({

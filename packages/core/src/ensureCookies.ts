@@ -78,6 +78,14 @@ const COOKIE_REQUIREMENTS: Record<
     name: "registrationCookieName",
     required: true,
   },
+  "/magic-link": {
+    name: "preAuthCookieName",
+    required: true,
+  },
+  "/magic-link/check": {
+    name: "preAuthCookieName",
+    required: true,
+  },
   "/logout": { name: "accessCookieName", required: true },
   "/users/me": { name: "accessCookieName", required: true },
   "/internal/metrics/dashboard": { name: "accessCookieName", required: true },
