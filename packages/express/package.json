@@ -1,6 +1,6 @@
 {
   "name": "@seamless-auth/express",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "Express adapter for Seamless Auth passwordless authentication",
   "license": "AGPL-3.0-only",
   "type": "module",
@@ -39,7 +39,7 @@
     "express": ">=4.18.0"
   },
   "dependencies": {
-    "@seamless-auth/core": "^0.4.4",
+    "@seamless-auth/core": "^0.4.5",
     "cookie-parser": "^1.4.6",
     "jsonwebtoken": "^9.0.3"
   },
