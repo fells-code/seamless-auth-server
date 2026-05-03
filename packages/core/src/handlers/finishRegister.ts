@@ -6,6 +6,7 @@ export interface FinishRegisterInput {
   authorization?: string;
   headers?: Record<string, string>;
   body: unknown;
+  forwardedClientIp?: string;
 }
 
 export interface FinishRegisterOptions {
@@ -35,6 +36,7 @@ export async function finishRegisterHandler(
     authorization: input.authorization,
     headers: input.headers,
     body: input.body,
+    forwardedClientIp: input.forwardedClientIp,
   });
 
   const data = await up.json();

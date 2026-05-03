@@ -10,6 +10,7 @@ export interface LoginOptions {
   authServerUrl: string;
   cookieDomain?: string;
   preAuthCookieName: string;
+  forwardedClientIp?: string;
 }
 
 export interface LoginResult {
@@ -30,6 +31,7 @@ export async function loginHandler(
   const up = await authFetch(`${opts.authServerUrl}/login`, {
     method: "POST",
     body: input.body,
+    forwardedClientIp: opts.forwardedClientIp,
   });
 
   const data = await up.json();

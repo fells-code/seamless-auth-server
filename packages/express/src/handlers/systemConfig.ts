@@ -6,6 +6,7 @@ import {
 } from "@seamless-auth/core/handlers/systemConfig";
 
 import { buildServiceAuthorization } from "../internal/buildAuthorization";
+import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { SeamlessAuthServerOptions } from "../createServer";
 
 export async function getAvailableRoles(
@@ -18,7 +19,8 @@ export async function getAvailableRoles(
   const result = await getAvailableRolesHandler({
     authServerUrl: opts.authServerUrl,
     authorization,
-  });
+    forwardedClientIp: buildForwardedClientIp(req),
+  } as any);
 
   if (result.error) {
     return res.status(result.status).json({ error: result.error });
@@ -37,7 +39,8 @@ export async function getSystemConfigAdmin(
   const result = await getSystemConfigAdminHandler({
     authServerUrl: opts.authServerUrl,
     authorization,
-  });
+    forwardedClientIp: buildForwardedClientIp(req),
+  } as any);
 
   if (result.error) {
     return res.status(result.status).json({ error: result.error });
@@ -57,7 +60,8 @@ export async function updateSystemConfig(
     authServerUrl: opts.authServerUrl,
     authorization,
     payload: req.body,
-  });
+    forwardedClientIp: buildForwardedClientIp(req),
+  } as any);
 
   if (result.error) {
     return res.status(result.status).json({ error: result.error });

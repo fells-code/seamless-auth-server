@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { meHandler } from "@seamless-auth/core/handlers/me";
 import { clearSessionCookie } from "../internal/cookie";
 import { buildServiceAuthorization } from "../internal/buildAuthorization";
+import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { SeamlessAuthServerOptions } from "../createServer";
 
 export async function me(
@@ -14,7 +15,8 @@ export async function me(
     authServerUrl: opts.authServerUrl,
     preAuthCookieName: opts.preAuthCookieName!,
     authorization,
-  });
+    forwardedClientIp: buildForwardedClientIp(req),
+  } as any);
 
   if (result.clearCookies) {
     for (const name of result.clearCookies) {

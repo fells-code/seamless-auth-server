@@ -14,6 +14,7 @@ import {
 } from "@seamless-auth/core/handlers/admin";
 
 import { buildServiceAuthorization } from "../internal/buildAuthorization";
+import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { SeamlessAuthServerOptions } from "../createServer";
 
 function handle(res: Response, result: any) {
@@ -33,7 +34,8 @@ export const getUsers = async (
     await getUsersHandler({
       authServerUrl: opts.authServerUrl,
       authorization: buildServiceAuthorization(req, opts),
-    }),
+      forwardedClientIp: buildForwardedClientIp(req),
+    } as any),
   );
 
 export const createUser = async (
@@ -46,8 +48,9 @@ export const createUser = async (
     await createUserHandler({
       authServerUrl: opts.authServerUrl,
       authorization: buildServiceAuthorization(req, opts),
+      forwardedClientIp: buildForwardedClientIp(req),
       body: req.body,
-    }),
+    } as any),
   );
 
 export const deleteUser = async (
@@ -60,7 +63,8 @@ export const deleteUser = async (
     await deleteUserHandler({
       authServerUrl: opts.authServerUrl,
       authorization: buildServiceAuthorization(req, opts),
-    }),
+      forwardedClientIp: buildForwardedClientIp(req),
+    } as any),
   );
 
 export const updateUser = async (
@@ -73,8 +77,9 @@ export const updateUser = async (
     await updateUserHandler(req.params.userId as string, {
       authServerUrl: opts.authServerUrl,
       authorization: buildServiceAuthorization(req, opts),
+      forwardedClientIp: buildForwardedClientIp(req),
       body: req.body,
-    }),
+    } as any),
   );
 
 export const getUserDetail = async (
@@ -87,7 +92,8 @@ export const getUserDetail = async (
     await getUserDetailHandler(req.params.userId as string, {
       authServerUrl: opts.authServerUrl,
       authorization: buildServiceAuthorization(req, opts),
-    }),
+      forwardedClientIp: buildForwardedClientIp(req),
+    } as any),
   );
 
 export const getUserAnomalies = async (
@@ -100,7 +106,8 @@ export const getUserAnomalies = async (
     await getUserAnomaliesHandler(req.params.userId as string, {
       authServerUrl: opts.authServerUrl,
       authorization: buildServiceAuthorization(req, opts),
-    }),
+      forwardedClientIp: buildForwardedClientIp(req),
+    } as any),
   );
 
 export const getAuthEvents = async (
@@ -113,8 +120,9 @@ export const getAuthEvents = async (
     await getAuthEventsHandler({
       authServerUrl: opts.authServerUrl,
       authorization: buildServiceAuthorization(req, opts),
+      forwardedClientIp: buildForwardedClientIp(req),
       query: req.query,
-    }),
+    } as any),
   );
 
 export const getCredentialCount = async (
@@ -127,7 +135,8 @@ export const getCredentialCount = async (
     await getCredentialCountHandler({
       authServerUrl: opts.authServerUrl,
       authorization: buildServiceAuthorization(req, opts),
-    }),
+      forwardedClientIp: buildForwardedClientIp(req),
+    } as any),
   );
 
 export const listAllSessions = async (
@@ -140,8 +149,9 @@ export const listAllSessions = async (
     await listAllSessionsHandler({
       authServerUrl: opts.authServerUrl,
       authorization: buildServiceAuthorization(req, opts),
+      forwardedClientIp: buildForwardedClientIp(req),
       query: req.query,
-    }),
+    } as any),
   );
 
 export const listUserSessions = async (
@@ -154,7 +164,8 @@ export const listUserSessions = async (
     await listUserSessionsHandler(req.params.userId as string, {
       authServerUrl: opts.authServerUrl,
       authorization: buildServiceAuthorization(req, opts),
-    }),
+      forwardedClientIp: buildForwardedClientIp(req),
+    } as any),
   );
 
 export const revokeAllUserSessions = async (
@@ -167,5 +178,6 @@ export const revokeAllUserSessions = async (
     await revokeAllUserSessionsHandler(req.params.userId as string, {
       authServerUrl: opts.authServerUrl,
       authorization: buildServiceAuthorization(req, opts),
-    }),
+      forwardedClientIp: buildForwardedClientIp(req),
+    } as any),
   );

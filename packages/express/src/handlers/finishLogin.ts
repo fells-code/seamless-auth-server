@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { finishLoginHandler } from "@seamless-auth/core/handlers/finishLogin";
 import { setSessionCookie } from "../internal/cookie";
 import { buildServiceAuthorization } from "../internal/buildAuthorization";
+import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { SeamlessAuthServerOptions } from "../createServer";
 
 export async function finishLogin(
@@ -21,7 +22,11 @@ export async function finishLogin(
   const authorization = buildServiceAuthorization(req, opts);
 
   const result = await finishLoginHandler(
-    { body: req.body, authorization },
+    {
+      body: req.body,
+      authorization,
+      forwardedClientIp: buildForwardedClientIp(req),
+    } as any,
     {
       authServerUrl: opts.authServerUrl,
       cookieDomain: opts.cookieDomain,

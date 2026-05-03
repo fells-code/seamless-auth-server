@@ -5,6 +5,7 @@ import { verifySignedAuthResponse } from "../verifySignedAuthResponse.js";
 export interface FinishLoginInput {
   body: unknown;
   authorization?: string;
+  forwardedClientIp?: string;
 }
 
 export interface FinishLoginOptions {
@@ -34,6 +35,7 @@ export async function finishLoginHandler(
     method: "POST",
     body: input.body,
     authorization: input.authorization,
+    forwardedClientIp: input.forwardedClientIp,
   });
 
   const data = await up.json();

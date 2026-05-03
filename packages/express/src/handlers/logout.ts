@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { logoutHandler } from "@seamless-auth/core/handlers/logout";
 import { clearAllCookies } from "../internal/cookie";
+import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { SeamlessAuthServerOptions } from "../createServer";
 
 export async function logout(
@@ -13,7 +14,8 @@ export async function logout(
     accessCookieName: opts.accessCookieName!,
     registrationCookieName: opts.registrationCookieName!,
     refreshCookieName: opts.refreshCookieName!,
-  });
+    forwardedClientIp: buildForwardedClientIp(req),
+  } as any);
 
   clearAllCookies(res, opts.cookieDomain || "", ...result.clearCookies);
 

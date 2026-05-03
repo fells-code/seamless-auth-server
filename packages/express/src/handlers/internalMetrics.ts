@@ -9,6 +9,7 @@ import {
 } from "@seamless-auth/core/handlers/internalMetrics";
 
 import { buildServiceAuthorization } from "../internal/buildAuthorization";
+import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { SeamlessAuthServerOptions } from "../createServer";
 
 function handle(res: Response, result: any) {
@@ -28,8 +29,9 @@ export async function getAuthEventSummary(
   const result = await getAuthEventSummaryHandler({
     authServerUrl: opts.authServerUrl,
     authorization,
+    forwardedClientIp: buildForwardedClientIp(req),
     query: req.query as any,
-  });
+  } as any);
 
   return handle(res, result);
 }
@@ -44,8 +46,9 @@ export async function getAuthEventTimeseries(
   const result = await getAuthEventTimeseriesHandler({
     authServerUrl: opts.authServerUrl,
     authorization,
+    forwardedClientIp: buildForwardedClientIp(req),
     query: req.query as any,
-  });
+  } as any);
 
   return handle(res, result);
 }
@@ -60,7 +63,8 @@ export async function getLoginStats(
   const result = await getLoginStatsHandler({
     authServerUrl: opts.authServerUrl,
     authorization,
-  });
+    forwardedClientIp: buildForwardedClientIp(req),
+  } as any);
 
   return handle(res, result);
 }
@@ -75,7 +79,8 @@ export async function getSecurityAnomalies(
   const result = await getSecurityAnomaliesHandler({
     authServerUrl: opts.authServerUrl,
     authorization,
-  });
+    forwardedClientIp: buildForwardedClientIp(req),
+  } as any);
 
   return handle(res, result);
 }
@@ -90,7 +95,8 @@ export async function getDashboardMetrics(
   const result = await getDashboardMetricsHandler({
     authServerUrl: opts.authServerUrl,
     authorization,
-  });
+    forwardedClientIp: buildForwardedClientIp(req),
+  } as any);
 
   return handle(res, result);
 }
@@ -105,7 +111,8 @@ export async function getGroupedEventSummary(
   const result = await getGroupedEventSummaryHandler({
     authServerUrl: opts.authServerUrl,
     authorization,
-  });
+    forwardedClientIp: buildForwardedClientIp(req),
+  } as any);
 
   return handle(res, result);
 }

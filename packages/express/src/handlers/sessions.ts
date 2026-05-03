@@ -6,6 +6,7 @@ import {
 } from "@seamless-auth/core/handlers/sessions";
 
 import { buildServiceAuthorization } from "../internal/buildAuthorization";
+import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { SeamlessAuthServerOptions } from "../createServer";
 
 function handle(res: Response, result: any) {
@@ -25,7 +26,8 @@ export async function listSessions(
   const result = await listSessionsHandler({
     authServerUrl: opts.authServerUrl,
     authorization,
-  });
+    forwardedClientIp: buildForwardedClientIp(req),
+  } as any);
 
   return handle(res, result);
 }
@@ -40,7 +42,8 @@ export async function revokeSession(
   const result = await revokeSessionHandler(req.params.id as string, {
     authServerUrl: opts.authServerUrl,
     authorization,
-  });
+    forwardedClientIp: buildForwardedClientIp(req),
+  } as any);
 
   return handle(res, result);
 }
@@ -55,7 +58,8 @@ export async function revokeAllSessions(
   const result = await revokeAllSessionsHandler({
     authServerUrl: opts.authServerUrl,
     authorization,
-  });
+    forwardedClientIp: buildForwardedClientIp(req),
+  } as any);
 
   return handle(res, result);
 }

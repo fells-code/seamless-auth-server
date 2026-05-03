@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { requestOtpHandler } from "@seamless-auth/core/handlers/requestOtpHandler";
 import { buildServiceAuthorization } from "../internal/buildAuthorization";
+import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { deliverAuthMessage, stripDelivery } from "../internal/deliverAuthMessage";
 import { SeamlessAuthServerOptions } from "../createServer";
 
@@ -18,7 +19,8 @@ export async function requestOtp(
     {
       authServerUrl: opts.authServerUrl,
       externalDelivery: Boolean(opts.messaging),
-    },
+      forwardedClientIp: buildForwardedClientIp(req),
+    } as any,
   );
 
   if (result.error) {

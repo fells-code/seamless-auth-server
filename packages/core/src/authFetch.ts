@@ -7,6 +7,8 @@ export interface AuthFetchOptions {
   headers?: Record<string, string>;
   body?: unknown;
   authorization?: string;
+  serviceAuthorization?: string;
+  forwardedClientIp?: string;
 }
 
 export async function authFetch(
@@ -17,6 +19,15 @@ export async function authFetch(
     "Content-Type": "application/json",
     ...options.headers,
     ...(options.authorization ? { Authorization: options.authorization } : {}),
+    ...((options.serviceAuthorization ?? options.authorization)
+      ? {
+          "x-seamless-service-token":
+            options.serviceAuthorization ?? options.authorization!,
+        }
+      : {}),
+    ...(options.forwardedClientIp
+      ? { "x-seamless-client-ip": options.forwardedClientIp }
+      : {}),
   };
 
   return fetch(url, {

@@ -46,6 +46,7 @@ export interface EnsureCookiesOptions {
   issuer: string;
   audience: string;
   keyId: string;
+  forwardedClientIp?: string;
 }
 
 const COOKIE_REQUIREMENTS: Record<
@@ -171,6 +172,7 @@ export async function ensureCookies(
       issuer: opts.issuer,
       audience: opts.audience,
       keyId: opts.keyId,
+      forwardedClientIp: opts.forwardedClientIp,
     });
 
     if (!refreshed?.token) {

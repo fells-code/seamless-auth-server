@@ -8,6 +8,7 @@ export interface RequestOtpInput {
 export interface RequestOtpOptions {
   authServerUrl: string;
   externalDelivery?: boolean;
+  forwardedClientIp?: string;
 }
 
 export interface RequestOtpResult {
@@ -28,6 +29,7 @@ export async function requestOtpHandler(
   const up = await authFetch(`${opts.authServerUrl}/${path}`, {
     method: "GET",
     authorization: input.authorization,
+    forwardedClientIp: opts.forwardedClientIp,
     ...(opts.externalDelivery
       ? {
           headers: {

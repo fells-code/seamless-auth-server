@@ -1,4 +1,5 @@
 import { authFetch } from "./authFetch.js";
+import { createServiceToken } from "./createServiceToken.js";
 import { verifyRefreshCookie } from "./verifyRefreshCookie.js";
 
 export interface RefreshAccessTokenOptions {
@@ -8,6 +9,7 @@ export interface RefreshAccessTokenOptions {
   issuer: string;
   audience: string;
   keyId: string;
+  forwardedClientIp?: string;
 }
 
 type RefreshAccessTokenResult = {
@@ -49,17 +51,25 @@ export async function refreshAccessToken(
   const refreshPromise = (async () => {
     const payload = verifyRefreshCookie(refreshCookie, opts.cookieSecret);
     if (!payload) return null;
+    const serviceToken = createServiceToken({
+      subject: payload.sub,
+      issuer: opts.issuer,
+      audience: opts.audience,
+      serviceSecret: opts.serviceSecret,
+      keyId: opts.keyId,
+      refreshToken: payload.refreshToken,
+    });
 
     const response = await authFetch(`${opts.authServerUrl}/refresh`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${payload.refreshToken}`,
-      },
-  });
+      authorization: `Bearer ${payload.refreshToken}`,
+      serviceAuthorization: `Bearer ${serviceToken}`,
+      forwardedClientIp: opts.forwardedClientIp,
+    });
 
-  if (!response.ok) return null;
+    if (!response.ok) return null;
 
-  return response.json();
+    return response.json();
   })();
 
   inFlightRefreshes.set(refreshCookie, refreshPromise);

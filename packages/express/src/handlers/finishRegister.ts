@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { finishRegisterHandler } from "@seamless-auth/core/handlers/finishRegister";
 import { setSessionCookie } from "../internal/cookie";
 import { buildServiceAuthorization } from "../internal/buildAuthorization";
+import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { SeamlessAuthServerOptions } from "../createServer";
 import { verifyCookieJwt } from "@seamless-auth/core";
 
@@ -41,7 +42,8 @@ export async function finishRegister(
       body: req.body,
       authorization,
       headers,
-    },
+      forwardedClientIp: buildForwardedClientIp(req),
+    } as any,
     {
       authServerUrl: opts.authServerUrl,
       cookieDomain: opts.cookieDomain,

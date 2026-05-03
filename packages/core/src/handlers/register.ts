@@ -10,6 +10,7 @@ export interface RegisterOptions {
   cookieDomain?: string;
   registrationCookieName: string;
   externalDelivery?: boolean;
+  forwardedClientIp?: string;
 }
 
 export interface RegisterResult {
@@ -31,6 +32,7 @@ export async function registerHandler(
   const up = await authFetch(`${opts.authServerUrl}/registration/register`, {
     method: "POST",
     body: input.body,
+    forwardedClientIp: opts.forwardedClientIp,
     ...(opts.externalDelivery
       ? {
           headers: {

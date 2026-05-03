@@ -5,6 +5,7 @@ export interface BootstrapAdminInviteOptions {
   email: string;
   authorization?: string;
   externalDelivery?: boolean;
+  forwardedClientIp?: string;
 }
 
 export interface BootstrapAdminInviteResult {
@@ -24,8 +25,9 @@ export async function bootstrapAdminInviteHandler(
     `${opts.authServerUrl}/internal/bootstrap/admin-invite`,
     {
       method: "POST",
+      authorization: opts.authorization,
+      forwardedClientIp: opts.forwardedClientIp,
       headers: {
-        authorization: opts.authorization || "",
         ...(opts.externalDelivery
           ? {
               "x-seamless-auth-delivery-mode": "external",

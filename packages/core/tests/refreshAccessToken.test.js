@@ -76,11 +76,18 @@ describe("refreshAccessToken", () => {
 
     expect(result.token).toBe("new-access");
     expect(result.email).toBe("test@example.com");
+    expect(createServiceTokenMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subject: "user-123",
+        refreshToken: "refresh-token",
+      }),
+    );
     expect(authFetchMock).toHaveBeenCalledWith(
       "https://auth.example.com/refresh",
       expect.objectContaining({
         method: "POST",
-        headers: { Authorization: "Bearer refresh-token" },
+        authorization: "Bearer refresh-token",
+        serviceAuthorization: "Bearer service.jwt",
       }),
     );
   });

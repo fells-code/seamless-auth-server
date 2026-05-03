@@ -20,6 +20,7 @@ import {
   AuthFetchOptions,
 } from "@seamless-auth/core";
 import { buildServiceAuthorization } from "./internal/buildAuthorization";
+import { buildForwardedClientIp } from "./internal/buildForwardedClientIp";
 import { bootstrapAdminInvite } from "./handlers/bootstrapAdmininvite";
 import {
   getAvailableRoles,
@@ -194,14 +195,15 @@ export function createSeamlessAuthServer(
       }
 
       const authorization = buildServiceAuthorization(req, resolvedOpts);
+      const forwardedClientIp = buildForwardedClientIp(req);
       const options =
         method == "GET"
-          ? { method, authorization }
-          : { method, authorization, body: req.body };
+          ? { method, authorization, forwardedClientIp }
+          : { method, authorization, forwardedClientIp, body: req.body };
 
       const upstream = await authFetch(
         `${resolvedOpts.authServerUrl}/${path}`,
-        options,
+        options as any,
       );
 
       const data = await upstream.json();
@@ -221,7 +223,8 @@ export function createSeamlessAuthServer(
       issuer: resolvedOpts.issuer,
       audience: resolvedOpts.authServerUrl,
       keyId: resolvedOpts.jwksKid,
-    } as EnsureCookiesOptions),
+      forwardedClientIp: undefined,
+    } as any),
   );
 
   r.post(
@@ -281,7 +284,10 @@ export function createSeamlessAuthServer(
   r.get("/magic-link/verify/:token", async (req, res) => {
     const upstream = await authFetch(
       `${resolvedOpts.authServerUrl}/magic-link/verify/${req.params.token}`,
-      { method: "GET" },
+      {
+        method: "GET",
+        forwardedClientIp: buildForwardedClientIp(req),
+      } as any,
     );
 
     const data = await upstream.json();

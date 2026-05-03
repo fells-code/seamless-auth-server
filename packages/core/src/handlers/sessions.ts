@@ -3,6 +3,7 @@ import { authFetch } from "../authFetch.js";
 type BaseOpts = {
   authServerUrl: string;
   authorization?: string;
+  forwardedClientIp?: string;
 };
 
 type Result = {
@@ -19,6 +20,7 @@ async function request(
   const up = await authFetch(`${opts.authServerUrl}${path}`, {
     method,
     authorization: opts.authorization,
+    forwardedClientIp: opts.forwardedClientIp,
   });
 
   const data = await up.json();

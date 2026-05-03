@@ -4,6 +4,7 @@ import { verifySignedAuthResponse } from "../verifySignedAuthResponse.js";
 
 export interface PollMagicLinkConfirmationInput {
   authorization?: string;
+  forwardedClientIp?: string;
 }
 
 export interface PollMagicLinkConfirmationOptions {
@@ -32,6 +33,7 @@ export async function pollMagicLinkConfirmationHandler(
   const up = await authFetch(`${opts.authServerUrl}/magic-link/check`, {
     method: "GET",
     authorization: input.authorization,
+    forwardedClientIp: input.forwardedClientIp,
   });
 
   // 👇 Pending state (important for polling UX)

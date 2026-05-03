@@ -97,6 +97,8 @@ describe("messaging delivery routes", () => {
           "Content-Type": "application/json",
           "x-seamless-auth-delivery-mode": "external",
           Authorization: expect.stringMatching(/^Bearer /),
+          "x-seamless-service-token": expect.stringMatching(/^Bearer /),
+          "x-seamless-client-ip": expect.any(String),
         }),
       }),
     );
@@ -157,7 +159,9 @@ describe("messaging delivery routes", () => {
         method: "POST",
         headers: expect.objectContaining({
           "Content-Type": "application/json",
-          authorization: "Bearer bootstrap-secret",
+          Authorization: "Bearer bootstrap-secret",
+          "x-seamless-service-token": "Bearer bootstrap-secret",
+          "x-seamless-client-ip": expect.any(String),
           "x-seamless-auth-delivery-mode": "external",
         }),
       }),

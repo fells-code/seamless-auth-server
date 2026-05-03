@@ -7,6 +7,7 @@ export interface RequestMagicLinkInput {
 export interface RequestMagicLinkOptions {
   authServerUrl: string;
   externalDelivery?: boolean;
+  forwardedClientIp?: string;
 }
 
 export interface RequestMagicLinkResult {
@@ -22,6 +23,7 @@ export async function requestMagicLinkHandler(
   const up = await authFetch(`${opts.authServerUrl}/magic-link`, {
     method: "GET",
     authorization: input.authorization,
+    forwardedClientIp: opts.forwardedClientIp,
     ...(opts.externalDelivery
       ? {
           headers: {
