@@ -136,6 +136,7 @@ Routes include:
 - `/auth/login/start`
 - `/auth/login/finish`
 - `/auth/webauthn/*`
+- `/auth/step-up/*`
 - `/auth/registration/*`
 - `/auth/users/me`
 - `/auth/logout`

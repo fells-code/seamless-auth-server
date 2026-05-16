@@ -8,6 +8,7 @@ export interface EnsureCookiesInput {
 
 export interface CookiePayload {
   sub: string;
+  sessionId?: string;
   token?: string;
   refreshToken?: string;
   roles?: string[];
@@ -28,6 +29,7 @@ export interface EnsureCookiesResult {
   error?: string;
   user?: {
     sub: string;
+    sessionId?: string;
     roles?: string[];
   };
   setCookies?: CookieInstruction[];
@@ -89,6 +91,9 @@ const COOKIE_REQUIREMENTS: Record<
   },
   "/logout": { name: "accessCookieName", required: true },
   "/users/me": { name: "accessCookieName", required: true },
+  "/step-up/status": { name: "accessCookieName", required: true },
+  "/step-up/webauthn/start": { name: "accessCookieName", required: true },
+  "/step-up/webauthn/finish": { name: "accessCookieName", required: true },
   "/internal/metrics/dashboard": { name: "accessCookieName", required: true },
   "/internal/auth-events/timeseries": {
     name: "accessCookieName",
@@ -192,6 +197,9 @@ export async function ensureCookies(
       type: "ok",
       user: {
         sub: refreshed.sub,
+        ...(refreshed.sessionId === undefined
+          ? {}
+          : { sessionId: refreshed.sessionId }),
         roles: refreshed.roles,
       },
       setCookies: [
@@ -199,6 +207,9 @@ export async function ensureCookies(
           name: cookieName,
           value: {
             sub: refreshed.sub,
+            ...(refreshed.sessionId === undefined
+              ? {}
+              : { sessionId: refreshed.sessionId }),
             roles: refreshed.roles,
             email: refreshed.email,
             phone: refreshed.phone,
@@ -233,6 +244,9 @@ export async function ensureCookies(
       type: "ok",
       user: {
         sub: payload.sub as string,
+        ...(typeof payload.sessionId === "string"
+          ? { sessionId: payload.sessionId }
+          : {}),
         roles: payload.roles as string[] | undefined,
       },
     };
