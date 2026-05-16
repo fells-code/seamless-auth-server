@@ -76,6 +76,28 @@ export interface SeamlessAuthUser {
   iat?: number;
   exp?: number;
 }
+
+function buildProxyQueryString(queryInput: Request["query"]): string {
+  const query = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(queryInput)) {
+    if (typeof value === "string") {
+      query.append(key, value);
+      continue;
+    }
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (typeof item === "string") {
+          query.append(key, item);
+        }
+      }
+    }
+  }
+
+  return query.toString();
+}
+
 /**
  * Creates an Express Router that proxies all authentication traffic to a Seamless Auth server.
  *
@@ -197,8 +219,9 @@ export function createSeamlessAuthServer(
           ? { method, authorization, forwardedClientIp }
           : { method, authorization, forwardedClientIp, body: req.body };
 
+      const queryString = buildProxyQueryString(req.query);
       const upstream = await authFetch(
-        `${resolvedOpts.authServerUrl}/${path}`,
+        `${resolvedOpts.authServerUrl}/${path}${queryString ? `?${queryString}` : ""}`,
         options as any,
       );
 
