@@ -2,12 +2,14 @@ import { authFetch } from "../authFetch.js";
 
 export interface RequestOtpInput {
   authorization?: string;
+  flow?: "registration" | "login";
   kind: "email" | "phone";
 }
 
 export interface RequestOtpOptions {
   authServerUrl: string;
   externalDelivery?: boolean;
+  forwardedClientIp?: string;
 }
 
 export interface RequestOtpResult {
@@ -20,14 +22,20 @@ export async function requestOtpHandler(
   input: RequestOtpInput,
   opts: RequestOtpOptions,
 ): Promise<RequestOtpResult> {
+  const flow = input.flow ?? "registration";
   const path =
-    input.kind === "email"
-      ? "otp/generate-email-otp"
-      : "otp/generate-phone-otp";
+    flow === "login"
+      ? input.kind === "email"
+        ? "otp/generate-login-email-otp"
+        : "otp/generate-login-phone-otp"
+      : input.kind === "email"
+        ? "otp/generate-email-otp"
+        : "otp/generate-phone-otp";
 
   const up = await authFetch(`${opts.authServerUrl}/${path}`, {
     method: "GET",
     authorization: input.authorization,
+    forwardedClientIp: opts.forwardedClientIp,
     ...(opts.externalDelivery
       ? {
           headers: {

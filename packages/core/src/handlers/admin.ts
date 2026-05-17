@@ -3,6 +3,7 @@ import { authFetch } from "../authFetch.js";
 type BaseOpts = {
   authServerUrl: string;
   authorization?: string;
+  forwardedClientIp?: string;
 };
 
 type WithQuery = BaseOpts & {
@@ -42,6 +43,7 @@ async function request(
       method,
       authorization: opts.authorization,
       body: opts.body,
+      forwardedClientIp: opts.forwardedClientIp,
     },
   );
 

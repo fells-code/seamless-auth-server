@@ -8,11 +8,12 @@ export interface EnsureCookiesInput {
 
 export interface CookiePayload {
   sub: string;
+  sessionId?: string;
   token?: string;
   refreshToken?: string;
   roles?: string[];
   email?: string;
-  phone?: string;
+  phone?: string | null;
 }
 
 export interface CookieInstruction {
@@ -28,6 +29,7 @@ export interface EnsureCookiesResult {
   error?: string;
   user?: {
     sub: string;
+    sessionId?: string;
     roles?: string[];
   };
   setCookies?: CookieInstruction[];
@@ -46,6 +48,7 @@ export interface EnsureCookiesOptions {
   issuer: string;
   audience: string;
   keyId: string;
+  forwardedClientIp?: string;
 }
 
 const COOKIE_REQUIREMENTS: Record<
@@ -78,8 +81,35 @@ const COOKIE_REQUIREMENTS: Record<
     name: "registrationCookieName",
     required: true,
   },
+  "/otp/verify-login-email-otp": {
+    name: "preAuthCookieName",
+    required: true,
+  },
+  "/otp/verify-login-phone-otp": {
+    name: "preAuthCookieName",
+    required: true,
+  },
+  "/otp/generate-login-email-otp": {
+    name: "preAuthCookieName",
+    required: true,
+  },
+  "/otp/generate-login-phone-otp": {
+    name: "preAuthCookieName",
+    required: true,
+  },
+  "/magic-link": {
+    name: "preAuthCookieName",
+    required: true,
+  },
+  "/magic-link/check": {
+    name: "preAuthCookieName",
+    required: true,
+  },
   "/logout": { name: "accessCookieName", required: true },
   "/users/me": { name: "accessCookieName", required: true },
+  "/step-up/status": { name: "accessCookieName", required: true },
+  "/step-up/webauthn/start": { name: "accessCookieName", required: true },
+  "/step-up/webauthn/finish": { name: "accessCookieName", required: true },
   "/internal/metrics/dashboard": { name: "accessCookieName", required: true },
   "/internal/auth-events/timeseries": {
     name: "accessCookieName",
@@ -163,6 +193,7 @@ export async function ensureCookies(
       issuer: opts.issuer,
       audience: opts.audience,
       keyId: opts.keyId,
+      forwardedClientIp: opts.forwardedClientIp,
     });
 
     if (!refreshed?.token) {
@@ -182,6 +213,9 @@ export async function ensureCookies(
       type: "ok",
       user: {
         sub: refreshed.sub,
+        ...(refreshed.sessionId === undefined
+          ? {}
+          : { sessionId: refreshed.sessionId }),
         roles: refreshed.roles,
       },
       setCookies: [
@@ -189,7 +223,12 @@ export async function ensureCookies(
           name: cookieName,
           value: {
             sub: refreshed.sub,
+            ...(refreshed.sessionId === undefined
+              ? {}
+              : { sessionId: refreshed.sessionId }),
             roles: refreshed.roles,
+            email: refreshed.email,
+            phone: refreshed.phone,
           },
           ttl: refreshed.ttl,
           domain: opts.cookieDomain,
@@ -221,6 +260,9 @@ export async function ensureCookies(
       type: "ok",
       user: {
         sub: payload.sub as string,
+        ...(typeof payload.sessionId === "string"
+          ? { sessionId: payload.sessionId }
+          : {}),
         roles: payload.roles as string[] | undefined,
       },
     };

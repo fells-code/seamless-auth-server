@@ -5,6 +5,7 @@ import { verifySignedAuthResponse } from "../verifySignedAuthResponse.js";
 export interface FinishLoginInput {
   body: unknown;
   authorization?: string;
+  forwardedClientIp?: string;
 }
 
 export interface FinishLoginOptions {
@@ -34,6 +35,7 @@ export async function finishLoginHandler(
     method: "POST",
     body: input.body,
     authorization: input.authorization,
+    forwardedClientIp: input.forwardedClientIp,
   });
 
   const data = await up.json();
@@ -58,6 +60,11 @@ export async function finishLoginHandler(
     throw new Error("Signature mismatch with data payload");
   }
 
+  const sessionId =
+    typeof verifiedAccessToken.sid === "string"
+      ? verifiedAccessToken.sid
+      : undefined;
+
   return {
     status: 200,
     body: data,
@@ -66,6 +73,7 @@ export async function finishLoginHandler(
         name: opts.accessCookieName,
         value: {
           sub: data.sub,
+          ...(sessionId === undefined ? {} : { sessionId }),
           roles: data.roles,
           email: data.email,
           phone: data.phone,

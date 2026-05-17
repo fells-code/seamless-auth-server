@@ -2,19 +2,21 @@ import { authFetch } from "../authFetch.js";
 import type { CookiePayload } from "../ensureCookies.js";
 import { verifySignedAuthResponse } from "../verifySignedAuthResponse.js";
 
-export interface PollMagicLinkConfirmationInput {
+export interface VerifyLoginOtpInput {
+  body: unknown;
   authorization?: string;
   forwardedClientIp?: string;
+  kind: "email" | "phone";
 }
 
-export interface PollMagicLinkConfirmationOptions {
+export interface VerifyLoginOtpOptions {
   authServerUrl: string;
   cookieDomain?: string;
   accessCookieName: string;
   refreshCookieName: string;
 }
 
-export interface PollMagicLinkConfirmationResult {
+export interface VerifyLoginOtpResult {
   status: number;
   body?: unknown;
   error?: unknown;
@@ -26,23 +28,21 @@ export interface PollMagicLinkConfirmationResult {
   }[];
 }
 
-export async function pollMagicLinkConfirmationHandler(
-  input: PollMagicLinkConfirmationInput,
-  opts: PollMagicLinkConfirmationOptions,
-): Promise<PollMagicLinkConfirmationResult> {
-  const up = await authFetch(`${opts.authServerUrl}/magic-link/check`, {
-    method: "GET",
+export async function verifyLoginOtpHandler(
+  input: VerifyLoginOtpInput,
+  opts: VerifyLoginOtpOptions,
+): Promise<VerifyLoginOtpResult> {
+  const path =
+    input.kind === "email"
+      ? "otp/verify-login-email-otp"
+      : "otp/verify-login-phone-otp";
+
+  const up = await authFetch(`${opts.authServerUrl}/${path}`, {
+    method: "POST",
+    body: input.body,
     authorization: input.authorization,
     forwardedClientIp: input.forwardedClientIp,
   });
-
-  // 👇 Pending state (important for polling UX)
-  if (up.status === 204) {
-    return {
-      status: 204,
-      body: { message: "Not verified." },
-    };
-  }
 
   const data = await up.json();
 
@@ -53,15 +53,6 @@ export async function pollMagicLinkConfirmationHandler(
     };
   }
 
-  // 👇 Web mode: auth server already handled cookies
-  if (!data?.token || !data?.refreshToken || !data?.sub) {
-    return {
-      status: up.status,
-      body: data,
-    };
-  }
-
-  // 🔐 Verify signed response (same as WebAuthn flow)
   const verifiedAccessToken = await verifySignedAuthResponse(
     data.token,
     opts.authServerUrl,
@@ -81,7 +72,7 @@ export async function pollMagicLinkConfirmationHandler(
       : undefined;
 
   return {
-    status: 200,
+    status: up.status,
     body: data,
     setCookies: [
       {

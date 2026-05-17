@@ -4,6 +4,7 @@ export interface MeOptions {
   authServerUrl: string;
   preAuthCookieName: string;
   authorization?: string;
+  forwardedClientIp?: string;
 }
 
 export interface MeResult {
@@ -20,6 +21,7 @@ export async function meHandler(opts: MeOptions): Promise<MeResult> {
   const up = await authFetch(`${opts.authServerUrl}/users/me`, {
     method: "GET",
     authorization: opts.authorization,
+    forwardedClientIp: opts.forwardedClientIp,
   });
 
   const data = await up.json();

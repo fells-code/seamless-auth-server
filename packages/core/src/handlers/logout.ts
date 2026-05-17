@@ -5,6 +5,7 @@ export interface LogoutOptions {
   accessCookieName: string;
   registrationCookieName: string;
   refreshCookieName: string;
+  forwardedClientIp?: string;
 }
 
 export interface LogoutResult {
@@ -17,6 +18,7 @@ export async function logoutHandler(
 ): Promise<LogoutResult> {
   await authFetch(`${opts.authServerUrl}/logout`, {
     method: "GET",
+    forwardedClientIp: opts.forwardedClientIp,
   });
 
   return {

@@ -6,6 +6,7 @@ export interface FinishRegisterInput {
   authorization?: string;
   headers?: Record<string, string>;
   body: unknown;
+  forwardedClientIp?: string;
 }
 
 export interface FinishRegisterOptions {
@@ -35,6 +36,7 @@ export async function finishRegisterHandler(
     authorization: input.authorization,
     headers: input.headers,
     body: input.body,
+    forwardedClientIp: input.forwardedClientIp,
   });
 
   const data = await up.json();
@@ -59,6 +61,9 @@ export async function finishRegisterHandler(
     throw new Error("Signature mismatch with data payload");
   }
 
+  const sessionId =
+    typeof verified.sid === "string" ? verified.sid : undefined;
+
   return {
     status: 204,
     setCookies: [
@@ -66,6 +71,7 @@ export async function finishRegisterHandler(
         name: opts.accessCookieName,
         value: {
           sub: data.sub,
+          ...(sessionId === undefined ? {} : { sessionId }),
           roles: data.roles,
           email: data.email,
           phone: data.phone,

@@ -6,6 +6,7 @@ export interface GetSeamlessUserOptions {
   cookieSecret: string;
   authorization: string;
   cookieName?: string;
+  forwardedClientIp?: string;
 }
 
 /**
@@ -32,9 +33,8 @@ export async function getSeamlessUser<T = any>(
 
   const response = await authFetch(`${opts.authServerUrl}/users/me`, {
     method: "GET",
-    headers: {
-      Authorization: opts.authorization,
-    },
+    authorization: opts.authorization,
+    forwardedClientIp: opts.forwardedClientIp,
   });
 
   if (!response.ok) return null;

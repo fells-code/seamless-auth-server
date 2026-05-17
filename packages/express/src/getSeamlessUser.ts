@@ -5,6 +5,7 @@ import {
 } from "@seamless-auth/core";
 import { buildServiceAuthorization } from "./internal/buildAuthorization";
 import { SeamlessAuthServerOptions } from "./createServer";
+import { buildForwardedClientIp } from "./internal/buildForwardedClientIp";
 
 export async function getSeamlessUser(
   req: Request,
@@ -17,5 +18,6 @@ export async function getSeamlessUser(
     cookieSecret: opts.cookieSecret,
     cookieName: opts.accessCookieName ?? "seamless-access",
     authorization,
+    forwardedClientIp: buildForwardedClientIp(req),
   } as GetSeamlessUserOptions);
 }

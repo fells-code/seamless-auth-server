@@ -4,6 +4,7 @@ export interface ServiceTokenOptions {
   issuer: string;
   audience: string;
   subject: string;
+  sessionId?: string;
   refreshToken?: string;
   serviceSecret: string;
   keyId: string;
@@ -15,6 +16,7 @@ export function createServiceToken(opts: ServiceTokenOptions): string {
       iss: opts.issuer,
       aud: opts.audience,
       sub: opts.subject,
+      ...(opts.sessionId === undefined ? {} : { sid: opts.sessionId }),
       refreshToken: opts.refreshToken,
       iat: Math.floor(Date.now() / 1000),
     },

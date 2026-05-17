@@ -1,14 +1,15 @@
 import { Request, Response } from "express";
-import { finishLoginHandler } from "@seamless-auth/core/handlers/finishLogin";
+import { verifyLoginOtpHandler } from "@seamless-auth/core/handlers/verifyLoginOtpHandler";
 import { setSessionCookie } from "../internal/cookie";
 import { buildServiceAuthorization } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { SeamlessAuthServerOptions } from "../createServer";
 
-export async function finishLogin(
+export async function verifyLoginOtp(
   req: Request & { cookiePayload?: any },
   res: Response,
   opts: SeamlessAuthServerOptions,
+  kind: "email" | "phone",
 ) {
   const cookieSigner = {
     secret: opts.cookieSecret,
@@ -19,14 +20,13 @@ export async function finishLogin(
         : ("lax" as "none" | "lax"),
   };
 
-  const authorization = buildServiceAuthorization(req, opts);
-
-  const result = await finishLoginHandler(
+  const result = await verifyLoginOtpHandler(
     {
       body: req.body,
-      authorization,
+      authorization: buildServiceAuthorization(req, opts),
       forwardedClientIp: buildForwardedClientIp(req),
-    } as any,
+      kind,
+    },
     {
       authServerUrl: opts.authServerUrl,
       cookieDomain: opts.cookieDomain,
@@ -58,5 +58,5 @@ export async function finishLogin(
     return res.status(result.status).json(result.error);
   }
 
-  res.status(result.status).json(result.body).end();
+  return res.status(result.status).json(result.body);
 }

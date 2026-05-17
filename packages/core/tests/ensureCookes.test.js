@@ -85,9 +85,12 @@ describe("ensureCookies", () => {
 
     refreshAccessTokenMock.mockResolvedValue({
       sub: "user-123",
+      sessionId: "session-123",
       token: "new-access",
       refreshToken: "new-refresh",
       roles: ["user"],
+      email: "test@example.com",
+      phone: "+14155552671",
       ttl: 300,
       refreshTtl: 3600,
     });
@@ -102,11 +105,19 @@ describe("ensureCookies", () => {
 
     expect(result.type).toBe("ok");
     expect(result.user?.sub).toBe("user-123");
+    expect(result.user?.sessionId).toBe("session-123");
 
     expect(result.setCookies).toHaveLength(2);
 
     const [accessCookie, refreshCookie] = result.setCookies;
     expect(accessCookie.name).toBe("access");
+    expect(accessCookie.value).toEqual({
+      sub: "user-123",
+      sessionId: "session-123",
+      roles: ["user"],
+      email: "test@example.com",
+      phone: "+14155552671",
+    });
     expect(refreshCookie.name).toBe("refresh");
   });
 
@@ -143,5 +154,76 @@ describe("ensureCookies", () => {
 
     expect(result.type).toBe("error");
     expect(result.status).toBe(401);
+  });
+
+  it("requires the pre-auth cookie for magic-link continuation routes", async () => {
+    const { ensureCookies } = await import("../dist/ensureCookies.js");
+
+    verifyCookieJwtMock.mockReturnValue({
+      sub: "user-123",
+      roles: ["user"],
+    });
+
+    const result = await ensureCookies(
+      {
+        path: "/magic-link",
+        cookies: { preauth: "valid.preauth.jwt" },
+      },
+      BASE_OPTS,
+    );
+
+    expect(result.type).toBe("ok");
+    expect(result.user).toEqual({
+      sub: "user-123",
+      roles: ["user"],
+    });
+  });
+
+  it("requires the pre-auth cookie for login OTP routes", async () => {
+    const { ensureCookies } = await import("../dist/ensureCookies.js");
+
+    verifyCookieJwtMock.mockReturnValue({
+      sub: "user-123",
+      roles: ["user"],
+    });
+
+    const result = await ensureCookies(
+      {
+        path: "/otp/generate-login-email-otp",
+        cookies: { preauth: "valid.preauth.jwt" },
+      },
+      BASE_OPTS,
+    );
+
+    expect(result.type).toBe("ok");
+    expect(result.user).toEqual({
+      sub: "user-123",
+      roles: ["user"],
+    });
+  });
+
+  it("requires the access cookie for step-up routes", async () => {
+    const { ensureCookies } = await import("../dist/ensureCookies.js");
+
+    verifyCookieJwtMock.mockReturnValue({
+      sub: "user-123",
+      sessionId: "session-123",
+      roles: ["user"],
+    });
+
+    const result = await ensureCookies(
+      {
+        path: "/step-up/webauthn/start",
+        cookies: { access: "valid.access.jwt" },
+      },
+      BASE_OPTS,
+    );
+
+    expect(result.type).toBe("ok");
+    expect(result.user).toEqual({
+      sub: "user-123",
+      sessionId: "session-123",
+      roles: ["user"],
+    });
   });
 });

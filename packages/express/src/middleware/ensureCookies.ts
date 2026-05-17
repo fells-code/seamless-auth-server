@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { ensureCookies, EnsureCookiesResult } from "@seamless-auth/core";
 
+import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { setSessionCookie, clearAllCookies } from "../internal/cookie";
 
 export interface EnsureCookiesMiddlewareOptions {
@@ -59,7 +60,8 @@ export function createEnsureCookiesMiddleware(
         issuer: opts.issuer,
         audience: opts.audience,
         keyId: opts.keyId,
-      },
+        forwardedClientIp: buildForwardedClientIp(req),
+      } as any,
     );
 
     applyResult(res, req, result, opts, cookieSigner);

@@ -58,6 +58,8 @@ describe("refreshAccessToken", () => {
         token: "new-access",
         refreshToken: "new-refresh",
         roles: ["user"],
+        email: "test@example.com",
+        phone: "+14155552671",
         ttl: 300,
         refreshTtl: 3600,
       }),
@@ -73,12 +75,111 @@ describe("refreshAccessToken", () => {
     });
 
     expect(result.token).toBe("new-access");
+    expect(result.email).toBe("test@example.com");
+    expect(createServiceTokenMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subject: "user-123",
+        refreshToken: "refresh-token",
+      }),
+    );
     expect(authFetchMock).toHaveBeenCalledWith(
       "https://auth.example.com/refresh",
       expect.objectContaining({
-        method: "GET",
-        headers: { Authorization: "Bearer service.jwt" },
+        method: "POST",
+        authorization: "Bearer refresh-token",
+        serviceAuthorization: "Bearer service.jwt",
       }),
     );
+  });
+
+  it("deduplicates concurrent refresh calls for the same refresh cookie", async () => {
+    const { refreshAccessToken } =
+      await import("../dist/refreshAccessToken.js");
+
+    verifyRefreshCookieMock.mockReturnValue({
+      sub: "user-123",
+      refreshToken: "refresh-token",
+    });
+
+    authFetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        sub: "user-123",
+        token: "new-access",
+        refreshToken: "new-refresh",
+        roles: ["user"],
+        email: "test@example.com",
+        phone: "+14155552671",
+        ttl: 300,
+        refreshTtl: 3600,
+      }),
+    });
+
+    const [first, second] = await Promise.all([
+      refreshAccessToken("good-concurrent.cookie", {
+        authServerUrl: "https://auth.example.com",
+        cookieSecret: "cookie-secret",
+        serviceSecret: "service-secret",
+        issuer: "https://frontend.example.com",
+        audience: "https://auth.example.com",
+        keyId: "dev-main",
+      }),
+      refreshAccessToken("good-concurrent.cookie", {
+        authServerUrl: "https://auth.example.com",
+        cookieSecret: "cookie-secret",
+        serviceSecret: "service-secret",
+        issuer: "https://frontend.example.com",
+        audience: "https://auth.example.com",
+        keyId: "dev-main",
+      }),
+    ]);
+
+    expect(first).toEqual(second);
+    expect(authFetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("reuses the freshly-rotated result for an immediate follow-up call with the stale cookie", async () => {
+    const { refreshAccessToken } =
+      await import("../dist/refreshAccessToken.js");
+
+    verifyRefreshCookieMock.mockReturnValue({
+      sub: "user-123",
+      refreshToken: "refresh-token",
+    });
+
+    authFetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        sub: "user-123",
+        token: "new-access",
+        refreshToken: "new-refresh",
+        roles: ["user"],
+        email: "test@example.com",
+        phone: "+14155552671",
+        ttl: 300,
+        refreshTtl: 3600,
+      }),
+    });
+
+    const first = await refreshAccessToken("good-sequential.cookie", {
+      authServerUrl: "https://auth.example.com",
+      cookieSecret: "cookie-secret",
+      serviceSecret: "service-secret",
+      issuer: "https://frontend.example.com",
+      audience: "https://auth.example.com",
+      keyId: "dev-main",
+    });
+
+    const second = await refreshAccessToken("good-sequential.cookie", {
+      authServerUrl: "https://auth.example.com",
+      cookieSecret: "cookie-secret",
+      serviceSecret: "service-secret",
+      issuer: "https://frontend.example.com",
+      audience: "https://auth.example.com",
+      keyId: "dev-main",
+    });
+
+    expect(first).toEqual(second);
+    expect(authFetchMock).toHaveBeenCalledTimes(1);
   });
 });

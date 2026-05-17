@@ -6,6 +6,7 @@ export interface VerifyMagicLinkInput {
 
 export interface VerifyMagicLinkOptions {
   authServerUrl: string;
+  forwardedClientIp?: string;
 }
 
 export interface VerifyMagicLinkResult {
@@ -22,6 +23,7 @@ export async function verifyMagicLinkHandler(
     `${opts.authServerUrl}/magic-link/verify/${input.token}`,
     {
       method: "GET",
+      forwardedClientIp: opts.forwardedClientIp,
     },
   );
 

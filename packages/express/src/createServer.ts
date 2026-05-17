@@ -8,18 +8,16 @@ import { login } from "./handlers/login";
 import { finishLogin } from "./handlers/finishLogin";
 import { register } from "./handlers/register";
 import { requestOtp } from "./handlers/requestOtp";
+import { verifyLoginOtp } from "./handlers/verifyLoginOtp";
 import { finishRegister } from "./handlers/finishRegister";
 import { me } from "./handlers/me";
 import { logout } from "./handlers/logout";
 import { pollMagicLinkConfirmation } from "./handlers/pollMagicLinkConfirmation";
 import { requestMagicLink } from "./handlers/requestMagicLink";
 import * as admin from "./handlers/admin";
-import {
-  authFetch,
-  EnsureCookiesOptions,
-  AuthFetchOptions,
-} from "@seamless-auth/core";
+import { authFetch, AuthFetchOptions } from "@seamless-auth/core";
 import { buildServiceAuthorization } from "./internal/buildAuthorization";
+import { buildForwardedClientIp } from "./internal/buildForwardedClientIp";
 import { bootstrapAdminInvite } from "./handlers/bootstrapAdmininvite";
 import {
   getAvailableRoles,
@@ -79,6 +77,28 @@ export interface SeamlessAuthUser {
   iat?: number;
   exp?: number;
 }
+
+function buildProxyQueryString(queryInput: Request["query"]): string {
+  const query = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(queryInput)) {
+    if (typeof value === "string") {
+      query.append(key, value);
+      continue;
+    }
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (typeof item === "string") {
+          query.append(key, item);
+        }
+      }
+    }
+  }
+
+  return query.toString();
+}
+
 /**
  * Creates an Express Router that proxies all authentication traffic to a Seamless Auth server.
  *
@@ -194,14 +214,16 @@ export function createSeamlessAuthServer(
       }
 
       const authorization = buildServiceAuthorization(req, resolvedOpts);
+      const forwardedClientIp = buildForwardedClientIp(req);
       const options =
         method == "GET"
-          ? { method, authorization }
-          : { method, authorization, body: req.body };
+          ? { method, authorization, forwardedClientIp }
+          : { method, authorization, forwardedClientIp, body: req.body };
 
+      const queryString = buildProxyQueryString(req.query);
       const upstream = await authFetch(
-        `${resolvedOpts.authServerUrl}/${path}`,
-        options,
+        `${resolvedOpts.authServerUrl}/${path}${queryString ? `?${queryString}` : ""}`,
+        options as any,
       );
 
       const data = await upstream.json();
@@ -221,7 +243,8 @@ export function createSeamlessAuthServer(
       issuer: resolvedOpts.issuer,
       audience: resolvedOpts.authServerUrl,
       keyId: resolvedOpts.jwksKid,
-    } as EnsureCookiesOptions),
+      forwardedClientIp: undefined,
+    } as any),
   );
 
   r.post(
@@ -248,14 +271,24 @@ export function createSeamlessAuthServer(
     "/otp/verify-email-otp",
     proxyWithIdentity("otp/verify-email-otp", "preAuth"),
   );
-
-  r.get(
-    "/otp/generate-phone-otp",
-    (req, res) => requestOtp(req, res, resolvedOpts, "phone"),
+  r.post("/otp/verify-login-phone-otp", (req, res) =>
+    verifyLoginOtp(req, res, resolvedOpts, "phone"),
   );
-  r.get(
-    "/otp/generate-email-otp",
-    (req, res) => requestOtp(req, res, resolvedOpts, "email"),
+  r.post("/otp/verify-login-email-otp", (req, res) =>
+    verifyLoginOtp(req, res, resolvedOpts, "email"),
+  );
+
+  r.get("/otp/generate-phone-otp", (req, res) =>
+    requestOtp(req, res, resolvedOpts, "phone"),
+  );
+  r.get("/otp/generate-email-otp", (req, res) =>
+    requestOtp(req, res, resolvedOpts, "email"),
+  );
+  r.get("/otp/generate-login-phone-otp", (req, res) =>
+    requestOtp(req, res, resolvedOpts, "phone", "login"),
+  );
+  r.get("/otp/generate-login-email-otp", (req, res) =>
+    requestOtp(req, res, resolvedOpts, "email", "login"),
   );
 
   r.post("/login", (req, res) => login(req, res, resolvedOpts));
@@ -266,6 +299,19 @@ export function createSeamlessAuthServer(
   r.get("/users/me", (req, res) => me(req, res, resolvedOpts));
   r.get("/logout", (req, res) => logout(req, res, resolvedOpts));
 
+  r.get(
+    "/step-up/status",
+    proxyWithIdentity("step-up/status", "access", "GET"),
+  );
+  r.post(
+    "/step-up/webauthn/start",
+    proxyWithIdentity("step-up/webauthn/start", "access"),
+  );
+  r.post(
+    "/step-up/webauthn/finish",
+    proxyWithIdentity("step-up/webauthn/finish", "access"),
+  );
+
   r.post("/users/update", proxyWithIdentity("users/update", "access"));
   r.post(
     "/users/credentials",
@@ -275,13 +321,14 @@ export function createSeamlessAuthServer(
     "/users/credentials",
     proxyWithIdentity("users/credentials", "access"),
   );
-  r.get("/magic-link", (req, res) =>
-    requestMagicLink(req, res, resolvedOpts),
-  );
+  r.get("/magic-link", (req, res) => requestMagicLink(req, res, resolvedOpts));
   r.get("/magic-link/verify/:token", async (req, res) => {
     const upstream = await authFetch(
       `${resolvedOpts.authServerUrl}/magic-link/verify/${req.params.token}`,
-      { method: "GET" },
+      {
+        method: "GET",
+        forwardedClientIp: buildForwardedClientIp(req),
+      } as any,
     );
 
     const data = await upstream.json();

@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { loginHandler } from "@seamless-auth/core/handlers/login";
 import { setSessionCookie } from "../internal/cookie";
+import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { SeamlessAuthServerOptions } from "../createServer";
 
 export async function login(
@@ -23,7 +24,8 @@ export async function login(
       authServerUrl: opts.authServerUrl,
       cookieDomain: opts.cookieDomain,
       preAuthCookieName: opts.preAuthCookieName!,
-    },
+      forwardedClientIp: buildForwardedClientIp(req),
+    } as any,
   );
 
   if (!cookieSigner.secret) {
@@ -47,6 +49,10 @@ export async function login(
 
   if (result.error) {
     return res.status(result.status).json(result.error);
+  }
+
+  if (result.body) {
+    return res.status(result.status).json(result.body);
   }
 
   res.status(result.status).end();

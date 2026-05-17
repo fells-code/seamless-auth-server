@@ -10,11 +10,17 @@ export interface LoginOptions {
   authServerUrl: string;
   cookieDomain?: string;
   preAuthCookieName: string;
+  forwardedClientIp?: string;
 }
 
 export interface LoginResult {
   status: number;
-  error?: string;
+  body?: {
+    message?: string;
+    identifierType?: string;
+    loginMethods?: string[];
+  };
+  error?: unknown;
   setCookies?: {
     name: string;
     value: CookiePayload;
@@ -30,6 +36,7 @@ export async function loginHandler(
   const up = await authFetch(`${opts.authServerUrl}/login`, {
     method: "POST",
     body: input.body,
+    forwardedClientIp: opts.forwardedClientIp,
   });
 
   const data = await up.json();
@@ -54,8 +61,23 @@ export async function loginHandler(
     throw new Error("Signature mismatch with data payload");
   }
 
+  const body = {
+    ...(typeof data.message === "string" ? { message: data.message } : {}),
+    ...(typeof data.identifierType === "string"
+      ? { identifierType: data.identifierType }
+      : {}),
+    ...(Array.isArray(data.loginMethods)
+      ? {
+          loginMethods: data.loginMethods.filter(
+            (item: unknown) => typeof item === "string",
+          ),
+        }
+      : {}),
+  };
+
   return {
-    status: 204,
+    status: up.status,
+    body,
     setCookies: [
       {
         name: opts.preAuthCookieName,
