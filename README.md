@@ -80,6 +80,8 @@ It is also the natural initializer boundary for adopter-supplied auth messaging 
 - custom auth-message handlers
 - optional auth template overrides
 
+For WebAuthn PRF flows, the adapter proxies PRF registration query flags and assertion request bodies to the Seamless Auth API. PRF outputs remain browser-only and are never handled by the server adapter.
+
 Location:
 
 ```

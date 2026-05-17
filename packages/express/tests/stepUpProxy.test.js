@@ -22,6 +22,15 @@ function createAccessCookie(subject = "user-123") {
   return `seamless-access=${token}`;
 }
 
+function createRegistrationCookie(subject = "user-123") {
+  const token = jwt.sign({ sub: subject, roles: ["user"] }, "cookie-secret", {
+    algorithm: "HS256",
+    expiresIn: "300s",
+  });
+
+  return `seamless-ephemeral=${token}`;
+}
+
 function createApp() {
   const app = express();
 
@@ -125,6 +134,61 @@ describe("step-up proxy routes", () => {
           Authorization: expect.stringMatching(/^Bearer /),
           "x-seamless-service-token": expect.stringMatching(/^Bearer /),
         }),
+      }),
+    );
+  });
+
+  it("proxies step-up start with PRF request body", async () => {
+    global.fetch.mockResolvedValue(
+      createJsonResponse(200, {
+        challenge: "challenge",
+        extensions: {
+          prf: {
+            eval: {
+              first: "salt",
+            },
+          },
+        },
+      }),
+    );
+
+    const body = { prf: { salt: "salt" }, credentialId: "credential-id" };
+
+    const res = await request(createApp())
+      .post("/auth/step-up/webauthn/start")
+      .set("Cookie", createAccessCookie())
+      .send(body);
+
+    expect(res.status).toBe(200);
+    expect(global.fetch).toHaveBeenCalledWith(
+      "https://auth.example.com/step-up/webauthn/start",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    );
+  });
+
+  it("proxies passkey registration start with PRF query options", async () => {
+    global.fetch.mockResolvedValue(
+      createJsonResponse(200, {
+        challenge: "challenge",
+        extensions: {
+          prf: {},
+        },
+      }),
+    );
+
+    const res = await request(createApp())
+      .get("/auth/webAuthn/register/start")
+      .query({ requirePrf: "true" })
+      .set("Cookie", createRegistrationCookie());
+
+    expect(res.status).toBe(200);
+    expect(global.fetch).toHaveBeenCalledWith(
+      "https://auth.example.com/webAuthn/register/start?requirePrf=true",
+      expect.objectContaining({
+        method: "GET",
       }),
     );
   });
