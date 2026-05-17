@@ -13,6 +13,7 @@ export * from "./handlers/finishRegister.js";
 export * from "./handlers/logout.js";
 export * from "./handlers/me.js";
 export * from "./handlers/requestOtpHandler.js";
+export * from "./handlers/verifyLoginOtpHandler.js";
 export * from "./handlers/verifyMagicLinkHandler.js";
 export * from "./handlers/requestMagicLinkHandler.js";
 export * from "./handlers/pollMagicLinkConfirmationHandler.js";

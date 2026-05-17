@@ -10,10 +10,12 @@ export async function requestOtp(
   res: Response,
   opts: SeamlessAuthServerOptions,
   kind: "email" | "phone",
+  flow: "registration" | "login" = "registration",
 ) {
   const result = await requestOtpHandler(
     {
       kind,
+      flow,
       authorization: buildServiceAuthorization(req, opts),
     },
     {
