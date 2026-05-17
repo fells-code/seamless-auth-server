@@ -81,6 +81,22 @@ const COOKIE_REQUIREMENTS: Record<
     name: "registrationCookieName",
     required: true,
   },
+  "/otp/verify-login-email-otp": {
+    name: "preAuthCookieName",
+    required: true,
+  },
+  "/otp/verify-login-phone-otp": {
+    name: "preAuthCookieName",
+    required: true,
+  },
+  "/otp/generate-login-email-otp": {
+    name: "preAuthCookieName",
+    required: true,
+  },
+  "/otp/generate-login-phone-otp": {
+    name: "preAuthCookieName",
+    required: true,
+  },
   "/magic-link": {
     name: "preAuthCookieName",
     required: true,

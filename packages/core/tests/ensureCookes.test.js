@@ -179,6 +179,29 @@ describe("ensureCookies", () => {
     });
   });
 
+  it("requires the pre-auth cookie for login OTP routes", async () => {
+    const { ensureCookies } = await import("../dist/ensureCookies.js");
+
+    verifyCookieJwtMock.mockReturnValue({
+      sub: "user-123",
+      roles: ["user"],
+    });
+
+    const result = await ensureCookies(
+      {
+        path: "/otp/generate-login-email-otp",
+        cookies: { preauth: "valid.preauth.jwt" },
+      },
+      BASE_OPTS,
+    );
+
+    expect(result.type).toBe("ok");
+    expect(result.user).toEqual({
+      sub: "user-123",
+      roles: ["user"],
+    });
+  });
+
   it("requires the access cookie for step-up routes", async () => {
     const { ensureCookies } = await import("../dist/ensureCookies.js");
 

@@ -8,6 +8,7 @@ import { login } from "./handlers/login";
 import { finishLogin } from "./handlers/finishLogin";
 import { register } from "./handlers/register";
 import { requestOtp } from "./handlers/requestOtp";
+import { verifyLoginOtp } from "./handlers/verifyLoginOtp";
 import { finishRegister } from "./handlers/finishRegister";
 import { me } from "./handlers/me";
 import { logout } from "./handlers/logout";
@@ -270,12 +271,24 @@ export function createSeamlessAuthServer(
     "/otp/verify-email-otp",
     proxyWithIdentity("otp/verify-email-otp", "preAuth"),
   );
+  r.post("/otp/verify-login-phone-otp", (req, res) =>
+    verifyLoginOtp(req, res, resolvedOpts, "phone"),
+  );
+  r.post("/otp/verify-login-email-otp", (req, res) =>
+    verifyLoginOtp(req, res, resolvedOpts, "email"),
+  );
 
   r.get("/otp/generate-phone-otp", (req, res) =>
     requestOtp(req, res, resolvedOpts, "phone"),
   );
   r.get("/otp/generate-email-otp", (req, res) =>
     requestOtp(req, res, resolvedOpts, "email"),
+  );
+  r.get("/otp/generate-login-phone-otp", (req, res) =>
+    requestOtp(req, res, resolvedOpts, "phone", "login"),
+  );
+  r.get("/otp/generate-login-email-otp", (req, res) =>
+    requestOtp(req, res, resolvedOpts, "email", "login"),
   );
 
   r.post("/login", (req, res) => login(req, res, resolvedOpts));
