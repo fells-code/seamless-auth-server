@@ -75,6 +75,11 @@ export async function pollMagicLinkConfirmationHandler(
     throw new Error("Signature mismatch with data payload");
   }
 
+  const sessionId =
+    typeof verifiedAccessToken.sid === "string"
+      ? verifiedAccessToken.sid
+      : undefined;
+
   return {
     status: 200,
     body: data,
@@ -83,6 +88,7 @@ export async function pollMagicLinkConfirmationHandler(
         name: opts.accessCookieName,
         value: {
           sub: data.sub,
+          ...(sessionId === undefined ? {} : { sessionId }),
           roles: data.roles,
           email: data.email,
           phone: data.phone,

@@ -14,11 +14,7 @@ import { logout } from "./handlers/logout";
 import { pollMagicLinkConfirmation } from "./handlers/pollMagicLinkConfirmation";
 import { requestMagicLink } from "./handlers/requestMagicLink";
 import * as admin from "./handlers/admin";
-import {
-  authFetch,
-  EnsureCookiesOptions,
-  AuthFetchOptions,
-} from "@seamless-auth/core";
+import { authFetch, AuthFetchOptions } from "@seamless-auth/core";
 import { buildServiceAuthorization } from "./internal/buildAuthorization";
 import { buildForwardedClientIp } from "./internal/buildForwardedClientIp";
 import { bootstrapAdminInvite } from "./handlers/bootstrapAdmininvite";
@@ -252,13 +248,11 @@ export function createSeamlessAuthServer(
     proxyWithIdentity("otp/verify-email-otp", "preAuth"),
   );
 
-  r.get(
-    "/otp/generate-phone-otp",
-    (req, res) => requestOtp(req, res, resolvedOpts, "phone"),
+  r.get("/otp/generate-phone-otp", (req, res) =>
+    requestOtp(req, res, resolvedOpts, "phone"),
   );
-  r.get(
-    "/otp/generate-email-otp",
-    (req, res) => requestOtp(req, res, resolvedOpts, "email"),
+  r.get("/otp/generate-email-otp", (req, res) =>
+    requestOtp(req, res, resolvedOpts, "email"),
   );
 
   r.post("/login", (req, res) => login(req, res, resolvedOpts));
@@ -269,6 +263,19 @@ export function createSeamlessAuthServer(
   r.get("/users/me", (req, res) => me(req, res, resolvedOpts));
   r.get("/logout", (req, res) => logout(req, res, resolvedOpts));
 
+  r.get(
+    "/step-up/status",
+    proxyWithIdentity("step-up/status", "access", "GET"),
+  );
+  r.post(
+    "/step-up/webauthn/start",
+    proxyWithIdentity("step-up/webauthn/start", "access"),
+  );
+  r.post(
+    "/step-up/webauthn/finish",
+    proxyWithIdentity("step-up/webauthn/finish", "access"),
+  );
+
   r.post("/users/update", proxyWithIdentity("users/update", "access"));
   r.post(
     "/users/credentials",
@@ -278,9 +285,7 @@ export function createSeamlessAuthServer(
     "/users/credentials",
     proxyWithIdentity("users/credentials", "access"),
   );
-  r.get("/magic-link", (req, res) =>
-    requestMagicLink(req, res, resolvedOpts),
-  );
+  r.get("/magic-link", (req, res) => requestMagicLink(req, res, resolvedOpts));
   r.get("/magic-link/verify/:token", async (req, res) => {
     const upstream = await authFetch(
       `${resolvedOpts.authServerUrl}/magic-link/verify/${req.params.token}`,

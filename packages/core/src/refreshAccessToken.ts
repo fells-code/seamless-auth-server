@@ -14,6 +14,7 @@ export interface RefreshAccessTokenOptions {
 
 type RefreshAccessTokenResult = {
   sub: string;
+  sessionId?: string;
   token: string;
   refreshToken: string;
   roles?: string[];
