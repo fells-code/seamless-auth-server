@@ -2,23 +2,22 @@ import { authFetch } from "../authFetch.js";
 import type { CookiePayload } from "../ensureCookies.js";
 import { verifySignedAuthResponse } from "../verifySignedAuthResponse.js";
 
-export interface FinishLoginInput {
-  body: unknown;
+export interface SwitchOrganizationInput {
+  organizationId: string;
   authorization?: string;
   forwardedClientIp?: string;
 }
 
-export interface FinishLoginOptions {
+export interface SwitchOrganizationOptions {
   authServerUrl: string;
   cookieDomain?: string;
   accessCookieName: string;
-  refreshCookieName: string;
 }
 
-export interface FinishLoginResult {
+export interface SwitchOrganizationResult {
   status: number;
   body?: unknown;
-  error?: string;
+  error?: unknown;
   setCookies?: {
     name: string;
     value: CookiePayload;
@@ -27,16 +26,18 @@ export interface FinishLoginResult {
   }[];
 }
 
-export async function finishLoginHandler(
-  input: FinishLoginInput,
-  opts: FinishLoginOptions,
-): Promise<FinishLoginResult> {
-  const up = await authFetch(`${opts.authServerUrl}/webAuthn/login/finish`, {
-    method: "POST",
-    body: input.body,
-    authorization: input.authorization,
-    forwardedClientIp: input.forwardedClientIp,
-  });
+export async function switchOrganizationHandler(
+  input: SwitchOrganizationInput,
+  opts: SwitchOrganizationOptions,
+): Promise<SwitchOrganizationResult> {
+  const up = await authFetch(
+    `${opts.authServerUrl}/organizations/${encodeURIComponent(input.organizationId)}/switch`,
+    {
+      method: "POST",
+      authorization: input.authorization,
+      forwardedClientIp: input.forwardedClientIp,
+    },
+  );
 
   const data = await up.json();
 
@@ -44,6 +45,13 @@ export async function finishLoginHandler(
     return {
       status: up.status,
       error: data,
+    };
+  }
+
+  if (!data?.token || !data?.sub) {
+    return {
+      status: up.status,
+      body: data,
     };
   }
 
@@ -66,7 +74,7 @@ export async function finishLoginHandler(
       : undefined;
 
   return {
-    status: 200,
+    status: up.status,
     body: data,
     setCookies: [
       {
@@ -80,15 +88,6 @@ export async function finishLoginHandler(
           organizationId: data.organizationId ?? null,
         },
         ttl: data.ttl,
-        domain: opts.cookieDomain,
-      },
-      {
-        name: opts.refreshCookieName,
-        value: {
-          sub: data.sub,
-          refreshToken: data.refreshToken,
-        },
-        ttl: data.refreshTtl,
         domain: opts.cookieDomain,
       },
     ],
