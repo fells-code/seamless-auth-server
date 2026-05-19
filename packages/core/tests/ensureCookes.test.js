@@ -91,6 +91,7 @@ describe("ensureCookies", () => {
       roles: ["user"],
       email: "test@example.com",
       phone: "+14155552671",
+      organizationId: "org-123",
       ttl: 300,
       refreshTtl: 3600,
     });
@@ -117,6 +118,7 @@ describe("ensureCookies", () => {
       roles: ["user"],
       email: "test@example.com",
       phone: "+14155552671",
+      organizationId: "org-123",
     });
     expect(refreshCookie.name).toBe("refresh");
   });
@@ -214,6 +216,31 @@ describe("ensureCookies", () => {
     const result = await ensureCookies(
       {
         path: "/step-up/webauthn/start",
+        cookies: { access: "valid.access.jwt" },
+      },
+      BASE_OPTS,
+    );
+
+    expect(result.type).toBe("ok");
+    expect(result.user).toEqual({
+      sub: "user-123",
+      sessionId: "session-123",
+      roles: ["user"],
+    });
+  });
+
+  it("requires the access cookie for organization routes", async () => {
+    const { ensureCookies } = await import("../dist/ensureCookies.js");
+
+    verifyCookieJwtMock.mockReturnValue({
+      sub: "user-123",
+      sessionId: "session-123",
+      roles: ["user"],
+    });
+
+    const result = await ensureCookies(
+      {
+        path: "/organizations/org-123/members",
         cookies: { access: "valid.access.jwt" },
       },
       BASE_OPTS,

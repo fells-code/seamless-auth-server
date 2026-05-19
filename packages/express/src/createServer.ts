@@ -9,6 +9,7 @@ import { finishLogin } from "./handlers/finishLogin";
 import { register } from "./handlers/register";
 import { requestOtp } from "./handlers/requestOtp";
 import { verifyLoginOtp } from "./handlers/verifyLoginOtp";
+import { switchOrganization } from "./handlers/switchOrganization";
 import { finishRegister } from "./handlers/finishRegister";
 import { me } from "./handlers/me";
 import { logout } from "./handlers/logout";
@@ -99,6 +100,11 @@ function buildProxyQueryString(queryInput: Request["query"]): string {
   return query.toString();
 }
 
+function routeParam(req: Request, name: string): string {
+  const value = req.params[name];
+  return Array.isArray(value) ? value[0] : value;
+}
+
 /**
  * Creates an Express Router that proxies all authentication traffic to a Seamless Auth server.
  *
@@ -175,7 +181,7 @@ export function createSeamlessAuthServer(
 
   const proxyWithIdentity =
     (
-      path: string,
+      path: string | ((req: Request) => string),
       identity: "preAuth" | "access" | "register",
       method: AuthFetchOptions["method"] = "POST",
     ) =>
@@ -221,8 +227,9 @@ export function createSeamlessAuthServer(
           : { method, authorization, forwardedClientIp, body: req.body };
 
       const queryString = buildProxyQueryString(req.query);
+      const resolvedPath = typeof path === "function" ? path(req) : path;
       const upstream = await authFetch(
-        `${resolvedOpts.authServerUrl}/${path}${queryString ? `?${queryString}` : ""}`,
+        `${resolvedOpts.authServerUrl}/${resolvedPath}${queryString ? `?${queryString}` : ""}`,
         options as any,
       );
 
@@ -298,6 +305,61 @@ export function createSeamlessAuthServer(
 
   r.get("/users/me", (req, res) => me(req, res, resolvedOpts));
   r.get("/logout", (req, res) => logout(req, res, resolvedOpts));
+
+  r.get("/organizations", proxyWithIdentity("organizations", "access", "GET"));
+  r.post("/organizations", proxyWithIdentity("organizations", "access"));
+  r.get(
+    "/organizations/:organizationId",
+    proxyWithIdentity(
+      req => `organizations/${encodeURIComponent(routeParam(req, "organizationId"))}`,
+      "access",
+      "GET",
+    ),
+  );
+  r.patch(
+    "/organizations/:organizationId",
+    proxyWithIdentity(
+      req => `organizations/${encodeURIComponent(routeParam(req, "organizationId"))}`,
+      "access",
+      "PATCH",
+    ),
+  );
+  r.post("/organizations/:organizationId/switch", (req, res) =>
+    switchOrganization(req, res, resolvedOpts),
+  );
+  r.get(
+    "/organizations/:organizationId/members",
+    proxyWithIdentity(
+      req => `organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/members`,
+      "access",
+      "GET",
+    ),
+  );
+  r.post(
+    "/organizations/:organizationId/members",
+    proxyWithIdentity(
+      req => `organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/members`,
+      "access",
+    ),
+  );
+  r.patch(
+    "/organizations/:organizationId/members/:userId",
+    proxyWithIdentity(
+      req =>
+        `organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/members/${encodeURIComponent(routeParam(req, "userId"))}`,
+      "access",
+      "PATCH",
+    ),
+  );
+  r.delete(
+    "/organizations/:organizationId/members/:userId",
+    proxyWithIdentity(
+      req =>
+        `organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/members/${encodeURIComponent(routeParam(req, "userId"))}`,
+      "access",
+      "DELETE",
+    ),
+  );
 
   r.get(
     "/step-up/status",
@@ -398,6 +460,66 @@ export function createSeamlessAuthServer(
   );
   r.get("/admin/credential-count", (req, res) =>
     admin.getCredentialCount(req, res, resolvedOpts),
+  );
+
+  r.get(
+    "/admin/organizations",
+    proxyWithIdentity("admin/organizations", "access", "GET"),
+  );
+  r.post(
+    "/admin/organizations",
+    proxyWithIdentity("admin/organizations", "access"),
+  );
+  r.get(
+    "/admin/organizations/:organizationId",
+    proxyWithIdentity(
+      req => `admin/organizations/${encodeURIComponent(routeParam(req, "organizationId"))}`,
+      "access",
+      "GET",
+    ),
+  );
+  r.patch(
+    "/admin/organizations/:organizationId",
+    proxyWithIdentity(
+      req => `admin/organizations/${encodeURIComponent(routeParam(req, "organizationId"))}`,
+      "access",
+      "PATCH",
+    ),
+  );
+  r.get(
+    "/admin/organizations/:organizationId/members",
+    proxyWithIdentity(
+      req =>
+        `admin/organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/members`,
+      "access",
+      "GET",
+    ),
+  );
+  r.post(
+    "/admin/organizations/:organizationId/members",
+    proxyWithIdentity(
+      req =>
+        `admin/organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/members`,
+      "access",
+    ),
+  );
+  r.patch(
+    "/admin/organizations/:organizationId/members/:userId",
+    proxyWithIdentity(
+      req =>
+        `admin/organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/members/${encodeURIComponent(routeParam(req, "userId"))}`,
+      "access",
+      "PATCH",
+    ),
+  );
+  r.delete(
+    "/admin/organizations/:organizationId/members/:userId",
+    proxyWithIdentity(
+      req =>
+        `admin/organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/members/${encodeURIComponent(routeParam(req, "userId"))}`,
+      "access",
+      "DELETE",
+    ),
   );
 
   r.get("/admin/sessions", (req, res) =>

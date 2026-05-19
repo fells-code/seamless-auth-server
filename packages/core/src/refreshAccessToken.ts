@@ -20,6 +20,7 @@ type RefreshAccessTokenResult = {
   roles?: string[];
   email?: string;
   phone?: string | null;
+  organizationId?: string | null;
   ttl: number;
   refreshTtl: number;
 };

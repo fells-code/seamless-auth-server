@@ -92,6 +92,7 @@ export async function pollMagicLinkConfirmationHandler(
           roles: data.roles,
           email: data.email,
           phone: data.phone,
+          organizationId: data.organizationId ?? null,
         },
         ttl: data.ttl,
         domain: opts.cookieDomain,
