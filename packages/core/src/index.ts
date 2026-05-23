@@ -18,3 +18,4 @@ export * from "./handlers/verifyMagicLinkHandler.js";
 export * from "./handlers/requestMagicLinkHandler.js";
 export * from "./handlers/pollMagicLinkConfirmationHandler.js";
 export * from "./handlers/switchOrganizationHandler.js";
+export * from "./handlers/oauthHandlers.js";
