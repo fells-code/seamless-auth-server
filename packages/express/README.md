@@ -14,6 +14,7 @@ This package:
 - Manages signed, HttpOnly session cookies
 - Enforces authentication and authorization in your API
 - Handles all API ↔ Auth Server communication via short-lived service tokens
+- Proxies optional OAuth login flows and converts successful callbacks into app cookies
 - Establishes the initializer surface for adopter-supplied auth messaging
 
 > **npm:** https://www.npmjs.com/package/@seamless-auth/express  
@@ -133,8 +134,10 @@ Mounts an Express router that exposes the full Seamless Auth flow under `/auth`.
 
 Routes include:
 
-- `/auth/login/start`
-- `/auth/login/finish`
+- `/auth/login`
+- `/auth/oauth/providers`
+- `/auth/oauth/:providerId/start`
+- `/auth/oauth/:providerId/callback`
 - `/auth/webauthn/*`
 - `/auth/step-up/*`
 - `/auth/registration/*`
@@ -170,6 +173,60 @@ This currently applies to:
 - OTP SMS
 - magic-link email
 - bootstrap invite email
+
+---
+
+### OAuth Login Routes
+
+When OAuth is enabled in the Seamless Auth API system config, the Express adapter exposes the
+provider flow under your mounted `/auth` path:
+
+- `GET /auth/oauth/providers` returns public provider metadata such as `id`, `name`, and scopes.
+- `POST /auth/oauth/:providerId/start` returns a signed `state` and provider `authorizationUrl`.
+- `POST /auth/oauth/:providerId/callback` accepts the provider `code` and `state`, then sets the
+  same signed access/refresh cookies as passkey, OTP, or magic-link login.
+
+Example OAuth start from a browser:
+
+```ts
+const result = await fetch("/auth/oauth/google/start", {
+  method: "POST",
+  credentials: "include",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    redirectUri: `${window.location.origin}/oauth/callback`,
+    returnTo: `${window.location.origin}/dashboard`,
+  }),
+}).then((response) => response.json());
+
+window.location.assign(result.authorizationUrl);
+```
+
+Example callback page:
+
+```ts
+const params = new URLSearchParams(window.location.search);
+
+const response = await fetch("/auth/oauth/google/callback", {
+  method: "POST",
+  credentials: "include",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    code: params.get("code"),
+    state: params.get("state"),
+  }),
+});
+
+if (response.ok) {
+  window.location.assign("/dashboard");
+}
+```
+
+Provider configuration belongs on the Seamless Auth API, not in the Express adapter. Configure
+`LOGIN_METHODS` to include `oauth`, add `oauth_providers`, and store provider client secrets in
+server environment variables referenced by `clientSecretEnv`.
+
+Provider access tokens are never stored in adapter cookies or returned to the frontend.
 
 ---
 
@@ -224,7 +281,7 @@ Returned shape (example):
 
 ## End-to-End Flow
 
-1. **Frontend** → `/auth/login/start`  
+1. **Frontend** → `/auth/login`
    API proxies request and sets a short-lived _pre-auth_ cookie.
 
 2. **Frontend** → `/auth/webauthn/finish`  
@@ -232,6 +289,9 @@ Returned shape (example):
 
 3. **API routes** → `/api/*`  
    `requireAuth()` verifies the cookie and attaches `req.user`.
+
+For OAuth, the initial identifier step is replaced by `/auth/oauth/:providerId/start`; the callback
+completion route sets the same authenticated cookies used by the rest of the adapter.
 
 ---
 
