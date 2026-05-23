@@ -124,16 +124,36 @@ Adding a new adapter does not require changes to the core authentication model.
 
 ## Versioning and Releases
 
-This repository uses a staged release model:
+This repository uses pnpm workspaces and Changesets for package releases.
+
+- Local package dependencies use `workspace:^`, so adapters can test against
+  unpublished core changes without waiting for core to land on npm first.
+
+- Every adopter-facing change should include a changeset:
+
+  ```sh
+  pnpm changeset
+  ```
+
+- **Alpha releases**
+  Manually published from the `Prerelease` workflow under the `alpha` npm
+  dist-tag.
 
 - **Beta releases**
-  Automatically published from the `dev` branch under the `beta` npm dist-tag.
+  Automatically published from the `dev` branch under the `beta` npm dist-tag
+  as snapshot builds.
+
+- **RC releases**
+  Automatically published from `release/**` branches under the `rc` npm
+  dist-tag as snapshot builds.
 
 - **Stable releases**
-  Published when a GitHub Release is published for an explicit package tag
-  (for example `core-v1.0.0` or `express-v1.0.0`).
+  Published from `main`. Changesets opens a version PR, then publishes npm
+  packages, Git tags, changelogs, and GitHub Releases when that PR is merged.
 
-Each package is versioned and released independently.
+The core and official JavaScript adapters are linked while the API is pre-1.0
+so adopters can treat releases as a known-good set. See `RELEASES.md` for the
+release policy.
 
 ---
 
@@ -157,9 +177,13 @@ The documentation covers:
 
 ```
 .
+├─ package.json     # Workspace scripts and release tooling
+├─ pnpm-workspace.yaml
+├─ RELEASES.md
 ├─ packages/
 │  ├─ core/        # Framework-agnostic authentication logic
 │  └─ express/     # Express middleware adapter
+├─ .changeset/     # Release intent and Changesets config
 ├─ .github/
 │  └─ workflows/   # CI and release pipelines
 └─ README.md
