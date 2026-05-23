@@ -1,0 +1,23 @@
+{
+  "name": "seamless-auth-server",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "pnpm -r --sort build",
+    "clean": "pnpm -r --sort clean",
+    "test": "pnpm -r --sort test",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release:stable": "pnpm build && changeset publish",
+    "release:alpha": "changeset version --snapshot alpha && pnpm build && changeset publish --tag alpha --no-git-tag",
+    "release:beta": "changeset version --snapshot beta && pnpm build && changeset publish --tag beta --no-git-tag",
+    "release:rc": "changeset version --snapshot rc && pnpm build && changeset publish --tag rc --no-git-tag"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.29.7"
+  }
+}

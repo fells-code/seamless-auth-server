@@ -35,9 +35,9 @@
     "scripts": {
         "build": "tsc -p tsconfig.json",
         "clean": "rm -rf dist",
-        "prepublishOnly": "npm run clean && npm run build",
-        "test": "npm run build && NODE_OPTIONS=--experimental-vm-modules jest",
-        "test:watch": "npm run build && NODE_OPTIONS=--experimental-vm-modules jest --watch"
+        "prepublishOnly": "pnpm run clean && pnpm run build",
+        "test": "pnpm run build && NODE_OPTIONS=--experimental-vm-modules jest",
+        "test:watch": "pnpm run build && NODE_OPTIONS=--experimental-vm-modules jest --watch"
     },
     "dependencies": {
         "jose": "^6.1.3",
