@@ -14,6 +14,7 @@ export interface CookiePayload {
   roles?: string[];
   email?: string;
   phone?: string | null;
+  organizationId?: string | null;
 }
 
 export interface CookieInstruction {
@@ -107,6 +108,7 @@ const COOKIE_REQUIREMENTS: Record<
   },
   "/logout": { name: "accessCookieName", required: true },
   "/users/me": { name: "accessCookieName", required: true },
+  "/organizations": { name: "accessCookieName", required: true },
   "/step-up/status": { name: "accessCookieName", required: true },
   "/step-up/webauthn/start": { name: "accessCookieName", required: true },
   "/step-up/webauthn/finish": { name: "accessCookieName", required: true },
@@ -133,6 +135,10 @@ const COOKIE_REQUIREMENTS: Record<
     required: true,
   },
   "/admin/auth-events": {
+    name: "accessCookieName",
+    required: true,
+  },
+  "/admin/organizations": {
     name: "accessCookieName",
     required: true,
   },
@@ -229,6 +235,7 @@ export async function ensureCookies(
             roles: refreshed.roles,
             email: refreshed.email,
             phone: refreshed.phone,
+            organizationId: refreshed.organizationId ?? null,
           },
           ttl: refreshed.ttl,
           domain: opts.cookieDomain,

@@ -17,3 +17,4 @@ export * from "./handlers/verifyLoginOtpHandler.js";
 export * from "./handlers/verifyMagicLinkHandler.js";
 export * from "./handlers/requestMagicLinkHandler.js";
 export * from "./handlers/pollMagicLinkConfirmationHandler.js";
+export * from "./handlers/switchOrganizationHandler.js";
