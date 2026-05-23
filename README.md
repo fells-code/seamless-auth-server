@@ -2,7 +2,7 @@
 
 Seamless Auth is an open source, passwordless authentication system designed to be embedded directly into applications.
 
-It provides a small, explicit core and framework-specific adapters that make it easy to integrate secure, session-based authentication into APIs and web applications without redirects, third-party identity providers, or opaque middleware chains.
+It provides a small, explicit core and framework-specific adapters that make it easy to integrate secure, session-based authentication into APIs and web applications without opaque middleware chains. Native passwordless flows stay embedded in your app, while optional OAuth routes let adopters add external identity providers when their product or enterprise customers need them.
 
 This repository contains the core building blocks and official server-side framework integrations.
 
@@ -16,7 +16,7 @@ Seamless Auth is built around a few guiding principles:
   Authentication is based on possession and verification, not shared secrets.
 
 - **Embedded authentication**
-  Auth flows live inside your application. No redirects, callbacks, or hosted UI.
+  Native Seamless Auth flows live inside your application. OAuth redirects are available as an optional bridge to external identity providers.
 
 - **Server-side session validation**
   Sessions are managed using secure, HTTP-only cookies and validated by the API.
@@ -42,6 +42,7 @@ Responsibilities include:
 - Verifying signed session cookies
 - Authenticated server-to-server requests
 - Resolving the current authenticated user
+- Proxy-safe OAuth login helpers that never store provider access tokens
 - Shared types and helpers
 
 The core package does **not** depend on any specific web framework.
@@ -82,6 +83,8 @@ It is also the natural initializer boundary for adopter-supplied auth messaging 
 
 For WebAuthn PRF flows, the adapter proxies PRF registration query flags and assertion request bodies to the Seamless Auth API. PRF outputs remain browser-only and are never handled by the server adapter.
 
+For OAuth flows, the adapter proxies provider discovery, OAuth start, and OAuth callback completion. The callback exchanges the provider authorization code at the private Seamless Auth API, then the adapter sets the normal signed access and refresh cookies for the application.
+
 Location:
 
 ```
@@ -98,6 +101,61 @@ app.get(
   handler,
 );
 ```
+
+---
+
+## OAuth Login
+
+OAuth support is intentionally split across the same trust boundary as the rest of Seamless Auth:
+
+- the browser asks your app/API for enabled providers
+- your server adapter proxies OAuth requests to the private Seamless Auth API
+- Seamless Auth validates signed state, exchanges the provider code, links the provider identity, and issues a SeamlessAuth session
+- the adapter stores only the resulting SeamlessAuth cookies
+
+Provider access tokens are not stored by the adapter, returned to the frontend, or placed in cookies.
+
+Mounted Express routes include:
+
+- `GET /auth/oauth/providers`
+- `POST /auth/oauth/:providerId/start`
+- `POST /auth/oauth/:providerId/callback`
+
+Example frontend sequence:
+
+```ts
+const start = await fetch("/auth/oauth/google/start", {
+  method: "POST",
+  credentials: "include",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    redirectUri: `${window.location.origin}/oauth/callback`,
+    returnTo: `${window.location.origin}/dashboard`,
+  }),
+}).then((response) => response.json());
+
+window.location.assign(start.authorizationUrl);
+```
+
+After the provider redirects back:
+
+```ts
+const params = new URLSearchParams(window.location.search);
+
+await fetch("/auth/oauth/google/callback", {
+  method: "POST",
+  credentials: "include",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    code: params.get("code"),
+    state: params.get("state"),
+  }),
+});
+```
+
+Configure providers on the Seamless Auth API using `oauth_providers` and `LOGIN_METHODS=...,oauth`.
+Each provider references its client secret by environment variable name, for example
+`clientSecretEnv: "GOOGLE_CLIENT_SECRET"`.
 
 ---
 

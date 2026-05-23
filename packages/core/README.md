@@ -23,6 +23,7 @@ If you are building a custom adapter (Express, Fastify, Next.js, Hono, etc.), th
 - Core authentication state machine
 - Cookie validation and refresh logic
 - Service-token–based API ↔ Auth Server communication
+- Framework-agnostic OAuth provider discovery/start/callback helpers
 - Stateless, cryptographically verifiable flows
 
 This package **does not**:
@@ -87,6 +88,9 @@ Key exports include:
 - `refreshAccessToken(...)` – rotates expired access sessions
 - `verifyCookieJwt(...)` – verifies signed cookie payloads
 - `createServiceToken(...)` – creates short-lived M2M assertions
+- `listOAuthProvidersHandler(...)` – retrieves public OAuth provider metadata
+- `startOAuthLoginHandler(...)` – starts an OAuth authorization-code login
+- `finishOAuthLoginHandler(...)` – finishes OAuth login and returns cookie instructions
 
 These functions return **descriptive results**, not HTTP responses.
 
@@ -118,6 +122,53 @@ if (result.type === "error") {
   // adapter sends HTTP error
 }
 ```
+
+---
+
+## OAuth Helper Flow
+
+The core OAuth helpers are designed for framework adapters. They do not redirect, set cookies, or
+read secrets. They proxy to the Seamless Auth API and return plain result objects that your adapter
+turns into HTTP responses.
+
+```ts
+const providers = await listOAuthProvidersHandler({
+  authServerUrl: "https://auth.example.com",
+});
+
+const started = await startOAuthLoginHandler(
+  {
+    providerId: "google",
+    body: {
+      redirectUri: "https://app.example.com/oauth/callback",
+      returnTo: "https://app.example.com/dashboard",
+    },
+  },
+  { authServerUrl: "https://auth.example.com" },
+);
+
+const finished = await finishOAuthLoginHandler(
+  {
+    providerId: "google",
+    body: {
+      code: "provider-code",
+      state: "signed-state-from-start",
+    },
+  },
+  {
+    authServerUrl: "https://auth.example.com",
+    accessCookieName: "seamless-access",
+    refreshCookieName: "seamless-refresh",
+  },
+);
+
+if (finished.setCookies) {
+  // adapter signs and applies access/refresh cookies
+}
+```
+
+The Seamless Auth API handles state validation, provider token exchange, userinfo lookup, and
+provider identity linking. Core and adapter code never store provider access tokens.
 
 ---
 

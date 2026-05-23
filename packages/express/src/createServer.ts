@@ -15,6 +15,11 @@ import { me } from "./handlers/me";
 import { logout } from "./handlers/logout";
 import { pollMagicLinkConfirmation } from "./handlers/pollMagicLinkConfirmation";
 import { requestMagicLink } from "./handlers/requestMagicLink";
+import {
+  finishOAuthLogin,
+  listOAuthProviders,
+  startOAuthLogin,
+} from "./handlers/oauth";
 import * as admin from "./handlers/admin";
 import { authFetch, AuthFetchOptions } from "@seamless-auth/core";
 import { buildServiceAuthorization } from "./internal/buildAuthorization";
@@ -299,6 +304,15 @@ export function createSeamlessAuthServer(
   );
 
   r.post("/login", (req, res) => login(req, res, resolvedOpts));
+  r.get("/oauth/providers", (req, res) =>
+    listOAuthProviders(req, res, resolvedOpts),
+  );
+  r.post("/oauth/:providerId/start", (req, res) =>
+    startOAuthLogin(req, res, resolvedOpts),
+  );
+  r.post("/oauth/:providerId/callback", (req, res) =>
+    finishOAuthLogin(req, res, resolvedOpts),
+  );
   r.post("/registration/register", (req, res) =>
     register(req, res, resolvedOpts),
   );
