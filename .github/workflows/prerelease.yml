@@ -1,0 +1,74 @@
+name: Prerelease
+
+on:
+  push:
+    branches:
+      - dev
+      - "release/**"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: npm dist-tag to publish
+        required: true
+        default: alpha
+        type: choice
+        options:
+          - alpha
+          - beta
+          - rc
+
+jobs:
+  prerelease:
+    name: Publish Prerelease Snapshot
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          registry-url: https://registry.npmjs.org/
+
+      - name: Determine release channel
+        id: channel
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          elif [ "${{ github.ref_name }}" = "dev" ]; then
+            TAG="beta"
+          else
+            TAG="rc"
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Check release intent
+        id: changesets
+        run: |
+          node -e "const fs = require('fs'); const hasChangesets = fs.readdirSync('.changeset').some((name) => name.endsWith('.md') && name !== 'README.md'); fs.appendFileSync(process.env.GITHUB_OUTPUT, 'has_changesets=' + hasChangesets + '\n');"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Test workspace
+        run: pnpm test
+
+      - name: Publish snapshot packages
+        if: steps.changesets.outputs.has_changesets == 'true'
+        run: pnpm release:${{ steps.channel.outputs.tag }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true

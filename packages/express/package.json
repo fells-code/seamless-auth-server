@@ -23,12 +23,14 @@
     "node": ">=18"
   },
   "scripts": {
-    "build": "npm run build:js && npm run build:types",
-    "build:js": "tsup src/index.ts --format esm --out-dir dist --splitting",
+    "build": "pnpm run build:js && pnpm run build:types",
+    "build:js": "tsup src/index.ts --format esm --out-dir dist --splitting --external @seamless-auth/core --external @seamless-auth/core/*",
     "build:types": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist",
     "dev": "tsc --watch",
-    "test": "npm --prefix ../core run build && npm run build && NODE_OPTIONS=--experimental-vm-modules jest",
-    "test:watch": "npm --prefix ../core run build && npm run build && NODE_OPTIONS=--experimental-vm-modules jest --watch"
+    "prepublishOnly": "pnpm run clean && pnpm run build",
+    "test": "pnpm --filter @seamless-auth/core build && pnpm run build && NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:watch": "pnpm --filter @seamless-auth/core build && pnpm run build && NODE_OPTIONS=--experimental-vm-modules jest --watch"
   },
   "repository": {
     "type": "git",
@@ -39,14 +41,16 @@
     "express": ">=4.18.0"
   },
   "dependencies": {
-    "@seamless-auth/core": "^0.5.0",
+    "@seamless-auth/core": "workspace:^",
     "cookie-parser": "^1.4.6",
     "jsonwebtoken": "^9.0.3"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",
+    "@types/express": "^5.0.5",
     "@types/jest": "^29.5.14",
     "@types/jsonwebtoken": "^9.0.10",
+    "express": "^5.1.0",
     "jest": "^29.7.0",
     "supertest": "^7.2.2",
     "ts-node": "^10.9.2",
