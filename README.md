@@ -70,6 +70,7 @@ It builds on the core package and adds:
 
 - `requireAuth` middleware for session authentication
 - `requireRole` middleware for role-based authorization
+- scoped-role helpers such as `hasScopedRole`
 - A normalized `req.user` contract for downstream handlers
 
 The Express adapter intentionally keeps authentication and authorization concerns separate from business logic.
@@ -101,6 +102,10 @@ app.get(
   handler,
 );
 ```
+
+`requireRole` accepts plain roles and scoped role names. A legacy broad role such as `admin`
+grants `admin:read` and `admin:write`; `admin:write` grants `admin:read`; `admin:read` does not
+grant write access or satisfy a plain `admin` check.
 
 ---
 
