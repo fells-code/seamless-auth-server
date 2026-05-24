@@ -88,6 +88,7 @@ Key exports include:
 - `refreshAccessToken(...)` – rotates expired access sessions
 - `verifyCookieJwt(...)` – verifies signed cookie payloads
 - `createServiceToken(...)` – creates short-lived M2M assertions
+- `hasScopedRole(...)` – checks scoped role grants such as `admin:read`
 - `listOAuthProvidersHandler(...)` – retrieves public OAuth provider metadata
 - `startOAuthLoginHandler(...)` – starts an OAuth authorization-code login
 - `finishOAuthLoginHandler(...)` – finishes OAuth login and returns cookie instructions
@@ -169,6 +170,23 @@ if (finished.setCookies) {
 
 The Seamless Auth API handles state validation, provider token exchange, userinfo lookup, and
 provider identity linking. Core and adapter code never store provider access tokens.
+
+---
+
+## Scoped Roles
+
+Core exports `hasScopedRole` and `roleGrantsAccess` for framework adapters and custom servers that
+need the same authorization semantics as `@seamless-auth/express`.
+
+```ts
+import { hasScopedRole } from "@seamless-auth/core";
+
+hasScopedRole(["admin:write"], "admin:read"); // true
+hasScopedRole(["admin:read"], "admin:write"); // false
+```
+
+Plain roles remain backwards compatible. `admin` grants `admin:read` and `admin:write`, while
+`admin:read` does not satisfy a plain `admin` check.
 
 ---
 

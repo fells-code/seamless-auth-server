@@ -5,6 +5,7 @@ export * from "./verifyCookieJwt.js";
 export * from "./refreshAccessToken.js";
 export * from "./getSeamlessUser.js";
 export * from "./createServiceToken.js";
+export * from "./scopedRoles.js";
 
 export * from "./handlers/login.js";
 export * from "./handlers/finishLogin.js";

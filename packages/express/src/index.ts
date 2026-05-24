@@ -18,5 +18,6 @@ export { requireAuth } from "./middleware/requireAuth";
 export { requireRole } from "./middleware/requireRole";
 export { createEnsureCookiesMiddleware } from "./middleware/ensureCookies";
 export { getSeamlessUser } from "./getSeamlessUser";
+export { hasScopedRole, roleGrantsAccess } from "@seamless-auth/core";
 
 export default createSeamlessAuthServer;

@@ -242,17 +242,28 @@ app.get("/api/profile", requireAuth(), (req, res) => {
 
 ---
 
-### `requireRole(role: string)`
+### `requireRole(role: string | string[])`
 
-Role-based authorization middleware.
+Role-based authorization middleware with scoped-role support.
 
-Blocks requests when the authenticated user does not have the required role.
+Blocks requests when the authenticated user does not have the required role. Scoped roles use
+colon-separated names such as `admin:read` and `admin:write`.
 
 ```ts
-app.get("/admin", requireRole("admin"), (req, res) => {
-  res.json({ message: "Welcome admin!" });
+app.get("/admin/users", requireRole("admin:read"), (req, res) => {
+  res.json({ users: [] });
+});
+
+app.post("/admin/users", requireRole("admin:write"), (req, res) => {
+  res.json({ message: "User created" });
 });
 ```
+
+Compatibility rules:
+
+- `admin` grants `admin:read` and `admin:write`
+- `admin:write` grants `admin:read`
+- `admin:read` does not grant write access or satisfy `requireRole("admin")`
 
 ---
 

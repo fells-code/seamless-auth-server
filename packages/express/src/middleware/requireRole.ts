@@ -1,3 +1,4 @@
+import { hasScopedRole } from "@seamless-auth/core";
 import { Request, Response, NextFunction, RequestHandler } from "express";
 
 /**
@@ -10,7 +11,10 @@ import { Request, Response, NextFunction, RequestHandler } from "express";
  * `requireRole` performs **authorization only**. It does not inspect cookies,
  * verify tokens, or read environment variables.
  *
- * If any of the required roles are present on the user, access is granted.
+ * If any of the required roles are granted to the user, access is granted.
+ * Scoped role checks understand `admin:read`/`admin:write` style names. A broad
+ * role such as `admin` grants scoped access under that role, and a matching
+ * `:write` role grants `:read` access.
  * Otherwise, a 403 Forbidden response is returned.
  *
  *  * ### Example
@@ -53,7 +57,7 @@ export function requireRole(requiredRoles: string | string[]): RequestHandler {
       return;
     }
 
-    const hasRole = roles.some((role) => user.roles.includes(role));
+    const hasRole = hasScopedRole(user.roles, roles);
 
     if (!hasRole) {
       res.status(403).json({
