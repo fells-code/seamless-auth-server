@@ -10,6 +10,7 @@ export interface RequestOtpOptions {
   authServerUrl: string;
   externalDelivery?: boolean;
   forwardedClientIp?: string;
+  serviceAuthorization?: string;
 }
 
 export interface RequestOtpResult {
@@ -36,6 +37,7 @@ export async function requestOtpHandler(
     method: "GET",
     authorization: input.authorization,
     forwardedClientIp: opts.forwardedClientIp,
+    serviceAuthorization: opts.serviceAuthorization,
     ...(opts.externalDelivery
       ? {
           headers: {

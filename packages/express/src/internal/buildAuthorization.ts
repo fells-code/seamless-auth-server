@@ -22,3 +22,15 @@ export function buildServiceAuthorization(
 
   return `Bearer ${token}`;
 }
+
+export function buildInternalServiceAuthorization(opts: SeamlessAuthServerOptions) {
+  const token = createServiceToken({
+    subject: "seamless-auth-external-delivery",
+    issuer: "seamless-portal-api",
+    audience: "seamless-auth",
+    serviceSecret: opts.serviceSecret,
+    keyId: opts.jwksKid || "dev-main",
+  });
+
+  return `Bearer ${token}`;
+}

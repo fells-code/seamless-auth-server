@@ -1,5 +1,6 @@
 import { verifyCookieJwt } from "./verifyCookieJwt.js";
 import { refreshAccessToken } from "./refreshAccessToken.js";
+import { redactSensitiveText } from "./redaction.js";
 
 export interface EnsureCookiesInput {
   path: string;
@@ -165,7 +166,7 @@ export async function ensureCookies(
   if (!match) {
     console.debug(
       "[SEAMLESS-AUTH-CORE] - (ensureCookies) - No cookie requirements for this path. Path: ",
-      input.path,
+      redactSensitiveText(input.path),
     );
     return { type: "ok" };
   }
