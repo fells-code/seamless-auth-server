@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import { requestMagicLinkHandler } from "@seamless-auth/core/handlers/requestMagicLinkHandler";
-import { buildServiceAuthorization } from "../internal/buildAuthorization";
+import {
+  buildInternalServiceAuthorization,
+  buildServiceAuthorization,
+} from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { deliverAuthMessage, stripDelivery } from "../internal/deliverAuthMessage";
 import { SeamlessAuthServerOptions } from "../createServer";
@@ -18,6 +21,9 @@ export async function requestMagicLink(
       authServerUrl: opts.authServerUrl,
       externalDelivery: Boolean(opts.messaging),
       forwardedClientIp: buildForwardedClientIp(req),
+      serviceAuthorization: opts.messaging
+        ? buildInternalServiceAuthorization(opts)
+        : undefined,
     } as any,
   );
 

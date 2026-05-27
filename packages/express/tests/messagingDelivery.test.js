@@ -128,9 +128,7 @@ describe("messaging delivery routes", () => {
       createJsonResponse(201, {
         success: true,
         data: {
-          url: "https://app.example.com/login?bootstrapToken=bootstrap-token",
           expiresAt: "2026-04-21T20:00:00.000Z",
-          token: "bootstrap-token",
           delivery: {
             kind: "bootstrap_invite_email",
             to: "admin@example.com",
@@ -148,9 +146,7 @@ describe("messaging delivery routes", () => {
 
     expect(res.status).toBe(201);
     expect(res.body).toEqual({
-      url: "https://app.example.com/login?bootstrapToken=bootstrap-token",
       expiresAt: "2026-04-21T20:00:00.000Z",
-      token: "bootstrap-token",
     });
 
     expect(global.fetch).toHaveBeenCalledWith(
@@ -160,7 +156,7 @@ describe("messaging delivery routes", () => {
         headers: expect.objectContaining({
           "Content-Type": "application/json",
           Authorization: "Bearer bootstrap-secret",
-          "x-seamless-service-token": "Bearer bootstrap-secret",
+          "x-seamless-service-token": expect.stringMatching(/^Bearer /),
           "x-seamless-client-ip": expect.any(String),
           "x-seamless-auth-delivery-mode": "external",
         }),

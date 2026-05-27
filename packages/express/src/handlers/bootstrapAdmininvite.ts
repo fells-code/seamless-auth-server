@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { bootstrapAdminInviteHandler } from "@seamless-auth/core/handlers/bootstrapAdminInvite";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
+import { buildInternalServiceAuthorization } from "../internal/buildAuthorization";
 import { deliverAuthMessage, stripDelivery } from "../internal/deliverAuthMessage";
 import { SeamlessAuthServerOptions } from "../createServer";
 
@@ -15,6 +16,9 @@ export async function bootstrapAdminInvite(
     authorization: req.headers["authorization"],
     externalDelivery: Boolean(opts.messaging),
     forwardedClientIp: buildForwardedClientIp(req),
+    serviceAuthorization: opts.messaging
+      ? buildInternalServiceAuthorization(opts)
+      : undefined,
   } as any);
 
   if (result.error) {
