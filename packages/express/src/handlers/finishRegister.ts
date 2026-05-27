@@ -4,7 +4,6 @@ import { setSessionCookie } from "../internal/cookie";
 import { buildServiceAuthorization } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { SeamlessAuthServerOptions } from "../createServer";
-import { verifyCookieJwt } from "@seamless-auth/core";
 
 export async function finishRegister(
   req: Request & { cookiePayload?: any },
@@ -22,26 +21,10 @@ export async function finishRegister(
 
   const authorization = buildServiceAuthorization(req, opts);
 
-  const bootstrapToken = req.cookies?.["seamless_bootstrap_token"];
-
-  const headers: Record<string, string> = {};
-
-  if (bootstrapToken) {
-    const payload = verifyCookieJwt(bootstrapToken, opts.cookieSecret);
-    if (!payload || !payload.sub) {
-      res.status(401).json({
-        error: "Invalid or expired session",
-      });
-      return;
-    }
-    headers["cookie"] = `seamless_bootstrap_token=${payload.sub}`;
-  }
-
   const result = await finishRegisterHandler(
     {
       body: req.body,
       authorization,
-      headers,
       forwardedClientIp: buildForwardedClientIp(req),
     } as any,
     {
