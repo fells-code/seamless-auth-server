@@ -113,10 +113,9 @@ function routeParam(req: Request, name: string): string {
 /**
  * Creates an Express Router that proxies all authentication traffic to a Seamless Auth server.
  *
- * This helper wires your API backend to a Seamless Auth instance running in
- * "server mode." It automatically forwards login, registration, WebAuthn,
- * logout, token refresh, and session validation routes to the auth server
- * and handles all cookie management required for a seamless login flow.
+ * This helper wires your API backend to a Seamless Auth instance. It automatically forwards
+ * login, registration, WebAuthn, logout, token refresh, and session validation routes to the
+ * auth server and handles all cookie management required for a seamless login flow.
  *
  * ### Responsibilities
  * - Proxies all `/auth/*` routes to the upstream Seamless Auth server
