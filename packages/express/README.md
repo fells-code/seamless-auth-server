@@ -165,7 +165,7 @@ Routes include:
 
 `messaging` is the initializer-facing contract for adopter-supplied auth messaging capabilities.
 
-When `messaging` is provided, `@seamless-auth/express` requests external-delivery payloads from the upstream auth server for auth-message flows and completes delivery locally through the configured transports or handlers.
+When `messaging` is provided, `@seamless-auth/express` requests external-delivery payloads from the upstream auth server for auth-message flows and completes delivery locally through the configured transports or handlers. These payloads contain OTPs or one-time links and are stripped before the adapter responds to the browser.
 
 This currently applies to:
 

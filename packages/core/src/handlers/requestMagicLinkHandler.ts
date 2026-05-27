@@ -8,6 +8,7 @@ export interface RequestMagicLinkOptions {
   authServerUrl: string;
   externalDelivery?: boolean;
   forwardedClientIp?: string;
+  serviceAuthorization?: string;
 }
 
 export interface RequestMagicLinkResult {
@@ -24,6 +25,7 @@ export async function requestMagicLinkHandler(
     method: "GET",
     authorization: input.authorization,
     forwardedClientIp: opts.forwardedClientIp,
+    serviceAuthorization: opts.serviceAuthorization,
     ...(opts.externalDelivery
       ? {
           headers: {

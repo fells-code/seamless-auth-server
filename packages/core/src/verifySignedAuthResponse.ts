@@ -14,8 +14,8 @@ export async function verifySignedAuthResponse<T = any>(
     });
 
     return payload as T;
-  } catch (err) {
-    console.error("[SeamlessAuth] Failed to verify signed auth response:", err);
+  } catch {
+    console.error("[SeamlessAuth] Failed to verify signed auth response.");
     return null;
   }
 }

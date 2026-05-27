@@ -86,6 +86,10 @@ For WebAuthn PRF flows, the adapter proxies PRF registration query flags and ass
 
 For OAuth flows, the adapter proxies provider discovery, OAuth start, and OAuth callback completion. The callback exchanges the provider authorization code at the private Seamless Auth API, then the adapter sets the normal signed access and refresh cookies for the application.
 
+Auth-message delivery payloads are treated as sensitive. When adopter-supplied messaging is
+configured, the adapter requests those payloads using its short-lived service token, sends through the
+configured transport or handler, and strips the raw OTP/link details before responding to the browser.
+
 Location:
 
 ```
