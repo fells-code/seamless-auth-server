@@ -230,6 +230,20 @@ Provider access tokens are never stored in adapter cookies or returned to the fr
 
 ---
 
+### Admin Hardening Routes
+
+When mounted under `/auth`, the adapter proxies the admin hardening endpoints used by the
+Seamless Auth dashboard:
+
+- `DELETE /auth/admin/sessions/by-id/:id`
+- `DELETE /auth/admin/sessions/:userId/revoke-all`
+- `POST /auth/admin/users/:userId/recovery/device-replacement`
+
+The device-replacement endpoint requires the current admin session to have fresh step-up
+authentication in the Seamless Auth API.
+
+---
+
 ### `requireAuth(options?)`
 
 Express middleware that verifies a signed access cookie and attaches the decoded user payload to `req.user`.

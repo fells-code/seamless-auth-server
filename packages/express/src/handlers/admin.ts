@@ -10,7 +10,9 @@ import {
   getCredentialCountHandler,
   listAllSessionsHandler,
   listUserSessionsHandler,
+  recoverUserForDeviceReplacementHandler,
   revokeAllUserSessionsHandler,
+  revokeUserSessionHandler,
 } from "@seamless-auth/core/handlers/admin";
 
 import { buildServiceAuthorization } from "../internal/buildAuthorization";
@@ -168,6 +170,20 @@ export const listUserSessions = async (
     } as any),
   );
 
+export const revokeUserSession = async (
+  req: Request,
+  res: Response,
+  opts: SeamlessAuthServerOptions,
+) =>
+  handle(
+    res,
+    await revokeUserSessionHandler(req.params.id as string, {
+      authServerUrl: opts.authServerUrl,
+      authorization: buildServiceAuthorization(req, opts),
+      forwardedClientIp: buildForwardedClientIp(req),
+    } as any),
+  );
+
 export const revokeAllUserSessions = async (
   req: Request,
   res: Response,
@@ -179,5 +195,20 @@ export const revokeAllUserSessions = async (
       authServerUrl: opts.authServerUrl,
       authorization: buildServiceAuthorization(req, opts),
       forwardedClientIp: buildForwardedClientIp(req),
+    } as any),
+  );
+
+export const recoverUserForDeviceReplacement = async (
+  req: Request,
+  res: Response,
+  opts: SeamlessAuthServerOptions,
+) =>
+  handle(
+    res,
+    await recoverUserForDeviceReplacementHandler(req.params.userId as string, {
+      authServerUrl: opts.authServerUrl,
+      authorization: buildServiceAuthorization(req, opts),
+      forwardedClientIp: buildForwardedClientIp(req),
+      body: req.body,
     } as any),
   );

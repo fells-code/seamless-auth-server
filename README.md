@@ -123,6 +123,7 @@ OAuth support is intentionally split across the same trust boundary as the rest 
 - the adapter stores only the resulting SeamlessAuth cookies
 
 Provider access tokens are not stored by the adapter, returned to the frontend, or placed in cookies.
+The adapter also does not handle provider client secrets; those remain on the Seamless Auth API host.
 
 Mounted Express routes include:
 
@@ -165,6 +166,18 @@ await fetch("/auth/oauth/google/callback", {
 Configure providers on the Seamless Auth API using `oauth_providers` and `LOGIN_METHODS=...,oauth`.
 Each provider references its client secret by environment variable name, for example
 `clientSecretEnv: "GOOGLE_CLIENT_SECRET"`.
+
+## Admin Hardening Routes
+
+The Express adapter exposes the v1 admin recovery and session hygiene routes under the mounted auth
+path:
+
+- `DELETE /auth/admin/sessions/by-id/:id`
+- `DELETE /auth/admin/sessions/:userId/revoke-all`
+- `POST /auth/admin/users/:userId/recovery/device-replacement`
+
+The device-replacement route is enforced by the Seamless Auth API and requires a fresh step-up
+session before sessions, passkeys, or TOTP credentials are reset.
 
 ---
 
