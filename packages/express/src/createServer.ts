@@ -461,6 +461,9 @@ export function createSeamlessAuthServer(
   r.patch("/admin/users/:userId", (req, res) =>
     admin.updateUser(req, res, resolvedOpts),
   );
+  r.post("/admin/users/:userId/recovery/device-replacement", (req, res) =>
+    admin.recoverUserForDeviceReplacement(req, res, resolvedOpts),
+  );
   r.get("/admin/users/:userId", (req, res) =>
     admin.getUserDetail(req, res, resolvedOpts),
   );
@@ -540,6 +543,9 @@ export function createSeamlessAuthServer(
   );
   r.get("/admin/sessions/:userId", (req, res) =>
     admin.listUserSessions(req, res, resolvedOpts),
+  );
+  r.delete("/admin/sessions/by-id/:id", (req, res) =>
+    admin.revokeUserSession(req, res, resolvedOpts),
   );
   r.delete("/admin/sessions/:userId/revoke-all", (req, res) =>
     admin.revokeAllUserSessions(req, res, resolvedOpts),
