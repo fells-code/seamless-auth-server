@@ -14,10 +14,14 @@ function createJsonResponse(status, body) {
 }
 
 function createPreAuthCookie(subject = "user-123") {
-  const token = jwt.sign({ sub: subject }, "cookie-secret", {
-    algorithm: "HS256",
-    expiresIn: "300s",
-  });
+  const token = jwt.sign(
+    { sub: subject, token: "ephemeral-token" },
+    "cookie-secret",
+    {
+      algorithm: "HS256",
+      expiresIn: "300s",
+    },
+  );
 
   return `seamless-ephemeral=${token}`;
 }
@@ -96,7 +100,7 @@ describe("messaging delivery routes", () => {
         headers: expect.objectContaining({
           "Content-Type": "application/json",
           "x-seamless-auth-delivery-mode": "external",
-          Authorization: expect.stringMatching(/^Bearer /),
+          Authorization: "Bearer ephemeral-token",
           "x-seamless-service-token": expect.stringMatching(/^Bearer /),
           "x-seamless-client-ip": expect.any(String),
         }),

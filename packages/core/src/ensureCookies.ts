@@ -32,6 +32,7 @@ export interface EnsureCookiesResult {
   user?: {
     sub: string;
     sessionId?: string;
+    token?: string;
     roles?: string[];
   };
   setCookies?: CookieInstruction[];
@@ -224,6 +225,7 @@ export async function ensureCookies(
         ...(refreshed.sessionId === undefined
           ? {}
           : { sessionId: refreshed.sessionId }),
+        token: refreshed.token,
         roles: refreshed.roles,
       },
       setCookies: [
@@ -234,6 +236,7 @@ export async function ensureCookies(
             ...(refreshed.sessionId === undefined
               ? {}
               : { sessionId: refreshed.sessionId }),
+            token: refreshed.token,
             roles: refreshed.roles,
             email: refreshed.email,
             phone: refreshed.phone,
@@ -272,6 +275,7 @@ export async function ensureCookies(
         ...(typeof payload.sessionId === "string"
           ? { sessionId: payload.sessionId }
           : {}),
+        ...(typeof payload.token === "string" ? { token: payload.token } : {}),
         roles: payload.roles as string[] | undefined,
       },
     };

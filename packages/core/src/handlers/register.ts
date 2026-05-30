@@ -59,7 +59,7 @@ export async function registerHandler(
     setCookies: [
       {
         name: opts.registrationCookieName,
-        value: { sub: data.sub },
+        value: { sub: data.sub, token: data.token },
         ttl: data.ttl,
         domain: opts.cookieDomain,
       },

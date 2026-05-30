@@ -14,10 +14,14 @@ function createJsonResponse(status, body) {
 }
 
 function createPreAuthCookie(subject = "user-123") {
-  const token = jwt.sign({ sub: subject }, "cookie-secret", {
-    algorithm: "HS256",
-    expiresIn: "300s",
-  });
+  const token = jwt.sign(
+    { sub: subject, token: "ephemeral-token" },
+    "cookie-secret",
+    {
+      algorithm: "HS256",
+      expiresIn: "300s",
+    },
+  );
 
   return `seamless-ephemeral=${token}`;
 }
@@ -68,8 +72,36 @@ describe("login OTP routes", () => {
       expect.objectContaining({
         method: "GET",
         headers: expect.objectContaining({
-          Authorization: expect.stringMatching(/^Bearer /),
-          "x-seamless-service-token": expect.stringMatching(/^Bearer /),
+          Authorization: "Bearer ephemeral-token",
+          "x-seamless-service-token": "Bearer ephemeral-token",
+        }),
+      }),
+    );
+  });
+
+  it("proxies registration phone OTP verification with the stored ephemeral token", async () => {
+    global.fetch.mockResolvedValue(
+      createJsonResponse(200, {
+        message: "Phone verified successfully.",
+      }),
+    );
+
+    const body = { verificationToken: "123456" };
+
+    const res = await request(createApp())
+      .post("/auth/otp/verify-phone-otp")
+      .set("Cookie", createPreAuthCookie())
+      .send(body);
+
+    expect(res.status).toBe(200);
+    expect(global.fetch).toHaveBeenCalledWith(
+      "https://auth.example.com/otp/verify-phone-otp",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify(body),
+        headers: expect.objectContaining({
+          Authorization: "Bearer ephemeral-token",
+          "x-seamless-service-token": "Bearer ephemeral-token",
         }),
       }),
     );
