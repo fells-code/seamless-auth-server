@@ -1,5 +1,11 @@
 # @seamless-auth/core
 
+## 0.5.2
+
+### Patch Changes
+
+- ac96299: Operational tidy work and extension of the logout functions for future use
+
 ## 0.5.1
 
 ### Patch Changes
