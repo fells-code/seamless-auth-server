@@ -41,7 +41,7 @@
     "express": ">=4.18.0"
   },
   "dependencies": {
-    "@seamless-auth/core": "file:../core",
+    "@seamless-auth/core": "workspace:^",
     "cookie-parser": "^1.4.6",
     "jsonwebtoken": "^9.0.3"
   },
