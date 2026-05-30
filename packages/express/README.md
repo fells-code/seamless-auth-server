@@ -142,7 +142,9 @@ Routes include:
 - `/auth/step-up/*`
 - `/auth/registration/*`
 - `/auth/users/me`
-- `/auth/logout`
+- `DELETE /auth/logout` for the current session
+- `DELETE /auth/logout/all` for every session owned by the current user
+- `GET /auth/logout` as a deprecated all-session compatibility route
 
 **Options**
 

@@ -107,6 +107,7 @@ const COOKIE_REQUIREMENTS: Record<
     name: "preAuthCookieName",
     required: true,
   },
+  "/logout/all": { name: "accessCookieName", required: true },
   "/logout": { name: "accessCookieName", required: true },
   "/users/me": { name: "accessCookieName", required: true },
   "/organizations": { name: "accessCookieName", required: true },

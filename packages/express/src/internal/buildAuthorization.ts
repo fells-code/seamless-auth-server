@@ -7,6 +7,7 @@ export function buildServiceAuthorization(
   opts: SeamlessAuthServerOptions,
 ) {
   const subject = req.cookiePayload?.sub || req.user?.sub;
+  const sessionId = req.cookiePayload?.sessionId || req.user?.sessionId;
 
   if (!subject) {
     return undefined;
@@ -18,6 +19,7 @@ export function buildServiceAuthorization(
     audience: opts.audience,
     serviceSecret: opts.serviceSecret,
     keyId: opts.jwksKid || "dev-main",
+    ...(sessionId === undefined ? {} : { sessionId }),
   });
 
   return `Bearer ${token}`;
