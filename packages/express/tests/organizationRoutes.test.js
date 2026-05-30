@@ -15,7 +15,12 @@ function createJsonResponse(status, body) {
 
 function createAccessCookie(subject = "user-123") {
   const token = jwt.sign(
-    { sub: subject, roles: ["admin"], sessionId: "session-123" },
+    {
+      sub: subject,
+      roles: ["admin"],
+      sessionId: "session-123",
+      token: "access-token",
+    },
     "cookie-secret",
     {
       algorithm: "HS256",
@@ -77,8 +82,8 @@ describe("organization proxy routes", () => {
       expect.objectContaining({
         method: "GET",
         headers: expect.objectContaining({
-          Authorization: expect.stringMatching(/^Bearer /),
-          "x-seamless-service-token": expect.stringMatching(/^Bearer /),
+          Authorization: "Bearer access-token",
+          "x-seamless-service-token": "Bearer access-token",
         }),
       }),
     );

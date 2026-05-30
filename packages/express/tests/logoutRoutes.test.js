@@ -14,7 +14,12 @@ function createResponse(status = 200) {
 
 function createAccessCookie(subject = "user-123") {
   const token = jwt.sign(
-    { sub: subject, roles: ["user"], sessionId: "session-123" },
+    {
+      sub: subject,
+      roles: ["user"],
+      sessionId: "session-123",
+      token: "access-token",
+    },
     "cookie-secret",
     {
       algorithm: "HS256",
@@ -65,17 +70,11 @@ describe("logout routes", () => {
       expect.objectContaining({
         method: "DELETE",
         headers: expect.objectContaining({
-          Authorization: expect.stringMatching(/^Bearer /),
-          "x-seamless-service-token": expect.stringMatching(/^Bearer /),
+          Authorization: "Bearer access-token",
+          "x-seamless-service-token": "Bearer access-token",
         }),
       }),
     );
-
-    const authorization =
-      global.fetch.mock.calls[0][1].headers.Authorization.replace("Bearer ", "");
-    const decoded = jwt.decode(authorization);
-
-    expect(decoded.sid).toBe("session-123");
   });
 
   it("keeps GET /logout as an all-session compatibility route", async () => {
