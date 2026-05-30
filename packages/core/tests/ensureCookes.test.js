@@ -107,6 +107,7 @@ describe("ensureCookies", () => {
     expect(result.type).toBe("ok");
     expect(result.user?.sub).toBe("user-123");
     expect(result.user?.sessionId).toBe("session-123");
+    expect(result.user?.token).toBe("new-access");
 
     expect(result.setCookies).toHaveLength(2);
 
@@ -115,6 +116,7 @@ describe("ensureCookies", () => {
     expect(accessCookie.value).toEqual({
       sub: "user-123",
       sessionId: "session-123",
+      token: "new-access",
       roles: ["user"],
       email: "test@example.com",
       phone: "+14155552671",
@@ -209,6 +211,7 @@ describe("ensureCookies", () => {
 
     verifyCookieJwtMock.mockReturnValue({
       sub: "user-123",
+      token: "access-token",
       sessionId: "session-123",
       roles: ["user"],
     });
@@ -225,6 +228,7 @@ describe("ensureCookies", () => {
     expect(result.user).toEqual({
       sub: "user-123",
       sessionId: "session-123",
+      token: "access-token",
       roles: ["user"],
     });
   });
@@ -234,6 +238,7 @@ describe("ensureCookies", () => {
 
     verifyCookieJwtMock.mockReturnValue({
       sub: "user-123",
+      token: "access-token",
       sessionId: "session-123",
       roles: ["user"],
     });
@@ -250,6 +255,7 @@ describe("ensureCookies", () => {
     expect(result.user).toEqual({
       sub: "user-123",
       sessionId: "session-123",
+      token: "access-token",
       roles: ["user"],
     });
   });

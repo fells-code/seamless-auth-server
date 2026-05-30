@@ -5,11 +5,10 @@ import request from "supertest";
 
 const { default: createSeamlessAuthServer } = await import("../dist/index.js");
 
-function createJsonResponse(status, body) {
+function createResponse(status = 200) {
   return {
     ok: status >= 200 && status < 300,
     status,
-    json: async () => body,
   };
 }
 
@@ -17,7 +16,7 @@ function createAccessCookie(subject = "user-123") {
   const token = jwt.sign(
     {
       sub: subject,
-      roles: ["admin"],
+      roles: ["user"],
       sessionId: "session-123",
       token: "access-token",
     },
@@ -49,38 +48,27 @@ function createApp() {
   return app;
 }
 
-describe("organization proxy routes", () => {
+describe("logout routes", () => {
   const originalFetch = global.fetch;
 
   beforeEach(() => {
-    global.fetch = jest.fn();
+    global.fetch = jest.fn().mockResolvedValue(createResponse());
   });
 
   afterEach(() => {
     global.fetch = originalFetch;
   });
 
-  it("proxies organization listing with access identity", async () => {
-    global.fetch.mockResolvedValue(
-      createJsonResponse(200, {
-        organizations: [{ id: "org-1", name: "Acme", slug: "acme" }],
-        total: 1,
-      }),
-    );
-
+  it("logs out the current session with DELETE /logout", async () => {
     const res = await request(createApp())
-      .get("/auth/admin/organizations")
+      .delete("/auth/logout")
       .set("Cookie", createAccessCookie());
 
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual({
-      organizations: [{ id: "org-1", name: "Acme", slug: "acme" }],
-      total: 1,
-    });
+    expect(res.status).toBe(204);
     expect(global.fetch).toHaveBeenCalledWith(
-      "https://auth.example.com/admin/organizations",
+      "https://auth.example.com/logout",
       expect.objectContaining({
-        method: "GET",
+        method: "DELETE",
         headers: expect.objectContaining({
           Authorization: "Bearer access-token",
           "x-seamless-service-token": "Bearer access-token",
@@ -89,32 +77,30 @@ describe("organization proxy routes", () => {
     );
   });
 
-  it("proxies organization member writes with path params and body", async () => {
-    global.fetch.mockResolvedValue(
-      createJsonResponse(200, {
-        membership: {
-          id: "membership-1",
-          userId: "user-2",
-          organizationId: "org-1",
-          roles: ["admin"],
-          scopes: ["members:write"],
-        },
+  it("keeps GET /logout as an all-session compatibility route", async () => {
+    const res = await request(createApp())
+      .get("/auth/logout")
+      .set("Cookie", createAccessCookie());
+
+    expect(res.status).toBe(204);
+    expect(global.fetch).toHaveBeenCalledWith(
+      "https://auth.example.com/logout/all",
+      expect.objectContaining({
+        method: "DELETE",
       }),
     );
+  });
 
-    const body = { roles: ["admin"], scopes: ["members:write"] };
-
+  it("logs out all sessions with DELETE /logout/all", async () => {
     const res = await request(createApp())
-      .patch("/auth/admin/organizations/org-1/members/user-2")
-      .set("Cookie", createAccessCookie())
-      .send(body);
+      .delete("/auth/logout/all")
+      .set("Cookie", createAccessCookie());
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(204);
     expect(global.fetch).toHaveBeenCalledWith(
-      "https://auth.example.com/admin/organizations/org-1/members/user-2",
+      "https://auth.example.com/logout/all",
       expect.objectContaining({
-        method: "PATCH",
-        body: JSON.stringify(body),
+        method: "DELETE",
       }),
     );
   });

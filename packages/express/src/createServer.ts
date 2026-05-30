@@ -317,7 +317,15 @@ export function createSeamlessAuthServer(
   );
 
   r.get("/users/me", (req, res) => me(req, res, resolvedOpts));
-  r.get("/logout", (req, res) => logout(req, res, resolvedOpts));
+  r.get("/logout", (req, res) =>
+    logout(req, res, resolvedOpts, "all_sessions"),
+  );
+  r.delete("/logout", (req, res) =>
+    logout(req, res, resolvedOpts, "current_session"),
+  );
+  r.delete("/logout/all", (req, res) =>
+    logout(req, res, resolvedOpts, "all_sessions"),
+  );
 
   r.get("/organizations", proxyWithIdentity("organizations", "access", "GET"));
   r.post("/organizations", proxyWithIdentity("organizations", "access"));
@@ -461,6 +469,9 @@ export function createSeamlessAuthServer(
   r.patch("/admin/users/:userId", (req, res) =>
     admin.updateUser(req, res, resolvedOpts),
   );
+  r.post("/admin/users/:userId/recovery/device-replacement", (req, res) =>
+    admin.recoverUserForDeviceReplacement(req, res, resolvedOpts),
+  );
   r.get("/admin/users/:userId", (req, res) =>
     admin.getUserDetail(req, res, resolvedOpts),
   );
@@ -540,6 +551,9 @@ export function createSeamlessAuthServer(
   );
   r.get("/admin/sessions/:userId", (req, res) =>
     admin.listUserSessions(req, res, resolvedOpts),
+  );
+  r.delete("/admin/sessions/by-id/:id", (req, res) =>
+    admin.revokeUserSession(req, res, resolvedOpts),
   );
   r.delete("/admin/sessions/:userId/revoke-all", (req, res) =>
     admin.revokeAllUserSessions(req, res, resolvedOpts),

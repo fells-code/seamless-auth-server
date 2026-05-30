@@ -112,6 +112,7 @@ export async function finishOAuthLoginHandler(
         value: {
           sub: data.sub,
           ...(sessionId === undefined ? {} : { sessionId }),
+          token: data.token,
           roles: data.roles,
           email: data.email,
           phone: data.phone,

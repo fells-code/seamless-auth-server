@@ -142,7 +142,9 @@ Routes include:
 - `/auth/step-up/*`
 - `/auth/registration/*`
 - `/auth/users/me`
-- `/auth/logout`
+- `DELETE /auth/logout` for the current session
+- `DELETE /auth/logout/all` for every session owned by the current user
+- `GET /auth/logout` as a deprecated all-session compatibility route
 
 **Options**
 
@@ -227,6 +229,20 @@ Provider configuration belongs on the Seamless Auth API, not in the Express adap
 server environment variables referenced by `clientSecretEnv`.
 
 Provider access tokens are never stored in adapter cookies or returned to the frontend.
+
+---
+
+### Admin Hardening Routes
+
+When mounted under `/auth`, the adapter proxies the admin hardening endpoints used by the
+Seamless Auth dashboard:
+
+- `DELETE /auth/admin/sessions/by-id/:id`
+- `DELETE /auth/admin/sessions/:userId/revoke-all`
+- `POST /auth/admin/users/:userId/recovery/device-replacement`
+
+The device-replacement endpoint requires the current admin session to have fresh step-up
+authentication in the Seamless Auth API.
 
 ---
 

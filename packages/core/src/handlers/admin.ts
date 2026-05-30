@@ -92,5 +92,14 @@ export const listAllSessionsHandler = (opts: WithQuery) =>
 export const listUserSessionsHandler = (userId: string, opts: BaseOpts) =>
   request("GET", `/admin/sessions/${userId}`, opts);
 
+export const revokeUserSessionHandler = (id: string, opts: BaseOpts) =>
+  request("DELETE", `/admin/sessions/by-id/${id}`, opts);
+
 export const revokeAllUserSessionsHandler = (userId: string, opts: BaseOpts) =>
   request("DELETE", `/admin/sessions/${userId}/revoke-all`, opts);
+
+export const recoverUserForDeviceReplacementHandler = (
+  userId: string,
+  opts: WithBody,
+) =>
+  request("POST", `/admin/users/${userId}/recovery/device-replacement`, opts);

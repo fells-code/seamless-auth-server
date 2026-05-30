@@ -14,19 +14,27 @@ function createJsonResponse(status, body) {
 }
 
 function createAccessCookie(subject = "user-123") {
-  const token = jwt.sign({ sub: subject, roles: ["user"] }, "cookie-secret", {
-    algorithm: "HS256",
-    expiresIn: "300s",
-  });
+  const token = jwt.sign(
+    { sub: subject, roles: ["user"], token: "access-token" },
+    "cookie-secret",
+    {
+      algorithm: "HS256",
+      expiresIn: "300s",
+    },
+  );
 
   return `seamless-access=${token}`;
 }
 
 function createRegistrationCookie(subject = "user-123") {
-  const token = jwt.sign({ sub: subject, roles: ["user"] }, "cookie-secret", {
-    algorithm: "HS256",
-    expiresIn: "300s",
-  });
+  const token = jwt.sign(
+    { sub: subject, roles: ["user"], token: "ephemeral-token" },
+    "cookie-secret",
+    {
+      algorithm: "HS256",
+      expiresIn: "300s",
+    },
+  );
 
   return `seamless-ephemeral=${token}`;
 }
@@ -89,8 +97,8 @@ describe("step-up proxy routes", () => {
       expect.objectContaining({
         method: "GET",
         headers: expect.objectContaining({
-          Authorization: expect.stringMatching(/^Bearer /),
-          "x-seamless-service-token": expect.stringMatching(/^Bearer /),
+          Authorization: "Bearer access-token",
+          "x-seamless-service-token": "Bearer access-token",
         }),
       }),
     );
@@ -131,8 +139,8 @@ describe("step-up proxy routes", () => {
         method: "POST",
         body: JSON.stringify(body),
         headers: expect.objectContaining({
-          Authorization: expect.stringMatching(/^Bearer /),
-          "x-seamless-service-token": expect.stringMatching(/^Bearer /),
+          Authorization: "Bearer access-token",
+          "x-seamless-service-token": "Bearer access-token",
         }),
       }),
     );

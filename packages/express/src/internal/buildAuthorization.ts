@@ -4,26 +4,16 @@ import { SeamlessAuthServerOptions } from "../createServer";
 
 export function buildServiceAuthorization(
   req: Request & { cookiePayload?: any },
-  opts: SeamlessAuthServerOptions,
+  _opts?: SeamlessAuthServerOptions,
 ) {
-  const subject = req.cookiePayload?.sub || req.user?.sub;
+  const token = req.cookiePayload?.token || req.user?.token;
 
-  if (!subject) {
-    return undefined;
-  }
-
-  const token = createServiceToken({
-    subject,
-    issuer: opts.issuer,
-    audience: opts.audience,
-    serviceSecret: opts.serviceSecret,
-    keyId: opts.jwksKid || "dev-main",
-  });
-
-  return `Bearer ${token}`;
+  return typeof token === "string" ? `Bearer ${token}` : undefined;
 }
 
-export function buildInternalServiceAuthorization(opts: SeamlessAuthServerOptions) {
+export function buildInternalServiceAuthorization(
+  opts: SeamlessAuthServerOptions,
+) {
   const token = createServiceToken({
     subject: "seamless-auth-external-delivery",
     issuer: "seamless-portal-api",

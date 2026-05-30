@@ -104,6 +104,7 @@ describe("oauthHandlers", () => {
         value: expect.objectContaining({
           sub: "user-123",
           sessionId: "session-123",
+          token: "access-token",
           organizationId: "org-123",
         }),
       }),
