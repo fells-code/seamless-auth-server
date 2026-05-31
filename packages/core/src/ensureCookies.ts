@@ -161,6 +161,78 @@ const COOKIE_REQUIREMENTS: Record<
   },
 };
 
+async function refreshRequiredCookie(
+  cookieName: string,
+  refreshCookie: string | undefined,
+  opts: EnsureCookiesOptions,
+): Promise<EnsureCookiesResult | null> {
+  if (!refreshCookie) {
+    return null;
+  }
+
+  const refreshed = await refreshAccessToken(refreshCookie, {
+    authServerUrl: opts.authServerUrl,
+    cookieSecret: opts.cookieSecret,
+    serviceSecret: opts.serviceSecret,
+    issuer: opts.issuer,
+    audience: opts.audience,
+    keyId: opts.keyId,
+    forwardedClientIp: opts.forwardedClientIp,
+  });
+
+  if (!refreshed?.token) {
+    return {
+      type: "error",
+      status: 401,
+      error: "Refresh failed",
+      clearCookies: [
+        cookieName,
+        opts.registrationCookieName,
+        opts.refreshCookieName,
+      ],
+    };
+  }
+
+  return {
+    type: "ok",
+    user: {
+      sub: refreshed.sub,
+      ...(refreshed.sessionId === undefined
+        ? {}
+        : { sessionId: refreshed.sessionId }),
+      token: refreshed.token,
+      roles: refreshed.roles,
+    },
+    setCookies: [
+      {
+        name: cookieName,
+        value: {
+          sub: refreshed.sub,
+          ...(refreshed.sessionId === undefined
+            ? {}
+            : { sessionId: refreshed.sessionId }),
+          token: refreshed.token,
+          roles: refreshed.roles,
+          email: refreshed.email,
+          phone: refreshed.phone,
+          organizationId: refreshed.organizationId ?? null,
+        },
+        ttl: refreshed.ttl,
+        domain: opts.cookieDomain,
+      },
+      {
+        name: opts.refreshCookieName,
+        value: {
+          sub: refreshed.sub,
+          refreshToken: refreshed.refreshToken,
+        },
+        ttl: refreshed.refreshTtl,
+        domain: opts.cookieDomain,
+      },
+    ],
+  };
+}
+
 export async function ensureCookies(
   input: EnsureCookiesInput,
   opts: EnsureCookiesOptions,
@@ -191,7 +263,9 @@ export async function ensureCookies(
   const refreshCookie = input.cookies[opts.refreshCookieName];
 
   if (required && !cookieValue) {
-    if (!refreshCookie) {
+    const refreshed = await refreshRequiredCookie(cookieName, refreshCookie, opts);
+
+    if (!refreshed) {
       return {
         type: "error",
         status: 400,
@@ -199,67 +273,7 @@ export async function ensureCookies(
       };
     }
 
-    const refreshed = await refreshAccessToken(refreshCookie, {
-      authServerUrl: opts.authServerUrl,
-      cookieSecret: opts.cookieSecret,
-      serviceSecret: opts.serviceSecret,
-      issuer: opts.issuer,
-      audience: opts.audience,
-      keyId: opts.keyId,
-      forwardedClientIp: opts.forwardedClientIp,
-    });
-
-    if (!refreshed?.token) {
-      return {
-        type: "error",
-        status: 401,
-        error: "Refresh failed",
-        clearCookies: [
-          cookieName,
-          opts.registrationCookieName,
-          opts.refreshCookieName,
-        ],
-      };
-    }
-
-    return {
-      type: "ok",
-      user: {
-        sub: refreshed.sub,
-        ...(refreshed.sessionId === undefined
-          ? {}
-          : { sessionId: refreshed.sessionId }),
-        token: refreshed.token,
-        roles: refreshed.roles,
-      },
-      setCookies: [
-        {
-          name: cookieName,
-          value: {
-            sub: refreshed.sub,
-            ...(refreshed.sessionId === undefined
-              ? {}
-              : { sessionId: refreshed.sessionId }),
-            token: refreshed.token,
-            roles: refreshed.roles,
-            email: refreshed.email,
-            phone: refreshed.phone,
-            organizationId: refreshed.organizationId ?? null,
-          },
-          ttl: refreshed.ttl,
-          domain: opts.cookieDomain,
-        },
-        {
-          name: opts.refreshCookieName,
-          value: {
-            sub: refreshed.sub,
-            refreshToken: refreshed.refreshToken,
-          },
-          ttl: refreshed.refreshTtl,
-          domain: opts.cookieDomain,
-        },
-      ],
-    };
+    return refreshed;
   }
 
   if (cookieValue) {
@@ -272,6 +286,25 @@ export async function ensureCookies(
       };
     }
 
+    const token = typeof payload.token === "string" ? payload.token : undefined;
+
+    if (required && !token && cookieName === opts.accessCookieName) {
+      const refreshed = await refreshRequiredCookie(cookieName, refreshCookie, opts);
+
+      if (refreshed) {
+        return refreshed;
+      }
+    }
+
+    if (required && !token) {
+      return {
+        type: "error",
+        status: 401,
+        error: `Invalid or expired ${cookieName} cookie`,
+        clearCookies: [cookieName],
+      };
+    }
+
     return {
       type: "ok",
       user: {
@@ -279,7 +312,7 @@ export async function ensureCookies(
         ...(typeof payload.sessionId === "string"
           ? { sessionId: payload.sessionId }
           : {}),
-        ...(typeof payload.token === "string" ? { token: payload.token } : {}),
+        ...(token === undefined ? {} : { token }),
         roles: payload.roles as string[] | undefined,
       },
     };
