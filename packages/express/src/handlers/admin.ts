@@ -66,6 +66,7 @@ export const deleteUser = async (
       authServerUrl: opts.authServerUrl,
       authorization: buildServiceAuthorization(req, opts),
       forwardedClientIp: buildForwardedClientIp(req),
+      body: req.body,
     } as any),
   );
 
