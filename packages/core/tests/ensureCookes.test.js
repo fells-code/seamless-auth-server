@@ -47,6 +47,7 @@ describe("ensureCookies", () => {
 
     verifyCookieJwtMock.mockReturnValue({
       sub: "user-123",
+      token: "access-token",
       roles: ["user"],
     });
 
@@ -61,6 +62,7 @@ describe("ensureCookies", () => {
     expect(result.type).toBe("ok");
     expect(result.user).toEqual({
       sub: "user-123",
+      token: "access-token",
       roles: ["user"],
     });
   });
@@ -125,6 +127,44 @@ describe("ensureCookies", () => {
     expect(refreshCookie.name).toBe("refresh");
   });
 
+  it("refreshes old access cookies that do not contain a stored auth token", async () => {
+    const { ensureCookies } = await import("../dist/ensureCookies.js");
+
+    verifyCookieJwtMock.mockReturnValue({
+      sub: "user-123",
+      sessionId: "session-123",
+      roles: ["user"],
+    });
+    refreshAccessTokenMock.mockResolvedValue({
+      sub: "user-123",
+      sessionId: "session-456",
+      token: "new-access",
+      refreshToken: "new-refresh",
+      roles: ["user"],
+      email: "test@example.com",
+      phone: "+14155552671",
+      organizationId: null,
+      ttl: 300,
+      refreshTtl: 3600,
+    });
+
+    const result = await ensureCookies(
+      {
+        path: "/internal/auth-events/summary",
+        cookies: { access: "old.access.jwt", refresh: "refresh.jwt" },
+      },
+      BASE_OPTS,
+    );
+
+    expect(result.type).toBe("ok");
+    expect(result.user).toEqual({
+      sub: "user-123",
+      sessionId: "session-456",
+      token: "new-access",
+      roles: ["user"],
+    });
+  });
+
   it("returns error and clears cookies when refresh fails", async () => {
     const { ensureCookies } = await import("../dist/ensureCookies.js");
 
@@ -165,6 +205,7 @@ describe("ensureCookies", () => {
 
     verifyCookieJwtMock.mockReturnValue({
       sub: "user-123",
+      token: "ephemeral-token",
       roles: ["user"],
     });
 
@@ -179,6 +220,7 @@ describe("ensureCookies", () => {
     expect(result.type).toBe("ok");
     expect(result.user).toEqual({
       sub: "user-123",
+      token: "ephemeral-token",
       roles: ["user"],
     });
   });
@@ -188,6 +230,7 @@ describe("ensureCookies", () => {
 
     verifyCookieJwtMock.mockReturnValue({
       sub: "user-123",
+      token: "ephemeral-token",
       roles: ["user"],
     });
 
@@ -202,6 +245,7 @@ describe("ensureCookies", () => {
     expect(result.type).toBe("ok");
     expect(result.user).toEqual({
       sub: "user-123",
+      token: "ephemeral-token",
       roles: ["user"],
     });
   });
