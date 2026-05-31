@@ -116,6 +116,10 @@ const COOKIE_REQUIREMENTS: Record<
   "/step-up/webauthn/start": { name: "accessCookieName", required: true },
   "/step-up/webauthn/finish": { name: "accessCookieName", required: true },
   "/internal/metrics/dashboard": { name: "accessCookieName", required: true },
+  "/internal/auth-events/summary": {
+    name: "accessCookieName",
+    required: true,
+  },
   "/internal/auth-events/timeseries": {
     name: "accessCookieName",
     required: true,
