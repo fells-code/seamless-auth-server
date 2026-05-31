@@ -68,7 +68,7 @@ export const getUsersHandler = (opts: BaseOpts) =>
 export const createUserHandler = (opts: WithBody) =>
   request("POST", "/admin/users", opts);
 
-export const deleteUserHandler = (opts: BaseOpts) =>
+export const deleteUserHandler = (opts: WithBody) =>
   request("DELETE", "/admin/users", opts);
 
 export const updateUserHandler = (userId: string, opts: WithBody) =>
