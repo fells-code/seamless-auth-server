@@ -233,6 +233,33 @@ describe("ensureCookies", () => {
     });
   });
 
+  it("requires the access cookie for auth event summary metrics", async () => {
+    const { ensureCookies } = await import("../dist/ensureCookies.js");
+
+    verifyCookieJwtMock.mockReturnValue({
+      sub: "admin-123",
+      token: "access-token",
+      sessionId: "session-123",
+      roles: ["admin"],
+    });
+
+    const result = await ensureCookies(
+      {
+        path: "/internal/auth-events/summary",
+        cookies: { access: "valid.access.jwt" },
+      },
+      BASE_OPTS,
+    );
+
+    expect(result.type).toBe("ok");
+    expect(result.user).toEqual({
+      sub: "admin-123",
+      sessionId: "session-123",
+      token: "access-token",
+      roles: ["admin"],
+    });
+  });
+
   it("requires the access cookie for organization routes", async () => {
     const { ensureCookies } = await import("../dist/ensureCookies.js");
 
