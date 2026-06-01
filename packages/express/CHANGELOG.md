@@ -1,5 +1,13 @@
 # @seamless-auth/express
 
+## 0.5.3
+
+### Patch Changes
+
+- 3d979b1: Fixes for deleting users as an admin, and internal auth events summary route token handling
+- Updated dependencies [3d979b1]
+  - @seamless-auth/core@0.5.3
+
 ## 0.5.2
 
 ### Patch Changes
