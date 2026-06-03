@@ -24,7 +24,7 @@ This package:
 Pair this with:
 
 - **React SDK:** https://github.com/fells-code/seamless-auth-react
-- **Starter app:** https://github.com/fells-code/create-seamless
+- **Starter app:** https://github.com/fells-code/seamless-cli
 
 ---
 
