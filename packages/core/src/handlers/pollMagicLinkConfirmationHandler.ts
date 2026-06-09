@@ -12,6 +12,7 @@ export interface PollMagicLinkConfirmationOptions {
   cookieDomain?: string;
   accessCookieName: string;
   refreshCookieName: string;
+  serviceAuthorization?: string;
 }
 
 export interface PollMagicLinkConfirmationResult {
@@ -34,9 +35,9 @@ export async function pollMagicLinkConfirmationHandler(
     method: "GET",
     authorization: input.authorization,
     forwardedClientIp: input.forwardedClientIp,
+    serviceAuthorization: opts.serviceAuthorization,
   });
 
-  // 👇 Pending state (important for polling UX)
   if (up.status === 204) {
     return {
       status: 204,
@@ -53,7 +54,6 @@ export async function pollMagicLinkConfirmationHandler(
     };
   }
 
-  // 👇 Web mode: auth server already handled cookies
   if (!data?.token || !data?.refreshToken || !data?.sub) {
     return {
       status: up.status,
@@ -61,7 +61,6 @@ export async function pollMagicLinkConfirmationHandler(
     };
   }
 
-  // 🔐 Verify signed response (same as WebAuthn flow)
   const verifiedAccessToken = await verifySignedAuthResponse(
     data.token,
     opts.authServerUrl,
