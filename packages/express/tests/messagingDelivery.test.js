@@ -118,6 +118,42 @@ describe("messaging delivery routes", () => {
     );
   });
 
+  it("polls magic-link confirmation with the trusted client IP service token", async () => {
+    const emailTransport = {
+      name: "test-email",
+      send: jest.fn(),
+    };
+
+    global.fetch.mockResolvedValue(
+      createJsonResponse(204, {
+        message: "Success",
+      }),
+    );
+
+    const res = await request(createApp(emailTransport))
+      .get("/auth/magic-link/check")
+      .set("Cookie", createPreAuthCookie());
+
+    expect(res.status).toBe(204);
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "https://auth.example.com/magic-link/check",
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({
+          "Content-Type": "application/json",
+          Authorization: "Bearer ephemeral-token",
+          "x-seamless-service-token": expect.stringMatching(/^Bearer /),
+          "x-seamless-client-ip": expect.any(String),
+        }),
+      }),
+    );
+
+    expect(global.fetch.mock.calls[0][1].headers["x-seamless-service-token"]).not.toBe(
+      "Bearer ephemeral-token",
+    );
+  });
+
   it("delivers bootstrap invites through the configured email transport and strips delivery details", async () => {
     const emailTransport = {
       name: "test-email",

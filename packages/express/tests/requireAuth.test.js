@@ -12,7 +12,7 @@ describe("requireAuth (smoke)", () => {
     const token = jwt.sign({ sub: "user-123" }, secret, { expiresIn: "1h" });
 
     const app = express();
-    app.use(cookieParser()); // 🔑 REQUIRED
+    app.use(cookieParser());
     app.use(
       requireAuth({
         cookieName: "access",

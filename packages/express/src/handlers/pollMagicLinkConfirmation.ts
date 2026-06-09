@@ -1,7 +1,10 @@
 import { Request, Response } from "express";
 import { pollMagicLinkConfirmationHandler } from "@seamless-auth/core/handlers/pollMagicLinkConfirmationHandler";
 import { setSessionCookie } from "../internal/cookie";
-import { buildServiceAuthorization } from "../internal/buildAuthorization";
+import {
+  buildInternalServiceAuthorization,
+  buildServiceAuthorization,
+} from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { SeamlessAuthServerOptions } from "../createServer";
 
@@ -31,6 +34,9 @@ export async function pollMagicLinkConfirmation(
       cookieDomain: opts.cookieDomain,
       accessCookieName: opts.accessCookieName!,
       refreshCookieName: opts.refreshCookieName!,
+      serviceAuthorization: opts.messaging
+        ? buildInternalServiceAuthorization(opts)
+        : undefined,
     },
   );
 
@@ -38,7 +44,6 @@ export async function pollMagicLinkConfirmation(
     throw new Error("Missing COOKIE_SIGNING_KEY");
   }
 
-  // 🍪 Set cookies if returned
   if (result.setCookies) {
     for (const c of result.setCookies) {
       setSessionCookie(
