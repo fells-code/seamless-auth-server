@@ -55,4 +55,49 @@ describe("authFetch", () => {
       }),
     );
   });
+
+  it("does not throw when the response body is non-JSON (e.g. a 429)", async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      text: async () => "Too many requests, please try again later.",
+    });
+
+    const { authFetch } = await import("../dist/authFetch.js");
+    const res = await authFetch("https://auth.example.com/otp/verify-email-otp", {
+      method: "POST",
+    });
+
+    await expect(res.json()).resolves.toEqual({
+      message: "Too many requests, please try again later.",
+    });
+  });
+
+  it("parses a JSON body normally", async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ token: "abc", sub: "user-1" }),
+    });
+
+    const { authFetch } = await import("../dist/authFetch.js");
+    const res = await authFetch("https://auth.example.com/login", { method: "POST" });
+
+    await expect(res.json()).resolves.toEqual({ token: "abc", sub: "user-1" });
+  });
+
+  it("returns undefined for an empty body (e.g. a 204)", async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 204,
+      text: async () => "",
+    });
+
+    const { authFetch } = await import("../dist/authFetch.js");
+    const res = await authFetch("https://auth.example.com/magic-link/check", {
+      method: "GET",
+    });
+
+    await expect(res.json()).resolves.toBeUndefined();
+  });
 });
