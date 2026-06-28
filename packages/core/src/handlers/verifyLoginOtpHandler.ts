@@ -28,15 +28,16 @@ export interface VerifyLoginOtpResult {
   }[];
 }
 
-export async function verifyLoginOtpHandler(
+// Shared by the login and registration OTP verify handlers: POST to the given
+// auth-server path and, when the response carries a session, validate the signed
+// access token and build the session cookies. Registration can complete without
+// a session yet (e.g. a phone-first step before email is verified), in which case
+// there is no token to turn into cookies — the body is returned as-is.
+async function verifyOtp(
+  path: string,
   input: VerifyLoginOtpInput,
   opts: VerifyLoginOtpOptions,
 ): Promise<VerifyLoginOtpResult> {
-  const path =
-    input.kind === "email"
-      ? "otp/verify-login-email-otp"
-      : "otp/verify-login-phone-otp";
-
   const up = await authFetch(`${opts.authServerUrl}/${path}`, {
     method: "POST",
     body: input.body,
@@ -50,6 +51,13 @@ export async function verifyLoginOtpHandler(
     return {
       status: up.status,
       error: data,
+    };
+  }
+
+  if (!data?.token) {
+    return {
+      status: up.status,
+      body: data,
     };
   }
 
@@ -100,4 +108,26 @@ export async function verifyLoginOtpHandler(
       },
     ],
   };
+}
+
+export async function verifyLoginOtpHandler(
+  input: VerifyLoginOtpInput,
+  opts: VerifyLoginOtpOptions,
+): Promise<VerifyLoginOtpResult> {
+  const path =
+    input.kind === "email"
+      ? "otp/verify-login-email-otp"
+      : "otp/verify-login-phone-otp";
+
+  return verifyOtp(path, input, opts);
+}
+
+export async function verifyRegistrationOtpHandler(
+  input: VerifyLoginOtpInput,
+  opts: VerifyLoginOtpOptions,
+): Promise<VerifyLoginOtpResult> {
+  const path =
+    input.kind === "email" ? "otp/verify-email-otp" : "otp/verify-phone-otp";
+
+  return verifyOtp(path, input, opts);
 }
