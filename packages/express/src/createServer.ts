@@ -8,7 +8,10 @@ import { login } from "./handlers/login";
 import { finishLogin } from "./handlers/finishLogin";
 import { register } from "./handlers/register";
 import { requestOtp } from "./handlers/requestOtp";
-import { verifyLoginOtp } from "./handlers/verifyLoginOtp";
+import {
+  verifyLoginOtp,
+  verifyRegistrationOtp,
+} from "./handlers/verifyLoginOtp";
 import { switchOrganization } from "./handlers/switchOrganization";
 import { finishRegister } from "./handlers/finishRegister";
 import { me } from "./handlers/me";
@@ -274,13 +277,11 @@ export function createSeamlessAuthServer(
     finishRegister(req, res, resolvedOpts),
   );
 
-  r.post(
-    "/otp/verify-phone-otp",
-    proxyWithIdentity("otp/verify-phone-otp", "preAuth"),
+  r.post("/otp/verify-phone-otp", (req, res) =>
+    verifyRegistrationOtp(req, res, resolvedOpts, "phone"),
   );
-  r.post(
-    "/otp/verify-email-otp",
-    proxyWithIdentity("otp/verify-email-otp", "preAuth"),
+  r.post("/otp/verify-email-otp", (req, res) =>
+    verifyRegistrationOtp(req, res, resolvedOpts, "email"),
   );
   r.post("/otp/verify-login-phone-otp", (req, res) =>
     verifyLoginOtp(req, res, resolvedOpts, "phone"),
