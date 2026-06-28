@@ -1,5 +1,15 @@
 # @seamless-auth/express
 
+## 0.5.4
+
+### Patch Changes
+
+- b4a1491: fix: updates core implementation to supply the authorization value during polling for magic links
+- f3206ea: Fixes for deleting users as an admin, and internal auth events summary route token handling
+- Updated dependencies [b4a1491]
+- Updated dependencies [f3206ea]
+  - @seamless-auth/core@0.5.4
+
 ## 0.5.3
 
 ### Patch Changes
