@@ -304,6 +304,56 @@ describe("ensureCookies", () => {
     });
   });
 
+  it("requires the access cookie for TOTP routes", async () => {
+    const { ensureCookies } = await import("../dist/ensureCookies.js");
+
+    verifyCookieJwtMock.mockReturnValue({
+      sub: "user-123",
+      token: "access-token",
+      sessionId: "session-123",
+      roles: ["user"],
+    });
+
+    for (const path of [
+      "/totp/status",
+      "/totp/enroll/start",
+      "/totp/enroll/verify",
+      "/totp/disable",
+      "/totp/verify-mfa",
+    ]) {
+      const result = await ensureCookies(
+        { path, cookies: { access: "valid.access.jwt" } },
+        BASE_OPTS,
+      );
+
+      expect(result.type).toBe("ok");
+      expect(result.user?.token).toBe("access-token");
+    }
+  });
+
+  it("matches cookie requirements case-insensitively", async () => {
+    const { ensureCookies } = await import("../dist/ensureCookies.js");
+
+    verifyCookieJwtMock.mockReturnValue({
+      sub: "user-123",
+      token: "ephemeral-token",
+      roles: ["user"],
+    });
+
+    // A client may send "/webauthn/..." even though the requirement is keyed
+    // "/webAuthn/..."; the pre-auth cookie requirement must still apply.
+    const result = await ensureCookies(
+      {
+        path: "/webauthn/login/finish",
+        cookies: { preauth: "valid.preauth.jwt" },
+      },
+      BASE_OPTS,
+    );
+
+    expect(result.type).toBe("ok");
+    expect(result.user?.token).toBe("ephemeral-token");
+  });
+
   it("requires the access cookie for organization routes", async () => {
     const { ensureCookies } = await import("../dist/ensureCookies.js");
 

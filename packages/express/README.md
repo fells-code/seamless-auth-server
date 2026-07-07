@@ -140,6 +140,7 @@ Routes include:
 - `/auth/oauth/:providerId/callback`
 - `/auth/webauthn/*`
 - `/auth/step-up/*`
+- `/auth/totp/*` (enrollment, disable, status, and `verify-mfa` step-up)
 - `/auth/registration/*`
 - `/auth/users/me`
 - `DELETE /auth/logout` for the current session

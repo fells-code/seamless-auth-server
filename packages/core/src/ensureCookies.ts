@@ -115,6 +115,11 @@ const COOKIE_REQUIREMENTS: Record<
   "/step-up/status": { name: "accessCookieName", required: true },
   "/step-up/webauthn/start": { name: "accessCookieName", required: true },
   "/step-up/webauthn/finish": { name: "accessCookieName", required: true },
+  "/totp/status": { name: "accessCookieName", required: true },
+  "/totp/enroll/start": { name: "accessCookieName", required: true },
+  "/totp/enroll/verify": { name: "accessCookieName", required: true },
+  "/totp/disable": { name: "accessCookieName", required: true },
+  "/totp/verify-mfa": { name: "accessCookieName", required: true },
   "/internal/metrics/dashboard": { name: "accessCookieName", required: true },
   "/internal/auth-events/summary": {
     name: "accessCookieName",
@@ -237,8 +242,14 @@ export async function ensureCookies(
   input: EnsureCookiesInput,
   opts: EnsureCookiesOptions,
 ): Promise<EnsureCookiesResult> {
+  // Match case-insensitively: Express route matching is case-insensitive by
+  // default, so a client may send a path whose casing differs from the mounted
+  // route (e.g. "/webauthn/..." vs "/webAuthn/..."). A case-sensitive miss here
+  // would silently skip cookie loading and break the request downstream, so the
+  // comparison is normalized to lower case on both sides.
+  const requestPath = input.path.toLowerCase();
   const match = Object.entries(COOKIE_REQUIREMENTS).find(([path]) =>
-    input.path.startsWith(path),
+    requestPath.startsWith(path.toLowerCase()),
   );
 
   if (!match) {
