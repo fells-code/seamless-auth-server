@@ -396,6 +396,23 @@ export function createSeamlessAuthServer(
     proxyWithIdentity("step-up/webauthn/finish", "access"),
   );
 
+  // TOTP enrollment, management, and step-up verification. All require a full
+  // access session and update server-side state only (no new session cookies),
+  // so they proxy the user's access token upstream like the step-up routes.
+  // TOTP-as-a-login-second-factor is intentionally not mounted here: the auth
+  // API does not gate login on TOTP today, so /totp/verify-login has no trigger.
+  r.get("/totp/status", proxyWithIdentity("totp/status", "access", "GET"));
+  r.post(
+    "/totp/enroll/start",
+    proxyWithIdentity("totp/enroll/start", "access"),
+  );
+  r.post(
+    "/totp/enroll/verify",
+    proxyWithIdentity("totp/enroll/verify", "access"),
+  );
+  r.post("/totp/disable", proxyWithIdentity("totp/disable", "access"));
+  r.post("/totp/verify-mfa", proxyWithIdentity("totp/verify-mfa", "access"));
+
   r.post("/users/update", proxyWithIdentity("users/update", "access"));
   r.post(
     "/users/credentials",
