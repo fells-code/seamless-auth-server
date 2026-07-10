@@ -107,6 +107,7 @@ export function requireAuth(opts: RequireAuthOptions) {
       phone: payload.phone,
       iat: payload.iat,
       exp: payload.exp,
+      token: payload.token,
     };
 
     req.user = user;
