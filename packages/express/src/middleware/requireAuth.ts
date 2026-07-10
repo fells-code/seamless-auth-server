@@ -107,8 +107,6 @@ export function requireAuth(opts: RequireAuthOptions) {
       phone: payload.phone,
       iat: payload.iat,
       exp: payload.exp,
-      // Forward the inner access token so downstream helpers (getSeamlessUser ->
-      // buildServiceAuthorization) can authenticate service calls to the auth server.
       token: payload.token,
     };
 
