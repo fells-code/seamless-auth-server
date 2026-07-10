@@ -31,4 +31,35 @@ describe("requireAuth (smoke)", () => {
     expect(res.status).toBe(200);
     expect(res.body.user.sub).toBe("user-123");
   });
+
+  it("forwards the inner access token as req.user.token", async () => {
+    const secret = "cookie-secret";
+    const innerAccessToken = "inner-access-jwt";
+
+    const token = jwt.sign(
+      { sub: "user-123", token: innerAccessToken },
+      secret,
+      { expiresIn: "1h" },
+    );
+
+    const app = express();
+    app.use(cookieParser());
+    app.use(
+      requireAuth({
+        cookieName: "access",
+        cookieSecret: secret,
+      }),
+    );
+
+    app.get("/protected", (req, res) => {
+      res.json({ user: req.user });
+    });
+
+    const res = await request(app)
+      .get("/protected")
+      .set("Cookie", [`access=${token}`]);
+
+    expect(res.status).toBe(200);
+    expect(res.body.user.token).toBe(innerAccessToken);
+  });
 });

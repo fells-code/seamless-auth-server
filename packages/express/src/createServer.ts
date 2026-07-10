@@ -85,6 +85,10 @@ export interface SeamlessAuthUser {
   phone: string;
   iat?: number;
   exp?: number;
+  // Inner access token carried from the cookie payload. Trusted server adapters
+  // forward this as the bearer credential when calling the auth server (e.g.
+  // getSeamlessUser -> buildServiceAuthorization).
+  token?: string;
 }
 
 function buildProxyQueryString(queryInput: Request["query"]): string {
