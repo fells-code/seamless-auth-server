@@ -72,13 +72,13 @@ export const deleteUserHandler = (opts: WithBody) =>
   request("DELETE", "/admin/users", opts);
 
 export const updateUserHandler = (userId: string, opts: WithBody) =>
-  request("PATCH", `/admin/users/${userId}`, opts);
+  request("PATCH", `/admin/users/${encodeURIComponent(userId)}`, opts);
 
 export const getUserDetailHandler = (userId: string, opts: BaseOpts) =>
-  request("GET", `/admin/users/${userId}`, opts);
+  request("GET", `/admin/users/${encodeURIComponent(userId)}`, opts);
 
 export const getUserAnomaliesHandler = (userId: string, opts: BaseOpts) =>
-  request("GET", `/admin/users/${userId}/anomalies`, opts);
+  request("GET", `/admin/users/${encodeURIComponent(userId)}/anomalies`, opts);
 
 export const getAuthEventsHandler = (opts: WithQuery) =>
   request("GET", "/admin/auth-events", opts);
@@ -90,16 +90,24 @@ export const listAllSessionsHandler = (opts: WithQuery) =>
   request("GET", "/admin/sessions", opts);
 
 export const listUserSessionsHandler = (userId: string, opts: BaseOpts) =>
-  request("GET", `/admin/sessions/${userId}`, opts);
+  request("GET", `/admin/sessions/${encodeURIComponent(userId)}`, opts);
 
 export const revokeUserSessionHandler = (id: string, opts: BaseOpts) =>
-  request("DELETE", `/admin/sessions/by-id/${id}`, opts);
+  request("DELETE", `/admin/sessions/by-id/${encodeURIComponent(id)}`, opts);
 
 export const revokeAllUserSessionsHandler = (userId: string, opts: BaseOpts) =>
-  request("DELETE", `/admin/sessions/${userId}/revoke-all`, opts);
+  request(
+    "DELETE",
+    `/admin/sessions/${encodeURIComponent(userId)}/revoke-all`,
+    opts,
+  );
 
 export const recoverUserForDeviceReplacementHandler = (
   userId: string,
   opts: WithBody,
 ) =>
-  request("POST", `/admin/users/${userId}/recovery/device-replacement`, opts);
+  request(
+    "POST",
+    `/admin/users/${encodeURIComponent(userId)}/recovery/device-replacement`,
+    opts,
+  );

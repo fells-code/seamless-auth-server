@@ -49,4 +49,32 @@ describe("admin handlers", () => {
       body: { message: "Success" },
     });
   });
+
+  it("keeps an injected user id in a single path segment (#65)", async () => {
+    const { getUserDetailHandler } = await import("../dist/handlers/admin.js");
+
+    authFetchMock.mockResolvedValue(createJsonResponse(200, { user: null }));
+
+    await getUserDetailHandler("../sessions?all=true", baseOptions);
+
+    expect(authFetchMock).toHaveBeenCalledWith(
+      "https://auth.example.com/admin/users/..%2Fsessions%3Fall%3Dtrue",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("keeps an injected session id in a single path segment (#65)", async () => {
+    const { revokeSessionHandler } = await import(
+      "../dist/handlers/sessions.js"
+    );
+
+    authFetchMock.mockResolvedValue(createJsonResponse(200, { ok: true }));
+
+    await revokeSessionHandler("abc#frag/../../admin", baseOptions);
+
+    expect(authFetchMock).toHaveBeenCalledWith(
+      "https://auth.example.com/sessions/abc%23frag%2F..%2F..%2Fadmin",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+  });
 });
