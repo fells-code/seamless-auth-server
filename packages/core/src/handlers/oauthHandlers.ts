@@ -4,6 +4,7 @@ import { verifySignedAuthResponse } from "../verifySignedAuthResponse.js";
 
 export interface OAuthHandlerOptions {
   authServerUrl: string;
+  audience: string;
   cookieDomain?: string;
   accessCookieName: string;
   refreshCookieName: string;
@@ -88,6 +89,7 @@ export async function finishOAuthLoginHandler(
   const verifiedAccessToken = await verifySignedAuthResponse(
     data.token,
     opts.authServerUrl,
+    opts.audience,
   );
 
   if (!verifiedAccessToken) {

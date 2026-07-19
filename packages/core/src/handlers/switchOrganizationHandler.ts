@@ -10,6 +10,7 @@ export interface SwitchOrganizationInput {
 
 export interface SwitchOrganizationOptions {
   authServerUrl: string;
+  audience: string;
   cookieDomain?: string;
   accessCookieName: string;
 }
@@ -58,6 +59,7 @@ export async function switchOrganizationHandler(
   const verifiedAccessToken = await verifySignedAuthResponse(
     data.token,
     opts.authServerUrl,
+    opts.audience,
   );
 
   if (!verifiedAccessToken) {

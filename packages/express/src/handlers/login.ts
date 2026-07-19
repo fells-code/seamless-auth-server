@@ -22,6 +22,7 @@ export async function login(
     { body: req.body },
     {
       authServerUrl: opts.authServerUrl,
+      audience: opts.audience,
       cookieDomain: opts.cookieDomain,
       preAuthCookieName: opts.preAuthCookieName!,
       forwardedClientIp: buildForwardedClientIp(req),

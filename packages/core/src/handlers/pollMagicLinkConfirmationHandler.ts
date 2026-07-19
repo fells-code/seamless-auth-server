@@ -9,6 +9,7 @@ export interface PollMagicLinkConfirmationInput {
 
 export interface PollMagicLinkConfirmationOptions {
   authServerUrl: string;
+  audience: string;
   cookieDomain?: string;
   accessCookieName: string;
   refreshCookieName: string;
@@ -64,6 +65,7 @@ export async function pollMagicLinkConfirmationHandler(
   const verifiedAccessToken = await verifySignedAuthResponse(
     data.token,
     opts.authServerUrl,
+    opts.audience,
   );
 
   if (!verifiedAccessToken) {

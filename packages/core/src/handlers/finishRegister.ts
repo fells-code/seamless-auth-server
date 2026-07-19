@@ -11,6 +11,7 @@ export interface FinishRegisterInput {
 
 export interface FinishRegisterOptions {
   authServerUrl: string;
+  audience: string;
   cookieDomain?: string;
   accessCookieName: string;
   refreshCookieName: string;
@@ -51,6 +52,7 @@ export async function finishRegisterHandler(
   const verified = await verifySignedAuthResponse(
     data.token,
     opts.authServerUrl,
+    opts.audience,
   );
 
   if (!verified) {

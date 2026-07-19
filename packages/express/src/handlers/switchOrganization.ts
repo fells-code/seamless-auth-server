@@ -32,6 +32,7 @@ export async function switchOrganization(
     },
     {
       authServerUrl: opts.authServerUrl,
+      audience: opts.audience,
       cookieDomain: opts.cookieDomain,
       accessCookieName: opts.accessCookieName!,
     },
