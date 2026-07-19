@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 import { verifyCookieJwt } from "../dist/verifyCookieJwt.js";
 
 describe("verifyCookieJwt", () => {
-  const secret = "test-secret";
+  const secret = "test-secret-test-secret-test-secret-test";
 
   it("returns payload for valid JWT", () => {
     const token = jwt.sign({ sub: "user-123", roles: ["admin"] }, secret, {

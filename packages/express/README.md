@@ -184,6 +184,9 @@ otherwise `createSeamlessAuthServer` (and `createEnsureCookiesMiddleware`) throw
 is mounted. A short secret can be brute forced offline, which would let an attacker forge cookie
 sessions and service tokens.
 
+The same check applies to `requireAuth({ cookieSecret })`, which throws when the guard is
+constructed, and to `getSeamlessUser`, which validates through `@seamless-auth/core`.
+
 Generate secrets with a CSPRNG, for example `openssl rand -base64 48`, and supply them through the
 environment rather than source.
 

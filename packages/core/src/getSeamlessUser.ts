@@ -1,5 +1,6 @@
 import { verifyCookieJwt } from "./verifyCookieJwt.js";
 import { authFetch } from "./authFetch.js";
+import { assertSecretStrength } from "./validateSecrets.js";
 
 export interface GetSeamlessUserOptions {
   authServerUrl: string;
@@ -23,6 +24,8 @@ export async function getSeamlessUser<T = any>(
   cookies: Record<string, string | undefined>,
   opts: GetSeamlessUserOptions,
 ): Promise<T | null> {
+  assertSecretStrength("cookieSecret", opts.cookieSecret);
+
   const cookieName = opts.cookieName ?? "seamless-access";
   const token = cookies[cookieName];
 

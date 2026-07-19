@@ -89,11 +89,25 @@ Key exports include:
 - `verifyCookieJwt(...)` – verifies signed cookie payloads
 - `createServiceToken(...)` – creates short-lived M2M assertions
 - `hasScopedRole(...)` – checks scoped role grants such as `admin:read`
+- `assertSecretStrength(...)` / `assertSecrets(...)` – enforce the minimum secret length
 - `listOAuthProvidersHandler(...)` – retrieves public OAuth provider metadata
 - `startOAuthLoginHandler(...)` – starts an OAuth authorization-code login
 - `finishOAuthLoginHandler(...)` – finishes OAuth login and returns cookie instructions
 
 These functions return **descriptive results**, not HTTP responses.
+
+### Secret strength
+
+`cookieSecret` and `serviceSecret` must be at least 32 characters (`MIN_SECRET_LENGTH`). A shorter
+secret can be brute forced offline, which would let an attacker forge cookie sessions and service
+tokens.
+
+The check runs wherever a secret enters the core as configuration: `ensureCookies`,
+`refreshAccessToken`, `getSeamlessUser`, and `createServiceToken` all throw on a missing or weak
+secret. `verifyCookieJwt` and `verifyRefreshCookie` are low-level primitives and keep their
+"return `null` on failure" contract unchanged.
+
+Generate secrets with a CSPRNG, for example `openssl rand -base64 48`.
 
 ---
 

@@ -30,8 +30,8 @@ describe("refreshAccessToken", () => {
 
     const result = await refreshAccessToken("bad.cookie", {
       authServerUrl: "https://auth.example.com",
-      cookieSecret: "cookie-secret",
-      serviceSecret: "service-secret",
+      cookieSecret: "cookie-secret-cookie-secret-cookie-secret",
+      serviceSecret: "service-secret-service-secret-service-secret",
       issuer: "https://frontend.example.com",
       audience: "https://auth.example.com",
       keyId: "dev-main",
@@ -67,8 +67,8 @@ describe("refreshAccessToken", () => {
 
     const result = await refreshAccessToken("good.cookie", {
       authServerUrl: "https://auth.example.com",
-      cookieSecret: "cookie-secret",
-      serviceSecret: "service-secret",
+      cookieSecret: "cookie-secret-cookie-secret-cookie-secret",
+      serviceSecret: "service-secret-service-secret-service-secret",
       issuer: "https://frontend.example.com",
       audience: "https://auth.example.com",
       keyId: "dev-main",
@@ -118,16 +118,16 @@ describe("refreshAccessToken", () => {
     const [first, second] = await Promise.all([
       refreshAccessToken("good-concurrent.cookie", {
         authServerUrl: "https://auth.example.com",
-        cookieSecret: "cookie-secret",
-        serviceSecret: "service-secret",
+        cookieSecret: "cookie-secret-cookie-secret-cookie-secret",
+        serviceSecret: "service-secret-service-secret-service-secret",
         issuer: "https://frontend.example.com",
         audience: "https://auth.example.com",
         keyId: "dev-main",
       }),
       refreshAccessToken("good-concurrent.cookie", {
         authServerUrl: "https://auth.example.com",
-        cookieSecret: "cookie-secret",
-        serviceSecret: "service-secret",
+        cookieSecret: "cookie-secret-cookie-secret-cookie-secret",
+        serviceSecret: "service-secret-service-secret-service-secret",
         issuer: "https://frontend.example.com",
         audience: "https://auth.example.com",
         keyId: "dev-main",
@@ -163,8 +163,8 @@ describe("refreshAccessToken", () => {
 
     const first = await refreshAccessToken("good-sequential.cookie", {
       authServerUrl: "https://auth.example.com",
-      cookieSecret: "cookie-secret",
-      serviceSecret: "service-secret",
+      cookieSecret: "cookie-secret-cookie-secret-cookie-secret",
+      serviceSecret: "service-secret-service-secret-service-secret",
       issuer: "https://frontend.example.com",
       audience: "https://auth.example.com",
       keyId: "dev-main",
@@ -172,8 +172,8 @@ describe("refreshAccessToken", () => {
 
     const second = await refreshAccessToken("good-sequential.cookie", {
       authServerUrl: "https://auth.example.com",
-      cookieSecret: "cookie-secret",
-      serviceSecret: "service-secret",
+      cookieSecret: "cookie-secret-cookie-secret-cookie-secret",
+      serviceSecret: "service-secret-service-secret-service-secret",
       issuer: "https://frontend.example.com",
       audience: "https://auth.example.com",
       keyId: "dev-main",

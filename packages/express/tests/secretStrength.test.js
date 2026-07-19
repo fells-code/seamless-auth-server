@@ -1,7 +1,10 @@
 import { jest } from "@jest/globals";
 
-const { default: createSeamlessAuthServer, createEnsureCookiesMiddleware } =
-  await import("../dist/index.js");
+const {
+  default: createSeamlessAuthServer,
+  createEnsureCookiesMiddleware,
+  requireAuth,
+} = await import("../dist/index.js");
 
 const STRONG_COOKIE_SECRET = "cookie-secret-cookie-secret-cookie-secret";
 const STRONG_SERVICE_SECRET = "service-secret-service-secret-service-secret";
@@ -78,6 +81,26 @@ describe("secret strength validation", () => {
     expect(() =>
       createEnsureCookiesMiddleware(middlewareOptions({ cookieSecret: "weak" })),
     ).toThrow(/cookieSecret must be at least 32 characters/);
+  });
+});
+
+describe("requireAuth secret strength", () => {
+  it("accepts a strong cookieSecret", () => {
+    expect(() =>
+      requireAuth({ cookieSecret: STRONG_COOKIE_SECRET }),
+    ).not.toThrow();
+  });
+
+  it("throws on a too-short cookieSecret", () => {
+    expect(() => requireAuth({ cookieSecret: "short" })).toThrow(
+      /requireAuth: cookieSecret must be at least 32 characters/,
+    );
+  });
+
+  it("still reports a missing cookieSecret", () => {
+    expect(() => requireAuth({})).toThrow(
+      /Missing requireAuth: cookieSecret/,
+    );
   });
 });
 

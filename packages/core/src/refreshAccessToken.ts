@@ -1,6 +1,7 @@
 import { authFetch } from "./authFetch.js";
 import { createServiceToken } from "./createServiceToken.js";
 import { verifyRefreshCookie } from "./verifyRefreshCookie.js";
+import { assertSecrets } from "./validateSecrets.js";
 
 export interface RefreshAccessTokenOptions {
   authServerUrl: string;
@@ -36,6 +37,8 @@ export async function refreshAccessToken(
   refreshCookie: string,
   opts: RefreshAccessTokenOptions,
 ): Promise<RefreshAccessTokenResult | null> {
+  assertSecrets(opts);
+
   const now = Date.now();
   const recentRefresh = recentRefreshResults.get(refreshCookie);
   if (recentRefresh && recentRefresh.expiresAt > now) {

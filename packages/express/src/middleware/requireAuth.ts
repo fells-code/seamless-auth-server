@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { verifyCookieJwt } from "@seamless-auth/core";
+import { assertSecretStrength, verifyCookieJwt } from "@seamless-auth/core";
 import { SeamlessAuthUser } from "../createServer";
 
 export interface RequireAuthOptions {
@@ -73,9 +73,7 @@ export interface RequireAuthOptions {
 export function requireAuth(opts: RequireAuthOptions) {
   const { cookieName = "seamless-access", cookieSecret } = opts;
 
-  if (!cookieSecret) {
-    throw new Error("requireAuth: missing cookieSecret");
-  }
+  assertSecretStrength("requireAuth: cookieSecret", cookieSecret);
 
   return function (req: Request, res: Response, next: NextFunction) {
     const token = req.cookies?.[cookieName];

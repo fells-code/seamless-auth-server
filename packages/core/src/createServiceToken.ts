@@ -1,5 +1,7 @@
 import jwt from "jsonwebtoken";
 
+import { assertSecretStrength } from "./validateSecrets.js";
+
 export interface ServiceTokenOptions {
   issuer: string;
   audience: string;
@@ -11,6 +13,8 @@ export interface ServiceTokenOptions {
 }
 
 export function createServiceToken(opts: ServiceTokenOptions): string {
+  assertSecretStrength("serviceSecret", opts.serviceSecret);
+
   return jwt.sign(
     {
       iss: opts.issuer,
