@@ -100,6 +100,14 @@ const COOKIE_REQUIREMENTS: Record<
     name: "preAuthCookieName",
     required: true,
   },
+  // The token in "/magic-link/verify/:token" is itself the credential, so a
+  // link opened on a different device (no pre-auth or refresh cookie) must not
+  // be gated. This entry must precede "/magic-link" so the prefix-match find()
+  // below selects it first.
+  "/magic-link/verify": {
+    name: "preAuthCookieName",
+    required: false,
+  },
   "/magic-link": {
     name: "preAuthCookieName",
     required: true,
@@ -268,6 +276,14 @@ export async function ensureCookies(
   }
 
   const [, { name, required }] = match;
+
+  // A not-required entry marks a route that is explicitly ungated: it must pass
+  // through regardless of which cookies are (or are not) present, so a stale or
+  // absent cookie never blocks it.
+  if (!required) {
+    return { type: "ok" };
+  }
+
   const cookieName = opts[name];
 
   if (!cookieName) {
