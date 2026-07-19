@@ -418,7 +418,7 @@ export function createSeamlessAuthServer(
   );
   r.delete(
     "/users/credentials",
-    proxyWithIdentity("users/credentials", "access"),
+    proxyWithIdentity("users/credentials", "access", "DELETE"),
   );
   r.get("/magic-link", (req, res) => requestMagicLink(req, res, resolvedOpts));
   r.get("/magic-link/verify/:token", async (req, res) => {
