@@ -45,6 +45,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import {
   createSeamlessAuthServer,
+  createSeamlessConsoleProxy,
   requireAuth,
   requireRole,
 } from "@seamless-auth/express";
@@ -57,6 +58,14 @@ app.use(cookieParser());
 app.use(
   "/auth",
   createSeamlessAuthServer({
+    authServerUrl: process.env.AUTH_SERVER_URL!,
+  }),
+);
+
+// Serve the Seamless admin dashboard on the same origin as /auth
+app.use(
+  "/console",
+  createSeamlessConsoleProxy({
     authServerUrl: process.env.AUTH_SERVER_URL!,
   }),
 );
@@ -176,6 +185,56 @@ This currently applies to:
 - OTP SMS
 - magic-link email
 - bootstrap invite email
+
+---
+
+### `createSeamlessConsoleProxy(options)`
+
+Mounts an Express router that reverse-proxies the Seamless admin dashboard SPA. Mount it at
+top-level `/console`, as a sibling of the `/auth` mount, so the dashboard loads from the same
+origin that exposes this adapter's cookie-based `/auth/*` endpoints:
+
+```ts
+app.use("/auth", createSeamlessAuthServer(opts));
+app.use(
+  "/console",
+  createSeamlessConsoleProxy({ authServerUrl: opts.authServerUrl }),
+);
+```
+
+The dashboard is built same-origin (base path `/console`, React Router basename `/console`) and
+still speaks the adapter contract: it calls `<origin>/auth<path>` with `credentials: "include"`.
+It must therefore be served from the origin that exposes this adapter, which this proxy provides
+by forwarding `/console` to the auth API's `/console`.
+
+**Requirements**
+
+- Use the same-origin `/console` dashboard build, not the bare auth API build.
+- The auth API (`seamless-auth-api`) must have `SERVE_ADMIN_DASHBOARD` enabled (its default) so it
+  serves the SPA at `/console`. When disabled upstream, the proxy forwards the upstream `404`.
+
+**Behavior**
+
+- Reverse-proxies `GET` and `HEAD` requests for the mounted subtree to
+  `${authServerUrl}${basePath}${subpath}`, forwarding the upstream status and copying
+  `content-type`, `cache-control`, `etag`, and `last-modified`. SPA history fallback and cache
+  headers are the auth API's responsibility, so the proxy forwards whatever the upstream returns,
+  including its `404`s.
+- Rejects requests that would escape the console subtree (such as `/console/../admin/users`) with
+  a `400` so they never reach the auth API's admin routes.
+- Never forwards the incoming `Cookie` or `Authorization` header upstream; static assets need
+  neither, and this avoids leaking the adapter session.
+- Other HTTP methods receive `405`, and a request body is ignored.
+- Returns `502` when the auth API is unreachable.
+
+**Options**
+
+```ts
+{
+  authServerUrl: string;  // required, base URL of the Seamless Auth API serving /console
+  basePath?: string;      // optional, defaults to "/console"
+}
+```
 
 ---
 

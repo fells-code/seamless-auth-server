@@ -4,6 +4,8 @@ import {
   SeamlessAuthUser,
 } from "./createServer";
 export { SeamlessAuthServerOptions, SeamlessAuthUser };
+export { createSeamlessConsoleProxy } from "./consoleProxy";
+export type { SeamlessConsoleProxyOptions } from "./consoleProxy";
 export type {
   AuthMessageOverrides,
   AuthMessagingHandlers,
