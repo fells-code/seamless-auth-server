@@ -255,8 +255,11 @@ export function createSeamlessAuthServer(
       preAuthCookieName: resolvedOpts.preAuthCookieName,
       cookieSecret: resolvedOpts.cookieSecret,
       serviceSecret: resolvedOpts.serviceSecret,
-      issuer: resolvedOpts.issuer,
-      audience: resolvedOpts.authServerUrl,
+      // The silent-refresh path mints an M2M service token that the auth API
+      // validates with a fixed issuer/audience (see buildInternalServiceAuthorization),
+      // not the adopter-configured issuer/audience.
+      issuer: "seamless-portal-api",
+      audience: "seamless-auth",
       keyId: resolvedOpts.jwksKid,
       forwardedClientIp: undefined,
     } as any),
