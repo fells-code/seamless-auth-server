@@ -8,6 +8,7 @@ export interface LoginInput {
 
 export interface LoginOptions {
   authServerUrl: string;
+  audience: string;
   cookieDomain?: string;
   preAuthCookieName: string;
   forwardedClientIp?: string;
@@ -51,6 +52,7 @@ export async function loginHandler(
   const verified = await verifySignedAuthResponse(
     data.token,
     opts.authServerUrl,
+    opts.audience,
   );
 
   if (!verified) {

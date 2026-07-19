@@ -11,6 +11,7 @@ export interface VerifyLoginOtpInput {
 
 export interface VerifyLoginOtpOptions {
   authServerUrl: string;
+  audience: string;
   cookieDomain?: string;
   accessCookieName: string;
   refreshCookieName: string;
@@ -64,6 +65,7 @@ async function verifyOtp(
   const verifiedAccessToken = await verifySignedAuthResponse(
     data.token,
     opts.authServerUrl,
+    opts.audience,
   );
 
   if (!verifiedAccessToken) {

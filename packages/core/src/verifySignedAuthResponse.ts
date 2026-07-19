@@ -3,6 +3,7 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 export async function verifySignedAuthResponse<T = any>(
   token: string,
   authServerUrl: string,
+  audience: string,
 ): Promise<T | null> {
   try {
     const jwksUrl = new URL("/.well-known/jwks.json", authServerUrl).toString();
@@ -11,6 +12,7 @@ export async function verifySignedAuthResponse<T = any>(
     const { payload } = await jwtVerify(token, JWKS, {
       algorithms: ["RS256"],
       issuer: authServerUrl,
+      audience,
     });
 
     return payload as T;

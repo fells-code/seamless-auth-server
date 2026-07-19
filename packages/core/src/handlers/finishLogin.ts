@@ -10,6 +10,7 @@ export interface FinishLoginInput {
 
 export interface FinishLoginOptions {
   authServerUrl: string;
+  audience: string;
   cookieDomain?: string;
   accessCookieName: string;
   refreshCookieName: string;
@@ -50,6 +51,7 @@ export async function finishLoginHandler(
   const verifiedAccessToken = await verifySignedAuthResponse(
     data.token,
     opts.authServerUrl,
+    opts.audience,
   );
 
   if (!verifiedAccessToken) {
