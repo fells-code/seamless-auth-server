@@ -3,7 +3,7 @@ import {
   verifyLoginOtpHandler,
   verifyRegistrationOtpHandler,
 } from "@seamless-auth/core/handlers/verifyLoginOtpHandler";
-import { setSessionCookie } from "../internal/cookie";
+import { buildCookieSigner, setSessionCookie } from "../internal/cookie";
 import { buildServiceAuthorization } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { SeamlessAuthServerOptions } from "../createServer";
@@ -15,14 +15,7 @@ async function verifyOtp(
   kind: "email" | "phone",
   flow: "login" | "register",
 ) {
-  const cookieSigner = {
-    secret: opts.cookieSecret,
-    secure: process.env.NODE_ENV === "production",
-    sameSite:
-      process.env.NODE_ENV === "production"
-        ? "none"
-        : ("lax" as "none" | "lax"),
-  };
+  const cookieSigner = buildCookieSigner(opts);
 
   const handler =
     flow === "register" ? verifyRegistrationOtpHandler : verifyLoginOtpHandler;
@@ -42,10 +35,6 @@ async function verifyOtp(
       refreshCookieName: opts.refreshCookieName!,
     },
   );
-
-  if (!cookieSigner.secret) {
-    throw new Error("Missing COOKIE_SIGNING_KEY");
-  }
 
   if (result.setCookies) {
     for (const c of result.setCookies) {

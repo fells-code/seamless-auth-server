@@ -2,11 +2,19 @@ import { Request, Response, NextFunction } from "express";
 import { ensureCookies, EnsureCookiesResult } from "@seamless-auth/core";
 
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
-import { setSessionCookie, clearAllCookies } from "../internal/cookie";
+import {
+  buildCookieSigner,
+  clearAllCookies,
+  setSessionCookie,
+  CookieSameSite,
+  CookieSignerOptions,
+} from "../internal/cookie";
 
 export interface EnsureCookiesMiddlewareOptions {
   authServerUrl: string;
   cookieDomain?: string;
+  cookieSecure?: boolean;
+  cookieSameSite?: CookieSameSite;
 
   accessCookieName: string;
   registrationCookieName: string;
@@ -29,14 +37,7 @@ export function createEnsureCookiesMiddleware(
     throw new Error("Missing serviceSecret");
   }
 
-  const cookieSigner = {
-    secret: opts.cookieSecret,
-    secure: process.env.NODE_ENV === "production",
-    sameSite:
-      process.env.NODE_ENV === "production"
-        ? "none"
-        : ("lax" as const as "lax" | "none"),
-  };
+  const cookieSigner = buildCookieSigner(opts);
 
   return async function ensureCookiesMiddleware(
     req: Request,
@@ -75,11 +76,7 @@ function applyResult(
   req: any,
   result: EnsureCookiesResult,
   opts: EnsureCookiesMiddlewareOptions,
-  cookieSigner: {
-    secret: string;
-    secure: boolean;
-    sameSite: "none" | "lax";
-  },
+  cookieSigner: CookieSignerOptions,
 ) {
   if (result.clearCookies?.length) {
     clearAllCookies(res, opts.cookieDomain, ...result.clearCookies);

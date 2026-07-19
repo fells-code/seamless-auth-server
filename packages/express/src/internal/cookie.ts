@@ -1,10 +1,39 @@
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { Response } from "express";
 
+export type CookieSameSite = "lax" | "none" | "strict";
+
 export interface CookieSignerOptions {
   secret: string;
   secure: boolean;
-  sameSite: "lax" | "none";
+  sameSite: CookieSameSite;
+}
+
+export interface CookieSecurityOptions {
+  cookieSecret: string;
+  cookieSecure?: boolean;
+  cookieSameSite?: CookieSameSite;
+}
+
+/**
+ * Single source of truth for cookie security policy. Defaults to secure so a deploy
+ * cannot silently ship plaintext-visible cookies. Browsers reject `SameSite=None`
+ * without `Secure`, so the SameSite default tracks `secure`.
+ */
+export function buildCookieSigner(
+  opts: CookieSecurityOptions,
+): CookieSignerOptions {
+  if (!opts.cookieSecret) {
+    throw new Error("Missing COOKIE_SIGNING_KEY");
+  }
+
+  const secure = opts.cookieSecure ?? true;
+
+  return {
+    secret: opts.cookieSecret,
+    secure,
+    sameSite: opts.cookieSameSite ?? (secure ? "none" : "lax"),
+  };
 }
 
 export interface SetCookieOptions {

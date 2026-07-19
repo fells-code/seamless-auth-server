@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { loginHandler } from "@seamless-auth/core/handlers/login";
-import { setSessionCookie } from "../internal/cookie";
+import { buildCookieSigner, setSessionCookie } from "../internal/cookie";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { SeamlessAuthServerOptions } from "../createServer";
 
@@ -9,14 +9,7 @@ export async function login(
   res: Response,
   opts: SeamlessAuthServerOptions,
 ) {
-  const cookieSigner = {
-    secret: opts.cookieSecret,
-    secure: process.env.NODE_ENV === "production",
-    sameSite:
-      process.env.NODE_ENV === "production"
-        ? "none"
-        : ("lax" as "none" | "lax"),
-  };
+  const cookieSigner = buildCookieSigner(opts);
 
   const result = await loginHandler(
     { body: req.body },
@@ -28,10 +21,6 @@ export async function login(
       forwardedClientIp: buildForwardedClientIp(req),
     } as any,
   );
-
-  if (!cookieSigner.secret) {
-    throw new Error("Missing COOKIE_SIGNING_KEY");
-  }
 
   if (result.setCookies) {
     for (const c of result.setCookies) {

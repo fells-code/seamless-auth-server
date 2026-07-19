@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { switchOrganizationHandler } from "@seamless-auth/core/handlers/switchOrganizationHandler";
-import { setSessionCookie } from "../internal/cookie";
+import { buildCookieSigner, setSessionCookie } from "../internal/cookie";
 import { buildServiceAuthorization } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { SeamlessAuthServerOptions } from "../createServer";
@@ -15,14 +15,7 @@ export async function switchOrganization(
   res: Response,
   opts: SeamlessAuthServerOptions,
 ) {
-  const cookieSigner = {
-    secret: opts.cookieSecret,
-    secure: process.env.NODE_ENV === "production",
-    sameSite:
-      process.env.NODE_ENV === "production"
-        ? "none"
-        : ("lax" as "none" | "lax"),
-  };
+  const cookieSigner = buildCookieSigner(opts);
 
   const result = await switchOrganizationHandler(
     {
@@ -37,10 +30,6 @@ export async function switchOrganization(
       accessCookieName: opts.accessCookieName!,
     },
   );
-
-  if (!cookieSigner.secret) {
-    throw new Error("Missing COOKIE_SIGNING_KEY");
-  }
 
   if (result.setCookies) {
     for (const c of result.setCookies) {
