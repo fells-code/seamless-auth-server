@@ -6,22 +6,7 @@ import {
 } from "@seamless-auth/core/handlers/oauthHandlers";
 import { SeamlessAuthServerOptions } from "../createServer";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
-import { setSessionCookie } from "../internal/cookie";
-
-function cookieSigner(opts: SeamlessAuthServerOptions) {
-  if (!opts.cookieSecret) {
-    throw new Error("Missing COOKIE_SIGNING_KEY");
-  }
-
-  return {
-    secret: opts.cookieSecret,
-    secure: process.env.NODE_ENV === "production",
-    sameSite:
-      process.env.NODE_ENV === "production"
-        ? "none"
-        : ("lax" as "none" | "lax"),
-  };
-}
+import { buildCookieSigner, setSessionCookie } from "../internal/cookie";
 
 function routeParam(req: Request, name: string): string {
   const value = req.params[name];
@@ -72,6 +57,8 @@ export async function finishOAuthLogin(
   res: Response,
   opts: SeamlessAuthServerOptions,
 ) {
+  const cookieSigner = buildCookieSigner(opts);
+
   const result = await finishOAuthLoginHandler(
     {
       providerId: routeParam(req, "providerId"),
@@ -97,7 +84,7 @@ export async function finishOAuthLogin(
           domain: c.domain,
           ttlSeconds: c.ttl,
         },
-        cookieSigner(opts),
+        cookieSigner,
       );
     }
   }

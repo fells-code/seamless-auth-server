@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { pollMagicLinkConfirmationHandler } from "@seamless-auth/core/handlers/pollMagicLinkConfirmationHandler";
-import { setSessionCookie } from "../internal/cookie";
+import { buildCookieSigner, setSessionCookie } from "../internal/cookie";
 import {
   buildInternalServiceAuthorization,
   buildServiceAuthorization,
@@ -13,14 +13,7 @@ export async function pollMagicLinkConfirmation(
   res: Response,
   opts: SeamlessAuthServerOptions,
 ) {
-  const cookieSigner = {
-    secret: opts.cookieSecret,
-    secure: process.env.NODE_ENV === "production",
-    sameSite:
-      process.env.NODE_ENV === "production"
-        ? "none"
-        : ("lax" as "none" | "lax"),
-  };
+  const cookieSigner = buildCookieSigner(opts);
 
   const authorization = buildServiceAuthorization(req, opts);
 
@@ -40,10 +33,6 @@ export async function pollMagicLinkConfirmation(
         : undefined,
     },
   );
-
-  if (!cookieSigner.secret) {
-    throw new Error("Missing COOKIE_SIGNING_KEY");
-  }
 
   if (result.setCookies) {
     for (const c of result.setCookies) {

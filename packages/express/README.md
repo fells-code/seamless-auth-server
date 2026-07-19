@@ -162,6 +162,8 @@ Routes include:
 {
   authServerUrl: string;   // required
   cookieDomain?: string;  // optional (defaults to host)
+  cookieSecure?: boolean;  // optional (defaults to true)
+  cookieSameSite?: "lax" | "none" | "strict";  // optional
   accessCookieName?: string;
   registrationCookieName?: string;
   refreshCookieName?: string;
@@ -173,6 +175,32 @@ Routes include:
     overrides?: AuthMessageOverrides;
   };
 }
+```
+
+#### Cookie security
+
+Auth cookies are issued with `Secure` and `SameSite=None` by default, so a deployment that
+forgets to set an environment variable still gets safe cookies. Cookie security is driven by
+explicit options, never by ambient `NODE_ENV`.
+
+- `cookieSecure` defaults to `true`. Set it to `false` only when serving the adapter over plain
+  HTTP on a local development machine.
+- `cookieSameSite` defaults to `none` when `cookieSecure` is `true`, and `lax` when it is `false`.
+  Browsers reject `SameSite=None` without `Secure`, so the default pairing stays valid either way.
+
+```ts
+app.use(
+  "/auth",
+  createSeamlessAuthServer({
+    authServerUrl: "https://identifier.seamlessauth.com",
+    cookieSecret: process.env.COOKIE_SECRET,
+    serviceSecret: process.env.SERVICE_SECRET,
+    issuer: "https://api.mycompany.com",
+    audience: "https://identifier.seamlessauth.com",
+    // local HTTP dev only, never in a deployed environment
+    cookieSecure: false,
+  }),
+);
 ```
 
 `messaging` is the initializer-facing contract for adopter-supplied auth messaging capabilities.

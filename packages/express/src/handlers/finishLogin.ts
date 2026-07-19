@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { finishLoginHandler } from "@seamless-auth/core/handlers/finishLogin";
-import { setSessionCookie } from "../internal/cookie";
+import { buildCookieSigner, setSessionCookie } from "../internal/cookie";
 import { buildServiceAuthorization } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { SeamlessAuthServerOptions } from "../createServer";
@@ -10,14 +10,7 @@ export async function finishLogin(
   res: Response,
   opts: SeamlessAuthServerOptions,
 ) {
-  const cookieSigner = {
-    secret: opts.cookieSecret,
-    secure: process.env.NODE_ENV === "production",
-    sameSite:
-      process.env.NODE_ENV === "production"
-        ? "none"
-        : ("lax" as "none" | "lax"),
-  };
+  const cookieSigner = buildCookieSigner(opts);
 
   const authorization = buildServiceAuthorization(req, opts);
 
@@ -35,10 +28,6 @@ export async function finishLogin(
       refreshCookieName: opts.refreshCookieName!,
     },
   );
-
-  if (!cookieSigner.secret) {
-    throw new Error("Missing COOKIE_SIGNING_KEY");
-  }
 
   if (result.setCookies) {
     for (const c of result.setCookies) {

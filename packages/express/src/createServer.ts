@@ -2,6 +2,7 @@ import express, { Request, Response, Router } from "express";
 import cookieParser from "cookie-parser";
 
 import { createEnsureCookiesMiddleware } from "./middleware/ensureCookies";
+import type { CookieSameSite } from "./internal/cookie";
 import type { SeamlessAuthMessagingOptions } from "./messaging";
 
 import { login } from "./handlers/login";
@@ -55,6 +56,8 @@ type ResolvedSeamlessAuthServerOptions = {
   audience: string;
   jwksKid: string;
   cookieDomain: string;
+  cookieSecure?: boolean;
+  cookieSameSite?: CookieSameSite;
   accessCookieName: string;
   registrationCookieName: string;
   refreshCookieName: string;
@@ -70,6 +73,8 @@ export type SeamlessAuthServerOptions = {
   audience: string;
   jwksKid?: string;
   cookieDomain?: string;
+  cookieSecure?: boolean;
+  cookieSameSite?: CookieSameSite;
   accessCookieName?: string;
   registrationCookieName?: string;
   refreshCookieName?: string;
@@ -156,6 +161,8 @@ function routeParam(req: Request, name: string): string {
  *   - `serviceSecret` - An machine to machine shared secret that matches your auth servers (required)
  *   - `jwksKid` - The active jwks KID
  *   - `cookieDomain` — Domain attribute applied to all auth cookies
+ *   - `cookieSecure` (defaults to `true`; set `false` only for local HTTP dev)
+ *   - `cookieSameSite` (defaults to `none` when secure, `lax` otherwise)
  *   - `accessCookieName` — Name of the session access cookie
  *   - `registrationCookieName` — Name of the ephemeral registration cookie
  *   - `refreshCookieName` — Name of the refresh token cookie
@@ -180,6 +187,8 @@ export function createSeamlessAuthServer(
     serviceSecret: opts.serviceSecret,
     jwksKid: opts.jwksKid ?? "dev-main",
     cookieDomain: opts.cookieDomain ?? "",
+    cookieSecure: opts.cookieSecure,
+    cookieSameSite: opts.cookieSameSite,
     accessCookieName: opts.accessCookieName ?? "seamless-access",
     registrationCookieName: opts.registrationCookieName ?? "seamless-ephemeral",
     refreshCookieName: opts.refreshCookieName ?? "seamless-refresh",
@@ -249,6 +258,8 @@ export function createSeamlessAuthServer(
     createEnsureCookiesMiddleware({
       authServerUrl: resolvedOpts.authServerUrl,
       cookieDomain: resolvedOpts.cookieDomain,
+      cookieSecure: resolvedOpts.cookieSecure,
+      cookieSameSite: resolvedOpts.cookieSameSite,
       accessCookieName: resolvedOpts.accessCookieName,
       registrationCookieName: resolvedOpts.registrationCookieName,
       refreshCookieName: resolvedOpts.refreshCookieName,
