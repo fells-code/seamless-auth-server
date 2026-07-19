@@ -42,7 +42,6 @@ export async function pollMagicLinkConfirmationHandler(
   if (up.status === 204) {
     return {
       status: 204,
-      body: { message: "Not verified." },
     };
   }
 

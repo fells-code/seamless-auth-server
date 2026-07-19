@@ -43,5 +43,5 @@ export async function getSeamlessUser<T = any>(
   if (!response.ok) return null;
 
   const data = await response.json();
-  return data.user ?? null;
+  return data?.user ?? null;
 }

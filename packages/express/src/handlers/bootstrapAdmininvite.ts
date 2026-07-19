@@ -12,7 +12,7 @@ export async function bootstrapAdminInvite(
 ) {
   const result = await bootstrapAdminInviteHandler({
     authServerUrl: opts.authServerUrl,
-    email: req.body.email,
+    email: req.body?.email,
     authorization: req.headers["authorization"],
     externalDelivery: Boolean(opts.messaging),
     forwardedClientIp: buildForwardedClientIp(req),
