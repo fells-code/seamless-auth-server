@@ -16,7 +16,7 @@ function createJsonResponse(status, body) {
 function createAccessCookie(subject = "user-123") {
   const token = jwt.sign(
     { sub: subject, roles: ["user"], token: "access-token" },
-    "cookie-secret",
+    "cookie-secret-cookie-secret-cookie-secret",
     {
       algorithm: "HS256",
       expiresIn: "300s",
@@ -29,7 +29,7 @@ function createAccessCookie(subject = "user-123") {
 function createRegistrationCookie(subject = "user-123") {
   const token = jwt.sign(
     { sub: subject, roles: ["user"], token: "ephemeral-token" },
-    "cookie-secret",
+    "cookie-secret-cookie-secret-cookie-secret",
     {
       algorithm: "HS256",
       expiresIn: "300s",
@@ -46,11 +46,11 @@ function createApp() {
     "/auth",
     createSeamlessAuthServer({
       authServerUrl: "https://auth.example.com",
-      cookieSecret: "cookie-secret",
-      serviceSecret: "service-secret",
+      cookieSecret: "cookie-secret-cookie-secret-cookie-secret",
+      serviceSecret: "service-secret-service-secret-service-secret",
       issuer: "https://api.example.com",
       audience: "https://auth.example.com",
-      jwksKid: "dev-main",
+      jwksKid: "test-main",
     }),
   );
 

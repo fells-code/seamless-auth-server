@@ -16,7 +16,7 @@ function createJsonResponse(status, body) {
 function createRefreshCookie(subject = "user-123") {
   const token = jwt.sign(
     { sub: subject, refreshToken: "opaque-refresh-token" },
-    "cookie-secret",
+    "cookie-secret-cookie-secret-cookie-secret",
     { algorithm: "HS256", expiresIn: "3600s" },
   );
 
@@ -30,11 +30,11 @@ function createApp() {
     "/auth",
     createSeamlessAuthServer({
       authServerUrl: "https://auth.example.com",
-      cookieSecret: "cookie-secret",
-      serviceSecret: "service-secret",
+      cookieSecret: "cookie-secret-cookie-secret-cookie-secret",
+      serviceSecret: "service-secret-service-secret-service-secret",
       issuer: "https://api.example.com",
       audience: "https://auth.example.com",
-      jwksKid: "dev-main",
+      jwksKid: "test-main",
     }),
   );
 

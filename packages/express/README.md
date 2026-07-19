@@ -177,6 +177,22 @@ Routes include:
 }
 ```
 
+#### Secret strength
+
+`cookieSecret` and `serviceSecret` are validated at startup. Each must be at least 32 characters,
+otherwise `createSeamlessAuthServer` (and `createEnsureCookiesMiddleware`) throws before the router
+is mounted. A short secret can be brute forced offline, which would let an attacker forge cookie
+sessions and service tokens.
+
+Generate secrets with a CSPRNG, for example `openssl rand -base64 48`, and supply them through the
+environment rather than source.
+
+#### JWKS key id
+
+`jwksKid` is optional and still falls back to `dev-main`. When it is omitted or set to `dev-main`,
+the adapter logs a startup warning, because a dev-flavored key id in a deployed environment usually
+means the value was never configured. Set `jwksKid` to the active JWKS key id in production.
+
 #### Cookie security
 
 Auth cookies are issued with `Secure` and `SameSite=None` by default, so a deployment that
