@@ -187,6 +187,22 @@ describe("cookie requirement routes", () => {
     );
   });
 
+  it("keeps an injected magic link token in a single path segment (#65)", async () => {
+    global.fetch.mockResolvedValue(
+      createJsonResponse(200, { message: "Verified" }),
+    );
+
+    await request(createApp()).get(
+      "/auth/magic-link/verify/" +
+        encodeURIComponent("../admin/users?admin=true"),
+    );
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "https://auth.example.com/magic-link/verify/..%2Fadmin%2Fusers%3Fadmin%3Dtrue",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
   it("does not shadow the /admin/sessions route with /sessions", async () => {
     global.fetch.mockResolvedValue(createJsonResponse(200, { sessions: [] }));
 

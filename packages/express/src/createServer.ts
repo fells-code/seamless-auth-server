@@ -434,7 +434,7 @@ export function createSeamlessAuthServer(
   r.get("/magic-link", (req, res) => requestMagicLink(req, res, resolvedOpts));
   r.get("/magic-link/verify/:token", async (req, res) => {
     const upstream = await authFetch(
-      `${resolvedOpts.authServerUrl}/magic-link/verify/${req.params.token}`,
+      `${resolvedOpts.authServerUrl}/magic-link/verify/${encodeURIComponent(routeParam(req, "token"))}`,
       {
         method: "GET",
         forwardedClientIp: buildForwardedClientIp(req),

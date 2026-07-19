@@ -42,7 +42,7 @@ export const listSessionsHandler = (opts: BaseOpts) =>
   request("GET", "/sessions", opts);
 
 export const revokeSessionHandler = (id: string, opts: BaseOpts) =>
-  request("DELETE", `/sessions/${id}`, opts);
+  request("DELETE", `/sessions/${encodeURIComponent(id)}`, opts);
 
 export const revokeAllSessionsHandler = (opts: BaseOpts) =>
   request("DELETE", "/sessions", opts);
