@@ -1,6 +1,7 @@
 import { verifyCookieJwt } from "./verifyCookieJwt.js";
 import { refreshAccessToken } from "./refreshAccessToken.js";
 import { redactSensitiveText } from "./redaction.js";
+import { assertSecrets } from "./validateSecrets.js";
 
 export interface EnsureCookiesInput {
   path: string;
@@ -257,6 +258,8 @@ export async function ensureCookies(
   input: EnsureCookiesInput,
   opts: EnsureCookiesOptions,
 ): Promise<EnsureCookiesResult> {
+  assertSecrets(opts);
+
   // Match case-insensitively: Express route matching is case-insensitive by
   // default, so a client may send a path whose casing differs from the mounted
   // route (e.g. "/webauthn/..." vs "/webAuthn/..."). A case-sensitive miss here
