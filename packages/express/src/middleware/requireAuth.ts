@@ -30,9 +30,9 @@ export interface RequireAuthOptions {
  * - Acts as a request-level authentication guard for API routes
  *
  * ### Cookie Parameters
- * - **cookieName** — Name of the access cookie that holds the signed session JWT
- * - **refreshCookieName** — Name of the refresh cookie used for silent token refresh
- * - **cookieDomain** — Domain or path value applied to issued cookies
+ * - **cookieName** - Name of the access cookie that holds the signed session JWT
+ * - **refreshCookieName** - Name of the refresh cookie used for silent token refresh
+ * - **cookieDomain** - Domain or path value applied to issued cookies
  *
  * ### Example
  * ```ts
@@ -79,7 +79,7 @@ export function requireAuth(opts: RequireAuthOptions) {
     const token = req.cookies?.[cookieName];
 
     if (!token) {
-      console.error(
+      console.warn(
         "[SEAMLESS-AUTH-EXPRESS] - (requireAuth) - Missing expected auth cookie. Ensure you are using `cookieParser` in your express server",
       );
       res.status(401).json({
@@ -99,7 +99,7 @@ export function requireAuth(opts: RequireAuthOptions) {
 
     const user: SeamlessAuthUser = {
       id: payload.sub,
-      sub: payload.sub, // TODO: Silly to store the same value twice. Search every where its used and phase this out.
+      sub: payload.sub, // TODO(#85): duplicate of `id`, phase one of them out.
       roles: Array.isArray(payload.roles) ? payload.roles : [],
       email: payload.email,
       phone: payload.phone,

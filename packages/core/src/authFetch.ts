@@ -42,7 +42,7 @@ export async function authFetch(
 // Upstream responses aren't always JSON: a rate-limited request comes back as plain
 // text ("Too many requests…") and a 204 has no body. Native Response.json() throws on
 // both, which would crash callers that parse the body before checking the status. Make
-// json() tolerant so callers always get a value — parsed JSON, { message: text } for a
+// json() tolerant so callers always get a value: parsed JSON, { message: text } for a
 // non-JSON body, or undefined for an empty one.
 function makeJsonTolerant(response: Response): Response {
   if (typeof response.text !== "function") {

@@ -161,18 +161,18 @@ function routeParam(req: Request, name: string): string {
  * ```
  *
  * @param opts - Configuration options for the Seamless Auth proxy:
- *   - `authServerUrl` — Base URL of your Seamless Auth instance (required)
+ *   - `authServerUrl` - Base URL of your Seamless Auth instance (required)
  *   - `cookieSecret` - The value to encode your cookies secrets with (required, at least 32 characters)
  *   - `serviceSecret` - An machine to machine shared secret that matches your auth servers (required, at least 32 characters)
  *   - `jwksKid` - The active jwks KID (defaults to `dev-main` and warns; set it explicitly in production)
- *   - `cookieDomain` — Domain attribute applied to all auth cookies
+ *   - `cookieDomain` - Domain attribute applied to all auth cookies
  *   - `cookieSecure` (defaults to `true`; set `false` only for local HTTP dev)
  *   - `cookieSameSite` (defaults to `none` when secure, `lax` otherwise)
- *   - `accessCookieName` — Name of the session access cookie
- *   - `registrationCookieName` — Name of the ephemeral registration cookie
- *   - `refreshCookieName` — Name of the refresh token cookie
- *   - `preAuthCookieName` — Name of the cookie used during login initiation
- *   - `messaging` — Optional auth-messaging transports, handlers, and overrides
+ *   - `accessCookieName` - Name of the session access cookie
+ *   - `registrationCookieName` - Name of the ephemeral registration cookie
+ *   - `refreshCookieName` - Name of the refresh token cookie
+ *   - `preAuthCookieName` - Name of the cookie used during login initiation
+ *   - `messaging` - Optional auth-messaging transports, handlers, and overrides
  *
  * @returns An Express `Router` preconfigured with all Seamless Auth routes.
  */
@@ -200,6 +200,8 @@ export function createSeamlessAuthServer(
     accessCookieName: opts.accessCookieName ?? "seamless-access",
     registrationCookieName: opts.registrationCookieName ?? "seamless-ephemeral",
     refreshCookieName: opts.refreshCookieName ?? "seamless-refresh",
+    // Shares the registration cookie default on purpose: registration and login
+    // initiation never hold an ephemeral cookie at the same time.
     preAuthCookieName: opts.preAuthCookieName ?? "seamless-ephemeral",
     messaging: opts.messaging,
   };
@@ -239,7 +241,7 @@ export function createSeamlessAuthServer(
         identity === "register" &&
         !req.cookies[resolvedOpts.registrationCookieName]
       ) {
-        res.status(401).json({ error: "registeration session required" });
+        res.status(401).json({ error: "registration session required" });
         return;
       }
 

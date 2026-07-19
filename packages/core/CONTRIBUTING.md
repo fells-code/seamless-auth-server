@@ -1,7 +1,7 @@
 # Contributing to Seamless Auth
 
 Thanks for your interest in contributing to Seamless Auth.
-Contributions of all kinds are welcome — bug reports, documentation improvements, tests, and code.
+Contributions of all kinds are welcome: bug reports, documentation improvements, tests, and code.
 
 ---
 
@@ -9,10 +9,10 @@ Contributions of all kinds are welcome — bug reports, documentation improvemen
 
 Seamless Auth is built around a few core principles:
 
-- **Security first** — explicit trust boundaries and auditable logic
-- **Framework-agnostic core** — adapters should be thin
-- **Minimal magic** — clear inputs and outputs
-- **Predictable behavior** — changes should not surprise users
+- **Security first**: explicit trust boundaries and auditable logic
+- **Framework-agnostic core**: adapters should be thin
+- **Minimal magic**: clear inputs and outputs
+- **Predictable behavior**: changes should not surprise users
 
 Please keep these principles in mind when contributing.
 
@@ -63,7 +63,7 @@ Some packages may require additional environment variables. Refer to their indiv
 - Avoid hidden side effects and implicit globals
 - Keep adapters thin; put logic in `@seamless-auth/core`
 
-Formatting and linting tools are provided — please run them before submitting a PR.
+Formatting and linting tools are provided, please run them before submitting a PR.
 
 ---
 
@@ -123,5 +123,5 @@ By contributing, you agree that your contributions will be licensed under the sa
 
 Thank you for helping improve Seamless Auth.
 
-— Fells Code, LLC
+Fells Code, LLC
 https://seamlessauth.com
