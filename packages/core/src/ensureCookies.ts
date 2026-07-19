@@ -111,6 +111,9 @@ const COOKIE_REQUIREMENTS: Record<
   "/logout/all": { name: "accessCookieName", required: true },
   "/logout": { name: "accessCookieName", required: true },
   "/users/me": { name: "accessCookieName", required: true },
+  "/users/update": { name: "accessCookieName", required: true },
+  "/users/credentials": { name: "accessCookieName", required: true },
+  "/sessions": { name: "accessCookieName", required: true },
   "/organizations": { name: "accessCookieName", required: true },
   "/step-up/status": { name: "accessCookieName", required: true },
   "/step-up/webauthn/start": { name: "accessCookieName", required: true },
@@ -139,6 +142,10 @@ const COOKIE_REQUIREMENTS: Record<
   "/internal/security/anomalies": { name: "accessCookieName", required: true },
 
   "/admin/user": {
+    name: "accessCookieName",
+    required: true,
+  },
+  "/admin/credential-count": {
     name: "accessCookieName",
     required: true,
   },
