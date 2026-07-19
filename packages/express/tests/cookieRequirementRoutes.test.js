@@ -171,6 +171,22 @@ describe("cookie requirement routes", () => {
     );
   });
 
+  it("verifies a magic link without cookies for cross-device opens (#60)", async () => {
+    global.fetch.mockResolvedValue(
+      createJsonResponse(200, { message: "Verified" }),
+    );
+
+    const res = await request(createApp()).get(
+      "/auth/magic-link/verify/token-abc",
+    );
+
+    expect(res.status).toBe(200);
+    expect(global.fetch).toHaveBeenCalledWith(
+      "https://auth.example.com/magic-link/verify/token-abc",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
   it("does not shadow the /admin/sessions route with /sessions", async () => {
     global.fetch.mockResolvedValue(createJsonResponse(200, { sessions: [] }));
 

@@ -225,6 +225,39 @@ describe("ensureCookies", () => {
     });
   });
 
+  it("does not gate magic-link verify when no cookies are present (#60)", async () => {
+    const { ensureCookies } = await import("../dist/ensureCookies.js");
+
+    const result = await ensureCookies(
+      {
+        path: "/magic-link/verify/token-abc",
+        cookies: {},
+      },
+      BASE_OPTS,
+    );
+
+    expect(result).toEqual({ type: "ok" });
+    expect(verifyCookieJwtMock).not.toHaveBeenCalled();
+    expect(refreshAccessTokenMock).not.toHaveBeenCalled();
+  });
+
+  it("does not gate magic-link verify even with a stale pre-auth cookie (#60)", async () => {
+    const { ensureCookies } = await import("../dist/ensureCookies.js");
+
+    verifyCookieJwtMock.mockReturnValue(null);
+
+    const result = await ensureCookies(
+      {
+        path: "/magic-link/verify/token-abc",
+        cookies: { preauth: "stale.preauth.jwt" },
+      },
+      BASE_OPTS,
+    );
+
+    expect(result).toEqual({ type: "ok" });
+    expect(verifyCookieJwtMock).not.toHaveBeenCalled();
+  });
+
   it("requires the pre-auth cookie for login OTP routes", async () => {
     const { ensureCookies } = await import("../dist/ensureCookies.js");
 
