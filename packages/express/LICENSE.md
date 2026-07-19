@@ -1,6 +1,6 @@
 # License
 
-Seamless Auth Server - Express ("@seamlessauth/express") is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0-only)**.
+Seamless Auth Server - Express ("@seamless-auth/express") is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0-only)**.
 
 - SPDX: `AGPL-3.0-only`
 

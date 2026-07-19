@@ -33,7 +33,7 @@ export interface VerifyLoginOtpResult {
 // auth-server path and, when the response carries a session, validate the signed
 // access token and build the session cookies. Registration can complete without
 // a session yet (e.g. a phone-first step before email is verified), in which case
-// there is no token to turn into cookies — the body is returned as-is.
+// there is no token to turn into cookies, so the body is returned as-is.
 async function verifyOtp(
   path: string,
   input: VerifyLoginOtpInput,

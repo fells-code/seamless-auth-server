@@ -147,7 +147,7 @@ Routes include:
 - `/auth/oauth/providers`
 - `/auth/oauth/:providerId/start`
 - `/auth/oauth/:providerId/callback`
-- `/auth/webauthn/*`
+- `/auth/webAuthn/*`
 - `/auth/step-up/*`
 - `/auth/totp/*` (enrollment, disable, status, and `verify-mfa` step-up)
 - `/auth/registration/*`
@@ -418,7 +418,7 @@ Returned shape (example):
 1. **Frontend** → `/auth/login`
    API proxies request and sets a short-lived _pre-auth_ cookie.
 
-2. **Frontend** → `/auth/webauthn/finish`  
+2. **Frontend** → `/auth/webAuthn/finish`  
    API verifies response and sets a signed access cookie.
 
 3. **API routes** → `/api/*`  

@@ -68,8 +68,8 @@ function resolveUpstreamUrl(
  * ```
  *
  * @param options - Configuration for the console proxy:
- *   - `authServerUrl` — Base URL of the Seamless Auth API serving `/console` (required)
- *   - `basePath` — Mounted subtree proxied upstream (defaults to `/console`)
+ *   - `authServerUrl` - Base URL of the Seamless Auth API serving `/console` (required)
+ *   - `basePath` - Mounted subtree proxied upstream (defaults to `/console`)
  *
  * @returns An Express `Router` that proxies `GET`/`HEAD` console requests upstream.
  */

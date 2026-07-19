@@ -75,5 +75,5 @@ We believe responsible disclosure helps keep the ecosystem safer for everyone.
 
 Thank you for helping keep Seamless Auth secure.
 
-— Fells Code, LLC  
+Fells Code, LLC  
 https://seamlessauth.com
