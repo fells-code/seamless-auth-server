@@ -112,6 +112,7 @@ export async function getGroupedEventSummary(
     authServerUrl: opts.authServerUrl,
     authorization,
     forwardedClientIp: buildForwardedClientIp(req),
+    query: req.query as any,
   } as any);
 
   return handle(res, result);

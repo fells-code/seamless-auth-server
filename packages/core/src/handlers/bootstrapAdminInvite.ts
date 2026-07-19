@@ -46,7 +46,7 @@ export async function bootstrapAdminInviteHandler(
   if (!up.ok) {
     return {
       status: up.status,
-      error: data?.error?.message || "bootstrap_failed",
+      error: data?.error?.message || data?.error || "bootstrap_failed",
     };
   }
 

@@ -67,5 +67,5 @@ export const getSecurityAnomaliesHandler = (opts: BaseOpts) =>
 export const getDashboardMetricsHandler = (opts: BaseOpts) =>
   get("/internal/metrics/dashboard", opts);
 
-export const getGroupedEventSummaryHandler = (opts: BaseOpts) =>
+export const getGroupedEventSummaryHandler = (opts: WithQuery) =>
   get("/internal/auth-events/grouped", opts);
