@@ -27,6 +27,11 @@ import {
 import * as admin from "./handlers/admin";
 import { authFetch, AuthFetchOptions } from "@seamless-auth/core";
 import { buildServiceAuthorization } from "./internal/buildAuthorization";
+import {
+  assertSecrets,
+  DEV_JWKS_KID,
+  warnOnDevJwksKid,
+} from "./internal/validateSecrets";
 import { buildForwardedClientIp } from "./internal/buildForwardedClientIp";
 import { bootstrapAdminInvite } from "./handlers/bootstrapAdmininvite";
 import {
@@ -146,9 +151,9 @@ function routeParam(req: Request, name: string): string {
  * app.use("/auth", createSeamlessAuthServer({
  *   authServerUrl: "https://identifier.seamlessauth.com",
  *   cookieDomain: "mycompany.com",
- *   cookieSecret: "someLongRandomValue"
- *   serviceSecret: "someLongRandomValueToo"
- *   jwksKid: "dev-main"
+ *   cookieSecret: process.env.COOKIE_SECRET,
+ *   serviceSecret: process.env.SERVICE_SECRET,
+ *   jwksKid: "2024-09-main",
  *   accessCookieName: "sa_access",
  *   registrationCookieName: "sa_registration",
  *   refreshCookieName: "sa_refresh",
@@ -157,9 +162,9 @@ function routeParam(req: Request, name: string): string {
  *
  * @param opts - Configuration options for the Seamless Auth proxy:
  *   - `authServerUrl` — Base URL of your Seamless Auth instance (required)
- *   - `cookieSecret` — The value to encode your cookies secrets with (required)
- *   - `serviceSecret` - An machine to machine shared secret that matches your auth servers (required)
- *   - `jwksKid` - The active jwks KID
+ *   - `cookieSecret` - The value to encode your cookies secrets with (required, at least 32 characters)
+ *   - `serviceSecret` - An machine to machine shared secret that matches your auth servers (required, at least 32 characters)
+ *   - `jwksKid` - The active jwks KID (defaults to `dev-main` and warns; set it explicitly in production)
  *   - `cookieDomain` — Domain attribute applied to all auth cookies
  *   - `cookieSecure` (defaults to `true`; set `false` only for local HTTP dev)
  *   - `cookieSameSite` (defaults to `none` when secure, `lax` otherwise)
@@ -174,6 +179,9 @@ function routeParam(req: Request, name: string): string {
 export function createSeamlessAuthServer(
   opts: SeamlessAuthServerOptions,
 ): Router {
+  assertSecrets(opts);
+  warnOnDevJwksKid(opts.jwksKid);
+
   const r = express.Router();
 
   r.use(express.json());
@@ -185,7 +193,7 @@ export function createSeamlessAuthServer(
     audience: opts.audience,
     cookieSecret: opts.cookieSecret,
     serviceSecret: opts.serviceSecret,
-    jwksKid: opts.jwksKid ?? "dev-main",
+    jwksKid: opts.jwksKid ?? DEV_JWKS_KID,
     cookieDomain: opts.cookieDomain ?? "",
     cookieSecure: opts.cookieSecure,
     cookieSameSite: opts.cookieSameSite,
@@ -206,7 +214,6 @@ export function createSeamlessAuthServer(
       if (!req.cookiePayload?.sub) {
         console.warn(
           "[SEAMLESS-AUTH-EXPRESS] - (proxyWithIdentity) - Missing expected cookie payload/sub.",
-          req.cookiePayload,
         );
         res.status(401).json({ error: "Unauthenticated request" });
         return;

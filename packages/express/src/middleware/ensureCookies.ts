@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { ensureCookies, EnsureCookiesResult } from "@seamless-auth/core";
 
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
+import { assertSecrets } from "../internal/validateSecrets";
 import {
   buildCookieSigner,
   clearAllCookies,
@@ -30,12 +31,7 @@ export interface EnsureCookiesMiddlewareOptions {
 export function createEnsureCookiesMiddleware(
   opts: EnsureCookiesMiddlewareOptions,
 ) {
-  if (!opts.cookieSecret) {
-    throw new Error("Missing cookieSecret");
-  }
-  if (!opts.serviceSecret) {
-    throw new Error("Missing serviceSecret");
-  }
+  assertSecrets(opts);
 
   const cookieSigner = buildCookieSigner(opts);
 

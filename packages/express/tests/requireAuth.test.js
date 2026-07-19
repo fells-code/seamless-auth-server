@@ -7,7 +7,7 @@ const { requireAuth } = await import("../dist/index.js");
 
 describe("requireAuth (smoke)", () => {
   it("allows request and sets req.user when cookie is valid", async () => {
-    const secret = "cookie-secret";
+    const secret = "cookie-secret-cookie-secret-cookie-secret";
 
     const token = jwt.sign({ sub: "user-123" }, secret, { expiresIn: "1h" });
 
@@ -33,7 +33,7 @@ describe("requireAuth (smoke)", () => {
   });
 
   it("forwards the inner access token as req.user.token", async () => {
-    const secret = "cookie-secret";
+    const secret = "cookie-secret-cookie-secret-cookie-secret";
     const innerAccessToken = "inner-access-jwt";
 
     const token = jwt.sign(
