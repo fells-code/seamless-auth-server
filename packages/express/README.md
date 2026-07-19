@@ -59,6 +59,10 @@ app.use(
   "/auth",
   createSeamlessAuthServer({
     authServerUrl: process.env.AUTH_SERVER_URL!,
+    cookieSecret: process.env.COOKIE_SECRET!,
+    serviceSecret: process.env.SERVICE_SECRET!,
+    issuer: "https://api.mycompany.com",
+    audience: process.env.AUTH_SERVER_URL!,
   }),
 );
 
@@ -71,7 +75,7 @@ app.use(
 );
 
 // Everything below requires authentication
-app.use(requireAuth());
+app.use(requireAuth({ cookieSecret: process.env.COOKIE_SECRET! }));
 
 app.get("/api/me", (req, res) => {
   res.json({ user: req.user });
@@ -119,19 +123,24 @@ This keeps trust boundaries clean and auditable.
 
 ---
 
-## Environment Variables
+## Configuration
 
-| Variable             | Description                               | Example                   |
-| -------------------- | ----------------------------------------- | ------------------------- |
-| `AUTH_SERVER_URL`    | Base URL of your Seamless Auth Server     | `https://auth.client.com` |
-| `COOKIE_SIGNING_KEY` | Secret for signing API session cookies    | `local-dev-secret`        |
-| `API_SERVICE_TOKEN`  | API → Auth Server service secret          | `shared-m2m-value`        |
-| `APP_ORIGIN`         | Your site URL (or localhost in demo mode) | `https://myapp.com`       |
-| `DB_HOST`            | Database Host                             | `localhost`               |
-| `DB_PORT`            | Database Port                             | `5432`                    |
-| `DB_USER`            | Database user                             | `myuser`                  |
-| `DB_PASSWORD`        | Database password                         | `mypassword`              |
-| `DB_NAME`            | Name of your database                     | `seamless`                |
+This adapter reads no environment variables. Every setting is passed explicitly as an option to
+`createSeamlessAuthServer`, `createSeamlessConsoleProxy`, or `requireAuth`, so configuration is
+visible at the call site and testable without mutating the environment.
+
+Adopters typically source the secrets from their own environment and pass them in:
+
+| Option          | Required | Description                                                    |
+| --------------- | -------- | -------------------------------------------------------------- |
+| `authServerUrl` | yes      | Base URL of your Seamless Auth Server                          |
+| `cookieSecret`  | yes      | Secret used to sign the adapter's session cookies (min 32 chars) |
+| `serviceSecret` | yes      | Shared machine-to-machine secret, must match the auth server   |
+| `issuer`        | yes      | Issuer identifier for your API                                 |
+| `audience`      | yes      | Expected audience when verifying signed auth-server responses  |
+
+See [`createSeamlessAuthServer(options)`](#createseamlessauthserveroptions) below for the optional
+settings (cookie names, cookie security, `jwksKid`, messaging).
 
 ---
 
@@ -161,6 +170,11 @@ Routes include:
 ```ts
 {
   authServerUrl: string;   // required
+  cookieSecret: string;    // required (min 32 chars)
+  serviceSecret: string;   // required (min 32 chars)
+  issuer: string;          // required
+  audience: string;        // required
+  jwksKid?: string;        // optional (defaults to "dev-main", warns when unset)
   cookieDomain?: string;  // optional (defaults to host)
   cookieSecure?: boolean;  // optional (defaults to true)
   cookieSameSite?: "lax" | "none" | "strict";  // optional
@@ -353,14 +367,29 @@ authentication in the Seamless Auth API.
 
 ---
 
-### `requireAuth(options?)`
+### `requireAuth(options)`
 
 Express middleware that verifies a signed access cookie and attaches the decoded user payload to `req.user`.
 
+`cookieSecret` is required and must match the secret given to `createSeamlessAuthServer`. This guard
+does not attempt token refresh; silent refresh is handled by the `/auth` router's `ensureCookies`
+middleware.
+
 ```ts
-app.get("/api/profile", requireAuth(), (req, res) => {
+const guard = requireAuth({ cookieSecret: process.env.COOKIE_SECRET! });
+
+app.get("/api/profile", guard, (req, res) => {
   res.json({ user: req.user });
 });
+```
+
+**Options**
+
+```ts
+{
+  cookieSecret: string;   // required, must match createSeamlessAuthServer
+  cookieName?: string;    // optional (defaults to "seamless-access")
+}
 ```
 
 ---
@@ -431,11 +460,28 @@ completion route sets the same authenticated cookies used by the rest of the ada
 
 ## Local Development
 
+These variable names are yours to choose, since the adapter reads no environment variables. Define
+whatever your app already uses and pass the values through as options:
+
 ```bash
 AUTH_SERVER_URL=http://localhost:5312
-SEAMLESS_SERVICE_TOKEN=generated-secret
-COOKIE_SIGNING_KEY=local-dev-key
-FRONTEND_URL=http://localhost:5001
+COOKIE_SECRET=local-dev-cookie-secret-at-least-32-chars
+SERVICE_SECRET=local-dev-service-secret-at-least-32-chars
+```
+
+```ts
+app.use(
+  "/auth",
+  createSeamlessAuthServer({
+    authServerUrl: process.env.AUTH_SERVER_URL!,
+    cookieSecret: process.env.COOKIE_SECRET!,
+    serviceSecret: process.env.SERVICE_SECRET!,
+    issuer: "http://localhost:5000",
+    audience: process.env.AUTH_SERVER_URL!,
+    // local HTTP only, never in a deployed environment
+    cookieSecure: false,
+  }),
+);
 ```
 
 ---
