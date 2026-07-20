@@ -2,6 +2,21 @@ import { verifyCookieJwt } from "./verifyCookieJwt.js";
 import { authFetch } from "./authFetch.js";
 import { assertSecretStrength } from "./validateSecrets.js";
 
+/**
+ * The user object returned by the auth server's `GET /users/me`.
+ *
+ * `lastLogin` is an ISO 8601 timestamp, null until the user's first login.
+ * `activeOrganizationId` is null when the access token carries no org context.
+ */
+export interface SeamlessUser {
+  id: string;
+  email: string;
+  phone: string | null;
+  roles: string[];
+  lastLogin?: string | null;
+  activeOrganizationId?: string | null;
+}
+
 export interface GetSeamlessUserOptions {
   authServerUrl: string;
   cookieSecret: string;
@@ -20,7 +35,7 @@ export interface GetSeamlessUserOptions {
  *
  * This is intended for server-side usage (SSR, API routes, edge functions).
  */
-export async function getSeamlessUser<T = any>(
+export async function getSeamlessUser<T = SeamlessUser>(
   cookies: Record<string, string | undefined>,
   opts: GetSeamlessUserOptions,
 ): Promise<T | null> {

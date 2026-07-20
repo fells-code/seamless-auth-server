@@ -29,7 +29,7 @@ describe("requireAuth (smoke)", () => {
       .set("Cookie", [`access=${token}`]);
 
     expect(res.status).toBe(200);
-    expect(res.body.user.sub).toBe("user-123");
+    expect(res.body.user.id).toBe("user-123");
   });
 
   it("forwards the inner access token as req.user.token", async () => {

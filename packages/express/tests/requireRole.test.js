@@ -7,7 +7,7 @@ function appWithRoles(roles) {
   const app = express();
 
   app.use((req, _res, next) => {
-    req.user = { sub: "user-1", roles };
+    req.user = { id: "user-1", roles };
     next();
   });
 

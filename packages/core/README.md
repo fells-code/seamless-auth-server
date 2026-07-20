@@ -88,6 +88,7 @@ Key exports include:
 - `refreshAccessToken(...)` – rotates expired access sessions
 - `verifyCookieJwt(...)` – verifies signed cookie payloads
 - `createServiceToken(...)` – creates short-lived M2M assertions
+- `getSeamlessUser(...)` – resolves the hydrated user, typed as `SeamlessUser | null`
 - `hasScopedRole(...)` – checks scoped role grants such as `admin:read`
 - `assertSecretStrength(...)` / `assertSecrets(...)` – enforce the minimum secret length
 - `listOAuthProvidersHandler(...)` – retrieves public OAuth provider metadata

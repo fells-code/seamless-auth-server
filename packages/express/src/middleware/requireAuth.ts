@@ -60,7 +60,6 @@ export function requireAuth(opts: RequireAuthOptions) {
 
     const user: SeamlessAuthUser = {
       id: payload.sub,
-      sub: payload.sub, // TODO(#85): duplicate of `id`, phase one of them out.
       roles: Array.isArray(payload.roles) ? payload.roles : [],
       email: payload.email,
       phone: payload.phone,
