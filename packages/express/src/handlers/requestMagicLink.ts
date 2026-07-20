@@ -6,7 +6,7 @@ import {
   buildServiceAuthorization,
 } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
-import { deliverAuthMessage, stripDelivery } from "../internal/deliverAuthMessage";
+import { applyExternalDelivery } from "../internal/deliverAuthMessage";
 import { SeamlessAuthServerOptions } from "../createServer";
 
 export async function requestMagicLink(
@@ -32,13 +32,7 @@ export async function requestMagicLink(
     return res.status(result.status).json(result.error);
   }
 
-  if (result.body && typeof result.body === "object" && "delivery" in result.body) {
-    await deliverAuthMessage(
-      opts.messaging,
-      (result.body as { delivery?: any }).delivery,
-    );
-    return res.status(result.status).json(stripDelivery(result.body as any));
-  }
+  const body = await applyExternalDelivery(opts.messaging, result.body);
 
-  return res.status(result.status).json(result.body);
+  return res.status(result.status).json(body);
 }

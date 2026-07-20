@@ -210,3 +210,32 @@ export function stripDelivery<T extends { delivery?: unknown }>(body: T): Omit<T
   const { delivery: _delivery, ...rest } = body;
   return rest;
 }
+
+/**
+ * Applies external delivery to an upstream response body and returns the body to send on.
+ *
+ * When messaging is configured the adapter asks the auth API for a delivery payload instead of
+ * having the API send the message itself. A missing payload means nobody sent anything, so it is
+ * surfaced here: the four endpoints that route through this helper always include `delivery` when
+ * the API accepts the request as externally delivered.
+ */
+export async function applyExternalDelivery(
+  messaging: SeamlessAuthMessagingOptions | undefined,
+  body: unknown,
+): Promise<unknown> {
+  if (body && typeof body === "object" && "delivery" in body) {
+    await deliverAuthMessage(
+      messaging,
+      (body as { delivery?: AuthDeliveryInstruction }).delivery,
+    );
+    return stripDelivery(body as { delivery?: unknown });
+  }
+
+  if (messaging) {
+    console.warn(
+      "[SEAMLESS-AUTH-EXPRESS] - External delivery was requested but the auth API returned no delivery payload, so no message was sent. Verify that serviceSecret matches the auth API's API_SERVICE_TOKEN.",
+    );
+  }
+
+  return body;
+}

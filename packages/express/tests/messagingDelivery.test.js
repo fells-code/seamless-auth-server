@@ -213,4 +213,68 @@ describe("messaging delivery routes", () => {
       }),
     );
   });
+  it("warns and sends nothing when the auth API returns no delivery payload", async () => {
+    const emailTransport = {
+      name: "test-email",
+      send: jest.fn(),
+    };
+
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+
+    global.fetch.mockResolvedValue(
+      createJsonResponse(200, {
+        message: "If an account exists, a login link has been sent.",
+      }),
+    );
+
+    const res = await request(createApp(emailTransport))
+      .get("/auth/magic-link")
+      .set("Cookie", createPreAuthCookie());
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      message: "If an account exists, a login link has been sent.",
+    });
+
+    expect(emailTransport.send).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("returned no delivery payload"),
+    );
+
+    warn.mockRestore();
+  });
+
+  it("does not warn about a missing delivery payload when messaging is not configured", async () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+
+    const app = express();
+    app.use(
+      "/auth",
+      createSeamlessAuthServer({
+        authServerUrl: "https://auth.example.com",
+        cookieSecret: "cookie-secret-cookie-secret-cookie-secret",
+        serviceSecret: "service-secret-service-secret-service-secret",
+        issuer: "https://api.example.com",
+        audience: "https://auth.example.com",
+        jwksKid: "test-main",
+      }),
+    );
+
+    global.fetch.mockResolvedValue(
+      createJsonResponse(200, {
+        message: "If an account exists, a login link has been sent.",
+      }),
+    );
+
+    const res = await request(app)
+      .get("/auth/magic-link")
+      .set("Cookie", createPreAuthCookie());
+
+    expect(res.status).toBe(200);
+    expect(warn).not.toHaveBeenCalledWith(
+      expect.stringContaining("returned no delivery payload"),
+    );
+
+    warn.mockRestore();
+  });
 });
