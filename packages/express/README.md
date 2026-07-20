@@ -426,6 +426,24 @@ app.get("/api/profile", guard, (req, res) => {
 }
 ```
 
+**`req.user` shape (`SeamlessAuthUser`)**
+
+```ts
+{
+  id: string;
+  roles: string[];
+  email: string;
+  phone: string;
+  iat?: number;
+  exp?: number;
+  token?: string;
+}
+```
+
+`id` is the user identifier, read from the access token's `sub` claim. Earlier versions also
+exposed a duplicate `sub` field on `req.user`, which was removed in `@seamless-auth/express`
+0.9.0. See [Migration](#migration-usersub-to-userid).
+
 ---
 
 ### `requireRole(role: string | string[])`
@@ -463,16 +481,42 @@ This does **not** enforce authentication.
 const user = await getSeamlessUser(req, process.env.AUTH_SERVER_URL);
 ```
 
-Returned shape (example):
+Returns `SeamlessUser | null`:
 
 ```ts
 {
   id: string;
   email: string;
-  phone: string;
+  phone: string | null;
   roles: string[];
+  lastLogin?: string | null;          // ISO 8601, null before the first login
+  activeOrganizationId?: string | null; // null when the session carries no org context
 }
 ```
+
+---
+
+## Migration: `user.sub` to `user.id`
+
+`@seamless-auth/express` 0.9.0 removes the `sub` field from `SeamlessAuthUser`. It was a duplicate
+of `id`, always populated from the same access token claim.
+
+Replace every read of `req.user.sub` with `req.user.id`:
+
+```diff
+-const userId = req.user.sub;
++const userId = req.user.id;
+```
+
+If you were coalescing across the two user sources, drop the fallback. Both `requireAuth` and
+`getSeamlessUser` now expose the identifier as `id`:
+
+```diff
+-const userId = user.sub ?? user.id;
++const userId = user.id;
+```
+
+This does not affect the `sub` claim inside JWT payloads, which is unchanged.
 
 ---
 
