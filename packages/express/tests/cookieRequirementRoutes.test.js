@@ -40,7 +40,6 @@ function createApp() {
       authServerUrl: "https://auth.example.com",
       cookieSecret: "cookie-secret-cookie-secret-cookie-secret",
       serviceSecret: "service-secret-service-secret-service-secret",
-      issuer: "https://api.example.com",
       audience: "https://auth.example.com",
       jwksKid: "test-main",
     }),
