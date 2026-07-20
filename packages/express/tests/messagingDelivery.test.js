@@ -84,7 +84,7 @@ describe("messaging delivery routes", () => {
     );
 
     const res = await request(createApp(emailTransport))
-      .get("/auth/magic-link")
+      .post("/auth/magic-link")
       .set("Cookie", createPreAuthCookie());
 
     expect(res.status).toBe(200);
@@ -227,7 +227,7 @@ describe("messaging delivery routes", () => {
     );
 
     const res = await request(createApp(emailTransport))
-      .get("/auth/magic-link")
+      .post("/auth/magic-link")
       .set("Cookie", createPreAuthCookie());
 
     expect(res.status).toBe(200);
@@ -265,7 +265,7 @@ describe("messaging delivery routes", () => {
     );
 
     const res = await request(app)
-      .get("/auth/magic-link")
+      .post("/auth/magic-link")
       .set("Cookie", createPreAuthCookie());
 
     expect(res.status).toBe(200);

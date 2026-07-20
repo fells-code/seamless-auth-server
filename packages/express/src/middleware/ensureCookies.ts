@@ -79,7 +79,12 @@ function applyResult(
   cookieSigner: CookieSignerOptions,
 ) {
   if (result.clearCookies?.length) {
-    clearAllCookies(res, opts.cookieDomain, ...result.clearCookies);
+    clearAllCookies(
+      res,
+      cookieSigner,
+      opts.cookieDomain,
+      ...result.clearCookies,
+    );
   }
 
   if (result.setCookies) {

@@ -52,6 +52,29 @@ async function setCookieHeaders(app, path = "/auth/users/me") {
   return header.filter((c) => c.startsWith("seamless-access="));
 }
 
+function createAccessCookie(subject = "user-123") {
+  const token = jwt.sign(
+    { sub: subject, roles: ["user"], sessionId: "session-123", token: "access-token" },
+    "cookie-secret-cookie-secret-cookie-secret",
+    { algorithm: "HS256", expiresIn: "300s" },
+  );
+
+  return `seamless-access=${token}`;
+}
+
+/**
+ * Clearing headers carry an epoch Expires, so they cannot be matched by the
+ * `seamless-access=<token>` prefix the set-path helper uses.
+ */
+async function clearCookieHeaders(app) {
+  const res = await request(app)
+    .delete("/auth/logout")
+    .set("Cookie", createAccessCookie());
+
+  const header = res.headers["set-cookie"] ?? [];
+  return header.filter((c) => c.startsWith("seamless-access=;"));
+}
+
 describe("cookie security policy (#64)", () => {
   const originalFetch = global.fetch;
 
@@ -114,6 +137,32 @@ describe("cookie security policy (#64)", () => {
 
   it("honors an explicit cookieSameSite override", async () => {
     const cookies = await setCookieHeaders(
+      createApp({ cookieSameSite: "strict" }),
+    );
+
+    expect(cookies[0]).toMatch(/; Secure/);
+    expect(cookies[0]).toMatch(/; SameSite=Strict/);
+  });
+
+  it("clears cookies with Secure and SameSite=None (#96)", async () => {
+    const cookies = await clearCookieHeaders(createApp());
+
+    expect(cookies).toHaveLength(1);
+    expect(cookies[0]).toMatch(/; Secure/);
+    expect(cookies[0]).toMatch(/; SameSite=None/);
+    expect(cookies[0]).toMatch(/Expires=Thu, 01 Jan 1970/);
+  });
+
+  it("tracks cookieSecure false on the clear path", async () => {
+    const cookies = await clearCookieHeaders(createApp({ cookieSecure: false }));
+
+    expect(cookies).toHaveLength(1);
+    expect(cookies[0]).not.toMatch(/; Secure/);
+    expect(cookies[0]).toMatch(/; SameSite=Lax/);
+  });
+
+  it("honors an explicit cookieSameSite override on the clear path", async () => {
+    const cookies = await clearCookieHeaders(
       createApp({ cookieSameSite: "strict" }),
     );
 

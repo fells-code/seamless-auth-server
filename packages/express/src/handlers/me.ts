@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { meHandler } from "@seamless-auth/core/handlers/me";
-import { clearSessionCookie } from "../internal/cookie";
+import { buildCookieSigner, clearSessionCookie } from "../internal/cookie";
 import {
   buildProxyServiceAuthorization,
   buildServiceAuthorization,
@@ -23,8 +23,9 @@ export async function me(
   } as any);
 
   if (result.clearCookies) {
+    const signer = buildCookieSigner(opts);
     for (const name of result.clearCookies) {
-      clearSessionCookie(res, opts.cookieDomain || "", name);
+      clearSessionCookie(res, signer, opts.cookieDomain || "", name);
     }
   }
 
