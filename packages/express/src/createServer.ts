@@ -1,4 +1,4 @@
-import express, { Request, Response, Router } from "express";
+import express, { NextFunction, Request, Response, Router } from "express";
 import cookieParser from "cookie-parser";
 
 import { createEnsureCookiesMiddleware } from "./middleware/ensureCookies";
@@ -604,6 +604,18 @@ export function createSeamlessAuthServer(
   r.delete("/sessions", (req, res) =>
     revokeAllSessions(req, res, resolvedOpts),
   );
+
+  // Express 5 forwards rejected handler promises here. Without this, the
+  // built-in handler answers with an HTML stack trace (including absolute
+  // server paths) whenever NODE_ENV is not "production".
+  r.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
+    if (res.headersSent) {
+      return next(err);
+    }
+
+    console.error("[SEAMLESS-AUTH-EXPRESS] - Unhandled route error.", err);
+    res.status(500).json({ error: "internal_error" });
+  });
 
   return r;
 }
