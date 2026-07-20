@@ -281,6 +281,8 @@ This currently applies to:
 - magic-link email
 - bootstrap invite email
 
+External delivery is a credentialed request. The adapter mints a short-lived service token from `serviceSecret`, and the auth server withholds the delivery payload if that token does not validate. `serviceSecret` must therefore match the auth server's `API_SERVICE_TOKEN` in every environment, including local development. If it does not, auth-message routes still return a success response but no message is delivered, so the adapter logs a warning whenever it requests external delivery and receives no payload back.
+
 ---
 
 ### `createSeamlessConsoleProxy(options)`
