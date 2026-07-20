@@ -75,6 +75,45 @@ describe("route error handling", () => {
     expect(res.text).not.toContain("createServer");
   });
 
+  it("answers 400 for a malformed JSON body", async () => {
+    const res = await request(createApp())
+      .post("/auth/users/update")
+      .set("Content-Type", "application/json")
+      .send("{bad json");
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ error: "bad_request" });
+  });
+
+  it("answers 413 for a body over the parser limit", async () => {
+    const res = await request(createApp())
+      .post("/auth/users/update")
+      .set("Content-Type", "application/json")
+      .send(JSON.stringify({ name: "a".repeat(200 * 1024) }));
+
+    expect(res.status).toBe(413);
+    expect(res.body).toEqual({ error: "payload_too_large" });
+  });
+
+  it("does not echo the rejected payload back to the client", async () => {
+    const res = await request(createApp())
+      .post("/auth/users/update")
+      .set("Content-Type", "application/json")
+      .send('{"secret":"SECRET_INTERNAL_DETAIL"');
+
+    expect(res.status).toBe(400);
+    expect(res.text).not.toContain("SECRET_INTERNAL_DETAIL");
+  });
+
+  it("does not log client errors at error level", async () => {
+    await request(createApp())
+      .post("/auth/users/update")
+      .set("Content-Type", "application/json")
+      .send("{bad json");
+
+    expect(errorSpy).not.toHaveBeenCalled();
+  });
+
   it("logs the underlying error server side", async () => {
     const cause = new Error("network down");
     global.fetch.mockRejectedValue(cause);
