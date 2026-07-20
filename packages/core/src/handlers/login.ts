@@ -11,6 +11,7 @@ export interface LoginOptions {
   audience: string;
   cookieDomain?: string;
   preAuthCookieName: string;
+  serviceAuthorization?: string;
   forwardedClientIp?: string;
 }
 
@@ -37,6 +38,7 @@ export async function loginHandler(
   const up = await authFetch(`${opts.authServerUrl}/login`, {
     method: "POST",
     body: input.body,
+    serviceAuthorization: opts.serviceAuthorization,
     forwardedClientIp: opts.forwardedClientIp,
   });
 

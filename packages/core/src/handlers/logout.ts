@@ -6,6 +6,7 @@ export interface LogoutOptions {
   registrationCookieName: string;
   refreshCookieName: string;
   authorization?: string;
+  serviceAuthorization?: string;
   forwardedClientIp?: string;
   scope?: LogoutScope;
 }
@@ -26,6 +27,7 @@ export async function logoutHandler(opts: LogoutOptions): Promise<LogoutResult> 
   const upstream = await authFetch(`${opts.authServerUrl}${getLogoutPath(scope)}`, {
     method: "DELETE",
     authorization: opts.authorization,
+    serviceAuthorization: opts.serviceAuthorization,
     forwardedClientIp: opts.forwardedClientIp,
   });
 

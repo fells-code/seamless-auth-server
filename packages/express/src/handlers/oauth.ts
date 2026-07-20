@@ -5,6 +5,7 @@ import {
   startOAuthLoginHandler,
 } from "@seamless-auth/core/handlers/oauthHandlers";
 import { SeamlessAuthServerOptions } from "../createServer";
+import { buildProxyServiceAuthorization } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { buildCookieSigner, setSessionCookie } from "../internal/cookie";
 
@@ -38,7 +39,8 @@ export async function startOAuthLogin(
     {
       providerId: routeParam(req, "providerId"),
       body: req.body,
-      forwardedClientIp: buildForwardedClientIp(req),
+      serviceAuthorization: buildProxyServiceAuthorization(opts),
+      forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
     },
     {
       authServerUrl: opts.authServerUrl,
@@ -63,7 +65,8 @@ export async function finishOAuthLogin(
     {
       providerId: routeParam(req, "providerId"),
       body: req.body,
-      forwardedClientIp: buildForwardedClientIp(req),
+      serviceAuthorization: buildProxyServiceAuthorization(opts),
+      forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
     },
     {
       authServerUrl: opts.authServerUrl,

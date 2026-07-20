@@ -5,6 +5,7 @@ import { verifySignedAuthResponse } from "../verifySignedAuthResponse.js";
 export interface VerifyLoginOtpInput {
   body: unknown;
   authorization?: string;
+  serviceAuthorization?: string;
   forwardedClientIp?: string;
   kind: "email" | "phone";
 }
@@ -43,6 +44,7 @@ async function verifyOtp(
     method: "POST",
     body: input.body,
     authorization: input.authorization,
+    serviceAuthorization: input.serviceAuthorization,
     forwardedClientIp: input.forwardedClientIp,
   });
 

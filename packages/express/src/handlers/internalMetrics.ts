@@ -8,7 +8,10 @@ import {
   getGroupedEventSummaryHandler,
 } from "@seamless-auth/core/handlers/internalMetrics";
 
-import { buildServiceAuthorization } from "../internal/buildAuthorization";
+import {
+  buildProxyServiceAuthorization,
+  buildServiceAuthorization,
+} from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { SeamlessAuthServerOptions } from "../createServer";
 
@@ -29,7 +32,8 @@ export async function getAuthEventSummary(
   const result = await getAuthEventSummaryHandler({
     authServerUrl: opts.authServerUrl,
     authorization,
-    forwardedClientIp: buildForwardedClientIp(req),
+    serviceAuthorization: buildProxyServiceAuthorization(opts),
+    forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
     query: req.query as any,
   } as any);
 
@@ -46,7 +50,8 @@ export async function getAuthEventTimeseries(
   const result = await getAuthEventTimeseriesHandler({
     authServerUrl: opts.authServerUrl,
     authorization,
-    forwardedClientIp: buildForwardedClientIp(req),
+    serviceAuthorization: buildProxyServiceAuthorization(opts),
+    forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
     query: req.query as any,
   } as any);
 
@@ -63,7 +68,8 @@ export async function getLoginStats(
   const result = await getLoginStatsHandler({
     authServerUrl: opts.authServerUrl,
     authorization,
-    forwardedClientIp: buildForwardedClientIp(req),
+    serviceAuthorization: buildProxyServiceAuthorization(opts),
+    forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
   } as any);
 
   return handle(res, result);
@@ -79,7 +85,8 @@ export async function getSecurityAnomalies(
   const result = await getSecurityAnomaliesHandler({
     authServerUrl: opts.authServerUrl,
     authorization,
-    forwardedClientIp: buildForwardedClientIp(req),
+    serviceAuthorization: buildProxyServiceAuthorization(opts),
+    forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
   } as any);
 
   return handle(res, result);
@@ -95,7 +102,8 @@ export async function getDashboardMetrics(
   const result = await getDashboardMetricsHandler({
     authServerUrl: opts.authServerUrl,
     authorization,
-    forwardedClientIp: buildForwardedClientIp(req),
+    serviceAuthorization: buildProxyServiceAuthorization(opts),
+    forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
   } as any);
 
   return handle(res, result);
@@ -111,7 +119,8 @@ export async function getGroupedEventSummary(
   const result = await getGroupedEventSummaryHandler({
     authServerUrl: opts.authServerUrl,
     authorization,
-    forwardedClientIp: buildForwardedClientIp(req),
+    serviceAuthorization: buildProxyServiceAuthorization(opts),
+    forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
     query: req.query as any,
   } as any);
 

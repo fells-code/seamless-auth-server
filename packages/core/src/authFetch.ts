@@ -19,11 +19,8 @@ export async function authFetch(
     "Content-Type": "application/json",
     ...options.headers,
     ...(options.authorization ? { Authorization: options.authorization } : {}),
-    ...((options.serviceAuthorization ?? options.authorization)
-      ? {
-          "x-seamless-service-token":
-            options.serviceAuthorization ?? options.authorization!,
-        }
+    ...(options.serviceAuthorization
+      ? { "x-seamless-service-token": options.serviceAuthorization }
       : {}),
     ...(options.forwardedClientIp
       ? { "x-seamless-client-ip": options.forwardedClientIp }

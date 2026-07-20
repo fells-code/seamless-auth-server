@@ -15,7 +15,10 @@ import {
   revokeUserSessionHandler,
 } from "@seamless-auth/core/handlers/admin";
 
-import { buildServiceAuthorization } from "../internal/buildAuthorization";
+import {
+  buildProxyServiceAuthorization,
+  buildServiceAuthorization,
+} from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { SeamlessAuthServerOptions } from "../createServer";
 
@@ -36,7 +39,8 @@ export const getUsers = async (
     await getUsersHandler({
       authServerUrl: opts.authServerUrl,
       authorization: buildServiceAuthorization(req, opts),
-      forwardedClientIp: buildForwardedClientIp(req),
+      serviceAuthorization: buildProxyServiceAuthorization(opts),
+      forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
     } as any),
   );
 
@@ -50,7 +54,8 @@ export const createUser = async (
     await createUserHandler({
       authServerUrl: opts.authServerUrl,
       authorization: buildServiceAuthorization(req, opts),
-      forwardedClientIp: buildForwardedClientIp(req),
+      serviceAuthorization: buildProxyServiceAuthorization(opts),
+      forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
       body: req.body,
     } as any),
   );
@@ -65,7 +70,8 @@ export const deleteUser = async (
     await deleteUserHandler({
       authServerUrl: opts.authServerUrl,
       authorization: buildServiceAuthorization(req, opts),
-      forwardedClientIp: buildForwardedClientIp(req),
+      serviceAuthorization: buildProxyServiceAuthorization(opts),
+      forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
       body: req.body,
     } as any),
   );
@@ -80,7 +86,8 @@ export const updateUser = async (
     await updateUserHandler(req.params.userId as string, {
       authServerUrl: opts.authServerUrl,
       authorization: buildServiceAuthorization(req, opts),
-      forwardedClientIp: buildForwardedClientIp(req),
+      serviceAuthorization: buildProxyServiceAuthorization(opts),
+      forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
       body: req.body,
     } as any),
   );
@@ -95,7 +102,8 @@ export const getUserDetail = async (
     await getUserDetailHandler(req.params.userId as string, {
       authServerUrl: opts.authServerUrl,
       authorization: buildServiceAuthorization(req, opts),
-      forwardedClientIp: buildForwardedClientIp(req),
+      serviceAuthorization: buildProxyServiceAuthorization(opts),
+      forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
     } as any),
   );
 
@@ -109,7 +117,8 @@ export const getUserAnomalies = async (
     await getUserAnomaliesHandler(req.params.userId as string, {
       authServerUrl: opts.authServerUrl,
       authorization: buildServiceAuthorization(req, opts),
-      forwardedClientIp: buildForwardedClientIp(req),
+      serviceAuthorization: buildProxyServiceAuthorization(opts),
+      forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
     } as any),
   );
 
@@ -123,7 +132,8 @@ export const getAuthEvents = async (
     await getAuthEventsHandler({
       authServerUrl: opts.authServerUrl,
       authorization: buildServiceAuthorization(req, opts),
-      forwardedClientIp: buildForwardedClientIp(req),
+      serviceAuthorization: buildProxyServiceAuthorization(opts),
+      forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
       query: req.query,
     } as any),
   );
@@ -138,7 +148,8 @@ export const getCredentialCount = async (
     await getCredentialCountHandler({
       authServerUrl: opts.authServerUrl,
       authorization: buildServiceAuthorization(req, opts),
-      forwardedClientIp: buildForwardedClientIp(req),
+      serviceAuthorization: buildProxyServiceAuthorization(opts),
+      forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
     } as any),
   );
 
@@ -152,7 +163,8 @@ export const listAllSessions = async (
     await listAllSessionsHandler({
       authServerUrl: opts.authServerUrl,
       authorization: buildServiceAuthorization(req, opts),
-      forwardedClientIp: buildForwardedClientIp(req),
+      serviceAuthorization: buildProxyServiceAuthorization(opts),
+      forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
       query: req.query,
     } as any),
   );
@@ -167,7 +179,8 @@ export const listUserSessions = async (
     await listUserSessionsHandler(req.params.userId as string, {
       authServerUrl: opts.authServerUrl,
       authorization: buildServiceAuthorization(req, opts),
-      forwardedClientIp: buildForwardedClientIp(req),
+      serviceAuthorization: buildProxyServiceAuthorization(opts),
+      forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
     } as any),
   );
 
@@ -181,7 +194,8 @@ export const revokeUserSession = async (
     await revokeUserSessionHandler(req.params.id as string, {
       authServerUrl: opts.authServerUrl,
       authorization: buildServiceAuthorization(req, opts),
-      forwardedClientIp: buildForwardedClientIp(req),
+      serviceAuthorization: buildProxyServiceAuthorization(opts),
+      forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
     } as any),
   );
 
@@ -195,7 +209,8 @@ export const revokeAllUserSessions = async (
     await revokeAllUserSessionsHandler(req.params.userId as string, {
       authServerUrl: opts.authServerUrl,
       authorization: buildServiceAuthorization(req, opts),
-      forwardedClientIp: buildForwardedClientIp(req),
+      serviceAuthorization: buildProxyServiceAuthorization(opts),
+      forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
     } as any),
   );
 
@@ -209,7 +224,8 @@ export const recoverUserForDeviceReplacement = async (
     await recoverUserForDeviceReplacementHandler(req.params.userId as string, {
       authServerUrl: opts.authServerUrl,
       authorization: buildServiceAuthorization(req, opts),
-      forwardedClientIp: buildForwardedClientIp(req),
+      serviceAuthorization: buildProxyServiceAuthorization(opts),
+      forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
       body: req.body,
     } as any),
   );

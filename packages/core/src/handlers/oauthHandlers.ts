@@ -13,6 +13,7 @@ export interface OAuthHandlerOptions {
 export interface OAuthRequestInput {
   providerId?: string;
   body?: unknown;
+  serviceAuthorization?: string;
   forwardedClientIp?: string;
 }
 
@@ -52,6 +53,7 @@ export async function startOAuthLoginHandler(
     {
       method: "POST",
       body: input.body,
+      serviceAuthorization: input.serviceAuthorization,
       forwardedClientIp: input.forwardedClientIp,
     },
   );
@@ -73,6 +75,7 @@ export async function finishOAuthLoginHandler(
     {
       method: "POST",
       body: input.body,
+      serviceAuthorization: input.serviceAuthorization,
       forwardedClientIp: input.forwardedClientIp,
     },
   );

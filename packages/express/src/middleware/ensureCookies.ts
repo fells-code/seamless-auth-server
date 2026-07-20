@@ -1,7 +1,10 @@
 import { Request, Response, NextFunction } from "express";
 import { ensureCookies, EnsureCookiesResult } from "@seamless-auth/core";
 
-import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
+import {
+  buildForwardedClientIp,
+  ClientIpResolver,
+} from "../internal/buildForwardedClientIp";
 import { assertSecrets } from "../internal/validateSecrets";
 import {
   buildCookieSigner,
@@ -26,6 +29,7 @@ export interface EnsureCookiesMiddlewareOptions {
   issuer: string;
   audience: string;
   keyId: string;
+  resolveClientIp?: ClientIpResolver;
 }
 
 export function createEnsureCookiesMiddleware(
@@ -57,7 +61,7 @@ export function createEnsureCookiesMiddleware(
         issuer: opts.issuer,
         audience: opts.audience,
         keyId: opts.keyId,
-        forwardedClientIp: buildForwardedClientIp(req),
+        forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
       } as any,
     );
 

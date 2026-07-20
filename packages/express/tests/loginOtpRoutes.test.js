@@ -73,7 +73,7 @@ describe("login OTP routes", () => {
         method: "GET",
         headers: expect.objectContaining({
           Authorization: "Bearer ephemeral-token",
-          "x-seamless-service-token": "Bearer ephemeral-token",
+          "x-seamless-service-token": expect.not.stringContaining("ephemeral-token"),
         }),
       }),
     );
@@ -101,7 +101,7 @@ describe("login OTP routes", () => {
         body: JSON.stringify(body),
         headers: expect.objectContaining({
           Authorization: "Bearer ephemeral-token",
-          "x-seamless-service-token": "Bearer ephemeral-token",
+          "x-seamless-service-token": expect.not.stringContaining("ephemeral-token"),
         }),
       }),
     );

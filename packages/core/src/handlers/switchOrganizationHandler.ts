@@ -5,6 +5,7 @@ import { verifySignedAuthResponse } from "../verifySignedAuthResponse.js";
 export interface SwitchOrganizationInput {
   organizationId: string;
   authorization?: string;
+  serviceAuthorization?: string;
   forwardedClientIp?: string;
 }
 
@@ -36,6 +37,7 @@ export async function switchOrganizationHandler(
     {
       method: "POST",
       authorization: input.authorization,
+      serviceAuthorization: input.serviceAuthorization,
       forwardedClientIp: input.forwardedClientIp,
     },
   );

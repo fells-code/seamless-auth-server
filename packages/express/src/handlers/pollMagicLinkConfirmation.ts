@@ -3,6 +3,7 @@ import { pollMagicLinkConfirmationHandler } from "@seamless-auth/core/handlers/p
 import { buildCookieSigner, setSessionCookie } from "../internal/cookie";
 import {
   buildInternalServiceAuthorization,
+  buildProxyServiceAuthorization,
   buildServiceAuthorization,
 } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
@@ -20,7 +21,7 @@ export async function pollMagicLinkConfirmation(
   const result = await pollMagicLinkConfirmationHandler(
     {
       authorization,
-      forwardedClientIp: buildForwardedClientIp(req),
+      forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
     } as any,
     {
       authServerUrl: opts.authServerUrl,
@@ -30,7 +31,7 @@ export async function pollMagicLinkConfirmation(
       refreshCookieName: opts.refreshCookieName!,
       serviceAuthorization: opts.messaging
         ? buildInternalServiceAuthorization(opts)
-        : undefined,
+        : buildProxyServiceAuthorization(opts),
     },
   );
 

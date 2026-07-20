@@ -3,6 +3,7 @@ import { authFetch } from "../authFetch.js";
 type BaseOpts = {
   authServerUrl: string;
   authorization?: string;
+  serviceAuthorization?: string;
   forwardedClientIp?: string;
 };
 
@@ -43,6 +44,7 @@ async function request(
       method,
       authorization: opts.authorization,
       body: opts.body,
+      serviceAuthorization: opts.serviceAuthorization,
       forwardedClientIp: opts.forwardedClientIp,
     },
   );

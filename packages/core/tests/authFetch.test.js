@@ -11,26 +11,20 @@ describe("authFetch", () => {
     global.fetch = originalFetch;
   });
 
-  it("forwards trusted client IP and mirrors the service token header", async () => {
+  it("never mirrors the user token into the service token header", async () => {
     const { authFetch } = await import("../dist/authFetch.js");
 
     await authFetch("https://auth.example.com/users/me", {
       method: "GET",
-      authorization: "Bearer service-token",
+      authorization: "Bearer user-access-token",
       forwardedClientIp: "203.0.113.44",
     });
 
-    expect(global.fetch).toHaveBeenCalledWith(
-      "https://auth.example.com/users/me",
-      expect.objectContaining({
-        method: "GET",
-        headers: expect.objectContaining({
-          Authorization: "Bearer service-token",
-          "x-seamless-service-token": "Bearer service-token",
-          "x-seamless-client-ip": "203.0.113.44",
-        }),
-      }),
-    );
+    const [, init] = global.fetch.mock.calls[0];
+
+    expect(init.headers.Authorization).toBe("Bearer user-access-token");
+    expect(init.headers["x-seamless-client-ip"]).toBe("203.0.113.44");
+    expect(init.headers).not.toHaveProperty("x-seamless-service-token");
   });
 
   it("uses an explicit serviceAuthorization override when provided", async () => {

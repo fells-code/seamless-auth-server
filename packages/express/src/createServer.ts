@@ -26,13 +26,19 @@ import {
 } from "./handlers/oauth";
 import * as admin from "./handlers/admin";
 import { authFetch, AuthFetchOptions } from "@seamless-auth/core";
-import { buildServiceAuthorization } from "./internal/buildAuthorization";
+import {
+  buildProxyServiceAuthorization,
+  buildServiceAuthorization,
+} from "./internal/buildAuthorization";
 import {
   assertSecrets,
   DEV_JWKS_KID,
   warnOnDevJwksKid,
 } from "./internal/validateSecrets";
-import { buildForwardedClientIp } from "./internal/buildForwardedClientIp";
+import {
+  buildForwardedClientIp,
+  ClientIpResolver,
+} from "./internal/buildForwardedClientIp";
 import { bootstrapAdminInvite } from "./handlers/bootstrapAdmininvite";
 import {
   getAvailableRoles,
@@ -68,6 +74,7 @@ type ResolvedSeamlessAuthServerOptions = {
   refreshCookieName: string;
   preAuthCookieName: string;
   messaging?: SeamlessAuthMessagingOptions;
+  resolveClientIp?: ClientIpResolver;
 };
 
 export type SeamlessAuthServerOptions = {
@@ -85,6 +92,7 @@ export type SeamlessAuthServerOptions = {
   refreshCookieName?: string;
   preAuthCookieName?: string;
   messaging?: SeamlessAuthMessagingOptions;
+  resolveClientIp?: ClientIpResolver;
 };
 
 export interface SeamlessAuthUser {
@@ -173,6 +181,8 @@ function routeParam(req: Request, name: string): string {
  *   - `refreshCookieName` - Name of the refresh token cookie
  *   - `preAuthCookieName` - Name of the cookie used during login initiation
  *   - `messaging` - Optional auth-messaging transports, handlers, and overrides
+ *   - `resolveClientIp` - Optional resolver for the end user's IP, when `trust proxy` cannot
+ *     express your topology as a hop count or subnet
  *
  * @returns An Express `Router` preconfigured with all Seamless Auth routes.
  */
@@ -204,6 +214,7 @@ export function createSeamlessAuthServer(
     // initiation never hold an ephemeral cookie at the same time.
     preAuthCookieName: opts.preAuthCookieName ?? "seamless-ephemeral",
     messaging: opts.messaging,
+    resolveClientIp: opts.resolveClientIp,
   };
 
   const proxyWithIdentity =
@@ -246,11 +257,18 @@ export function createSeamlessAuthServer(
       }
 
       const authorization = buildServiceAuthorization(req, resolvedOpts);
-      const forwardedClientIp = buildForwardedClientIp(req);
+      const forwardedClientIp = buildForwardedClientIp(req, resolvedOpts.resolveClientIp);
+      const serviceAuthorization = buildProxyServiceAuthorization(resolvedOpts);
       const options =
         method == "GET"
-          ? { method, authorization, forwardedClientIp }
-          : { method, authorization, forwardedClientIp, body: req.body };
+          ? { method, authorization, serviceAuthorization, forwardedClientIp }
+          : {
+              method,
+              authorization,
+              serviceAuthorization,
+              forwardedClientIp,
+              body: req.body,
+            };
 
       const queryString = buildProxyQueryString(req.query);
       const resolvedPath = typeof path === "function" ? path(req) : path;
@@ -281,6 +299,7 @@ export function createSeamlessAuthServer(
       issuer: "seamless-portal-api",
       audience: "seamless-auth",
       keyId: resolvedOpts.jwksKid,
+      resolveClientIp: resolvedOpts.resolveClientIp,
       forwardedClientIp: undefined,
     } as any),
   );
@@ -446,7 +465,8 @@ export function createSeamlessAuthServer(
       `${resolvedOpts.authServerUrl}/magic-link/verify/${encodeURIComponent(routeParam(req, "token"))}`,
       {
         method: "GET",
-        forwardedClientIp: buildForwardedClientIp(req),
+        serviceAuthorization: buildProxyServiceAuthorization(resolvedOpts),
+        forwardedClientIp: buildForwardedClientIp(req, resolvedOpts.resolveClientIp),
       } as any,
     );
 
