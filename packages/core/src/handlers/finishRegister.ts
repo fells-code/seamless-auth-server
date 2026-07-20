@@ -6,6 +6,7 @@ export interface FinishRegisterInput {
   authorization?: string;
   headers?: Record<string, string>;
   body: unknown;
+  serviceAuthorization?: string;
   forwardedClientIp?: string;
 }
 
@@ -37,6 +38,7 @@ export async function finishRegisterHandler(
     authorization: input.authorization,
     headers: input.headers,
     body: input.body,
+    serviceAuthorization: input.serviceAuthorization,
     forwardedClientIp: input.forwardedClientIp,
   });
 

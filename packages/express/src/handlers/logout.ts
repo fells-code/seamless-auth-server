@@ -4,7 +4,10 @@ import type { LogoutScope } from "@seamless-auth/core/handlers/logout";
 import { clearAllCookies } from "../internal/cookie";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { SeamlessAuthServerOptions } from "../createServer";
-import { buildServiceAuthorization } from "../internal/buildAuthorization";
+import {
+  buildProxyServiceAuthorization,
+  buildServiceAuthorization,
+} from "../internal/buildAuthorization";
 
 export async function logout(
   req: Request,
@@ -18,7 +21,8 @@ export async function logout(
     registrationCookieName: opts.registrationCookieName!,
     refreshCookieName: opts.refreshCookieName!,
     authorization: buildServiceAuthorization(req, opts),
-    forwardedClientIp: buildForwardedClientIp(req),
+    serviceAuthorization: buildProxyServiceAuthorization(opts),
+    forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
     scope,
   });
 

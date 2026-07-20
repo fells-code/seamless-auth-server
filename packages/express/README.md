@@ -210,6 +210,40 @@ environment rather than source.
 the adapter logs a startup warning, because a dev-flavored key id in a deployed environment usually
 means the value was never configured. Set `jwksKid` to the active JWKS key id in production.
 
+#### Client IP forwarding and `trust proxy`
+
+The adapter forwards the end user's IP to the auth server as `x-seamless-client-ip`, alongside a
+machine-to-machine service token that proves the call came from your backend. The auth server uses
+that IP for rate limiting, lockout, anomaly detection, and audit records, so a caller who can choose
+its own value can evade a rate limit or poison an audit trail.
+
+The IP is derived from `req.ip`, which Express computes from your `trust proxy` setting. Configure
+it as an explicit hop count or subnet, never blanket `true`:
+
+```ts
+// number of proxies between the client and this app
+app.set("trust proxy", 1);
+
+// or the addresses you actually trust
+app.set("trust proxy", "10.0.0.0/8");
+```
+
+With `trust proxy` set to `true`, Express takes `req.ip` from the leftmost `X-Forwarded-For` entry,
+which any client can set. The adapter detects that case, logs a startup warning, and forwards no
+client IP at all rather than forwarding an attacker-chosen one.
+
+If your topology cannot be expressed as a hop count or subnet, supply `resolveClientIp` and derive
+the address yourself, for example from a load-balancer header you know is stripped at the edge:
+
+```ts
+createSeamlessAuthServer({
+  // ...
+  resolveClientIp: (req) => req.get("true-client-ip"),
+});
+```
+
+The returned value must be a valid IP address, or it is dropped.
+
 #### Cookie security
 
 Auth cookies are issued with `Secure` and `SameSite=None` by default, so a deployment that

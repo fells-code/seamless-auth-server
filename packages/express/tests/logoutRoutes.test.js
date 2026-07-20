@@ -71,7 +71,7 @@ describe("logout routes", () => {
         method: "DELETE",
         headers: expect.objectContaining({
           Authorization: "Bearer access-token",
-          "x-seamless-service-token": "Bearer access-token",
+          "x-seamless-service-token": expect.not.stringContaining("access-token"),
         }),
       }),
     );

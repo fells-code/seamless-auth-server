@@ -3,6 +3,7 @@ import { authFetch } from "../authFetch.js";
 export interface SystemConfigOptions {
   authServerUrl: string;
   authorization?: string;
+  serviceAuthorization?: string;
   forwardedClientIp?: string;
 }
 
@@ -18,6 +19,7 @@ export async function getAvailableRolesHandler(
   const up = await authFetch(`${opts.authServerUrl}/system-config/roles`, {
     method: "GET",
     authorization: opts.authorization,
+    serviceAuthorization: opts.serviceAuthorization,
     forwardedClientIp: opts.forwardedClientIp,
   });
 
@@ -42,6 +44,7 @@ export async function getSystemConfigAdminHandler(
   const up = await authFetch(`${opts.authServerUrl}/system-config/admin`, {
     method: "GET",
     authorization: opts.authorization,
+    serviceAuthorization: opts.serviceAuthorization,
     forwardedClientIp: opts.forwardedClientIp,
   });
 
@@ -67,6 +70,7 @@ export async function updateSystemConfigHandler(
     method: "PATCH",
     authorization: opts.authorization,
     body: opts.payload,
+    serviceAuthorization: opts.serviceAuthorization,
     forwardedClientIp: opts.forwardedClientIp,
   });
 

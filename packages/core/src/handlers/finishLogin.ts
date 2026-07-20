@@ -5,6 +5,7 @@ import { verifySignedAuthResponse } from "../verifySignedAuthResponse.js";
 export interface FinishLoginInput {
   body: unknown;
   authorization?: string;
+  serviceAuthorization?: string;
   forwardedClientIp?: string;
 }
 
@@ -36,6 +37,7 @@ export async function finishLoginHandler(
     method: "POST",
     body: input.body,
     authorization: input.authorization,
+    serviceAuthorization: input.serviceAuthorization,
     forwardedClientIp: input.forwardedClientIp,
   });
 

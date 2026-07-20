@@ -1,7 +1,10 @@
 import { Request, Response } from "express";
 import { switchOrganizationHandler } from "@seamless-auth/core/handlers/switchOrganizationHandler";
 import { buildCookieSigner, setSessionCookie } from "../internal/cookie";
-import { buildServiceAuthorization } from "../internal/buildAuthorization";
+import {
+  buildProxyServiceAuthorization,
+  buildServiceAuthorization,
+} from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { SeamlessAuthServerOptions } from "../createServer";
 
@@ -21,7 +24,8 @@ export async function switchOrganization(
     {
       organizationId: routeParam(req, "organizationId"),
       authorization: buildServiceAuthorization(req, opts),
-      forwardedClientIp: buildForwardedClientIp(req),
+      serviceAuthorization: buildProxyServiceAuthorization(opts),
+      forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
     },
     {
       authServerUrl: opts.authServerUrl,

@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { loginHandler } from "@seamless-auth/core/handlers/login";
 import { buildCookieSigner, setSessionCookie } from "../internal/cookie";
+import { buildProxyServiceAuthorization } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { SeamlessAuthServerOptions } from "../createServer";
 
@@ -18,7 +19,8 @@ export async function login(
       audience: opts.audience,
       cookieDomain: opts.cookieDomain,
       preAuthCookieName: opts.preAuthCookieName!,
-      forwardedClientIp: buildForwardedClientIp(req),
+      serviceAuthorization: buildProxyServiceAuthorization(opts),
+      forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
     } as any,
   );
 
