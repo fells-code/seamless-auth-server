@@ -357,9 +357,6 @@ export function createSeamlessAuthServer(
   );
 
   r.get("/users/me", (req, res) => me(req, res, resolvedOpts));
-  r.get("/logout", (req, res) =>
-    logout(req, res, resolvedOpts, "all_sessions"),
-  );
   r.delete("/logout", (req, res) =>
     logout(req, res, resolvedOpts, "current_session"),
   );
@@ -455,7 +452,7 @@ export function createSeamlessAuthServer(
     "/users/credentials",
     proxyWithIdentity("users/credentials", "access", "DELETE"),
   );
-  r.get("/magic-link", (req, res) => requestMagicLink(req, res, resolvedOpts));
+  r.post("/magic-link", (req, res) => requestMagicLink(req, res, resolvedOpts));
   r.get("/magic-link/verify/:token", async (req, res) => {
     const upstream = await authFetch(
       `${resolvedOpts.authServerUrl}/magic-link/verify/${encodeURIComponent(routeParam(req, "token"))}`,

@@ -63,20 +63,32 @@ export function setSessionCookie(
   });
 }
 
+/**
+ * Express's clearCookie only forces `expires`, so the attributes must mirror the
+ * set path. A clearing header without `Secure; SameSite=None` is dropped by the
+ * browser in a cross-site response, leaving the session cookie in place.
+ */
 export function clearSessionCookie(
   res: Response,
+  signer: CookieSignerOptions,
   domain: string | undefined,
   name: string,
 ) {
-  res.clearCookie(name, { domain, path: "/" });
+  res.clearCookie(name, {
+    secure: signer.secure,
+    sameSite: signer.sameSite,
+    domain,
+    path: "/",
+  });
 }
 
 export function clearAllCookies(
   res: Response,
+  signer: CookieSignerOptions,
   domain: string | undefined,
   ...cookieNames: string[]
 ) {
   for (const name of cookieNames) {
-    res.clearCookie(name, { domain, path: "/" });
+    clearSessionCookie(res, signer, domain, name);
   }
 }

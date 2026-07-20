@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { logoutHandler } from "@seamless-auth/core/handlers/logout";
 import type { LogoutScope } from "@seamless-auth/core/handlers/logout";
-import { clearAllCookies } from "../internal/cookie";
+import { buildCookieSigner, clearAllCookies } from "../internal/cookie";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { SeamlessAuthServerOptions } from "../createServer";
 import {
@@ -26,7 +26,12 @@ export async function logout(
     scope,
   });
 
-  clearAllCookies(res, opts.cookieDomain || "", ...result.clearCookies);
+  clearAllCookies(
+    res,
+    buildCookieSigner(opts),
+    opts.cookieDomain || "",
+    ...result.clearCookies,
+  );
 
   res.status(result.status).end();
 }

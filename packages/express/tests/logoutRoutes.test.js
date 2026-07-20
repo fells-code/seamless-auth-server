@@ -30,6 +30,16 @@ function createAccessCookie(subject = "user-123") {
   return `seamless-access=${token}`;
 }
 
+function createPreAuthCookie(subject = "user-123") {
+  const token = jwt.sign(
+    { sub: subject, token: "ephemeral-token" },
+    "cookie-secret-cookie-secret-cookie-secret",
+    { algorithm: "HS256", expiresIn: "300s" },
+  );
+
+  return `seamless-ephemeral=${token}`;
+}
+
 function createApp() {
   const app = express();
 
@@ -76,17 +86,41 @@ describe("logout routes", () => {
     );
   });
 
-  it("keeps GET /logout as an all-session compatibility route", async () => {
+  it("no longer exposes GET /logout", async () => {
     const res = await request(createApp())
       .get("/auth/logout")
       .set("Cookie", createAccessCookie());
 
-    expect(res.status).toBe(204);
+    expect([404, 405]).toContain(res.status);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  // Carries the pre-auth cookie on purpose: without it the cookie middleware
+  // answers 400 before routing, which would pass whether or not the route exists.
+  it("no longer exposes GET /magic-link", async () => {
+    const res = await request(createApp())
+      .get("/auth/magic-link")
+      .set("Cookie", createPreAuthCookie());
+
+    expect([404, 405]).toContain(res.status);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("still serves the magic-link request over POST", async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ message: "sent" }),
+    });
+
+    const res = await request(createApp())
+      .post("/auth/magic-link")
+      .set("Cookie", createPreAuthCookie());
+
+    expect(res.status).toBe(200);
     expect(global.fetch).toHaveBeenCalledWith(
-      "https://auth.example.com/logout/all",
-      expect.objectContaining({
-        method: "DELETE",
-      }),
+      "https://auth.example.com/magic-link",
+      expect.objectContaining({ method: "GET" }),
     );
   });
 

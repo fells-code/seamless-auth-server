@@ -174,7 +174,12 @@ Routes include:
 - `/auth/users/me`
 - `DELETE /auth/logout` for the current session
 - `DELETE /auth/logout/all` for every session owned by the current user
-- `GET /auth/logout` as a deprecated all-session compatibility route
+- `POST /auth/magic-link` to request a magic-link email
+
+`GET /auth/logout` and `GET /auth/magic-link` were removed. Both were
+state-changing routes reachable as simple cross-site requests (an `<img src>` on
+any page could revoke every session or trigger magic-link emails). Use
+`DELETE /auth/logout/all` and `POST /auth/magic-link` instead.
 
 **Options**
 
