@@ -129,6 +129,18 @@ function routeParam(req: Request, name: string): string {
   return Array.isArray(value) ? value[0] : value;
 }
 
+function clientErrorStatus(err: unknown): number | null {
+  const candidate = err as { status?: unknown; statusCode?: unknown } | null;
+  const status =
+    typeof candidate?.status === "number"
+      ? candidate.status
+      : typeof candidate?.statusCode === "number"
+        ? candidate.statusCode
+        : null;
+
+  return status !== null && status >= 400 && status < 500 ? status : null;
+}
+
 /**
  * Creates an Express Router that proxies all authentication traffic to a Seamless Auth server.
  *
@@ -626,8 +638,20 @@ export function createSeamlessAuthServer(
       return next(err);
     }
 
-    console.error("[SEAMLESS-AUTH-EXPRESS] - Unhandled route error.", err);
-    res.status(500).json({ error: "internal_error" });
+    // Body-parser errors reach this catch-all because express.json() is
+    // mounted on this router. They carry their own 4xx status, and logging
+    // them at error level would let an unauthenticated caller flood the logs.
+    const status = clientErrorStatus(err) ?? 500;
+
+    if (status >= 500) {
+      console.error("[SEAMLESS-AUTH-EXPRESS] - Unhandled route error.", err);
+      res.status(500).json({ error: "internal_error" });
+      return;
+    }
+
+    res
+      .status(status)
+      .json({ error: status === 413 ? "payload_too_large" : "bad_request" });
   });
 
   return r;
