@@ -14,7 +14,6 @@ function serverOptions(overrides = {}) {
     authServerUrl: "https://auth.example.com",
     cookieSecret: STRONG_COOKIE_SECRET,
     serviceSecret: STRONG_SERVICE_SECRET,
-    issuer: "https://api.example.com",
     audience: "https://auth.example.com",
     jwksKid: "2024-09-main",
     ...overrides,

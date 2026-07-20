@@ -61,7 +61,6 @@ app.use(
     authServerUrl: process.env.AUTH_SERVER_URL!,
     cookieSecret: process.env.COOKIE_SECRET!,
     serviceSecret: process.env.SERVICE_SECRET!,
-    issuer: "https://api.mycompany.com",
     audience: process.env.AUTH_SERVER_URL!,
   }),
 );
@@ -136,11 +135,23 @@ Adopters typically source the secrets from their own environment and pass them i
 | `authServerUrl` | yes      | Base URL of your Seamless Auth Server                          |
 | `cookieSecret`  | yes      | Secret used to sign the adapter's session cookies (min 32 chars) |
 | `serviceSecret` | yes      | Shared machine-to-machine secret, must match the auth server   |
-| `issuer`        | yes      | Issuer identifier for your API                                 |
 | `audience`      | yes      | Expected audience when verifying signed auth-server responses  |
 
 See [`createSeamlessAuthServer(options)`](#createseamlessauthserveroptions) below for the optional
 settings (cookie names, cookie security, `jwksKid`, messaging).
+
+### `authServerUrl` must match the auth server's issuer
+
+The adapter verifies signed auth-server responses by requiring the token's `iss` claim to equal
+`authServerUrl` exactly. The auth server stamps `iss` from its own `ISSUER` environment variable.
+Those two values must be identical strings, including scheme, host, port, and any trailing slash.
+
+This matters when the adapter reaches the auth server over an internal address (a service name, a
+private load balancer, or `localhost` in a container network) while the auth server's `ISSUER` is
+its public URL. Verification then fails on every login, and because the check fails closed the only
+symptom is a generic `[SeamlessAuth] Failed to verify signed auth response.` log line with no
+mention of the mismatch. If logins fail that way, compare `authServerUrl` against the auth server's
+`ISSUER` before looking anywhere else.
 
 ---
 
@@ -172,7 +183,6 @@ Routes include:
   authServerUrl: string;   // required
   cookieSecret: string;    // required (min 32 chars)
   serviceSecret: string;   // required (min 32 chars)
-  issuer: string;          // required
   audience: string;        // required
   jwksKid?: string;        // optional (defaults to "dev-main", warns when unset)
   cookieDomain?: string;  // optional (defaults to host)
@@ -262,7 +272,6 @@ app.use(
     authServerUrl: "https://identifier.seamlessauth.com",
     cookieSecret: process.env.COOKIE_SECRET,
     serviceSecret: process.env.SERVICE_SECRET,
-    issuer: "https://api.mycompany.com",
     audience: "https://identifier.seamlessauth.com",
     // local HTTP dev only, never in a deployed environment
     cookieSecure: false,
@@ -556,7 +565,6 @@ app.use(
     authServerUrl: process.env.AUTH_SERVER_URL!,
     cookieSecret: process.env.COOKIE_SECRET!,
     serviceSecret: process.env.SERVICE_SECRET!,
-    issuer: "http://localhost:5000",
     audience: process.env.AUTH_SERVER_URL!,
     // local HTTP only, never in a deployed environment
     cookieSecure: false,

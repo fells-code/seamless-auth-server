@@ -63,7 +63,6 @@ type ResolvedSeamlessAuthServerOptions = {
   authServerUrl: string;
   cookieSecret: string;
   serviceSecret: string;
-  issuer: string;
   audience: string;
   jwksKid: string;
   cookieDomain: string;
@@ -81,7 +80,6 @@ export type SeamlessAuthServerOptions = {
   authServerUrl: string;
   cookieSecret: string;
   serviceSecret: string;
-  issuer: string;
   audience: string;
   jwksKid?: string;
   cookieDomain?: string;
@@ -198,7 +196,6 @@ export function createSeamlessAuthServer(
 
   const resolvedOpts: ResolvedSeamlessAuthServerOptions = {
     authServerUrl: opts.authServerUrl,
-    issuer: opts.issuer,
     audience: opts.audience,
     cookieSecret: opts.cookieSecret,
     serviceSecret: opts.serviceSecret,
@@ -294,7 +291,7 @@ export function createSeamlessAuthServer(
       serviceSecret: resolvedOpts.serviceSecret,
       // The silent-refresh path mints an M2M service token that the auth API
       // validates with a fixed issuer/audience (see buildInternalServiceAuthorization),
-      // not the adopter-configured issuer/audience.
+      // not the adopter-configured audience.
       issuer: "seamless-portal-api",
       audience: "seamless-auth",
       keyId: resolvedOpts.jwksKid,
