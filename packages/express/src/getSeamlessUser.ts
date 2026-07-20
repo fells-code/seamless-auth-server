@@ -1,8 +1,5 @@
 import type { Request } from "express";
-import {
-  getSeamlessUser as getSeamlessUserCore,
-  GetSeamlessUserOptions,
-} from "@seamless-auth/core";
+import { getSeamlessUser as getSeamlessUserCore } from "@seamless-auth/core";
 import {
   buildProxyServiceAuthorization,
   buildServiceAuthorization,
@@ -23,5 +20,5 @@ export async function getSeamlessUser(
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-  } as GetSeamlessUserOptions);
+  });
 }
