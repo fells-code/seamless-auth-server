@@ -341,16 +341,16 @@ export function createSeamlessAuthServer(
     verifyLoginOtp(req, res, resolvedOpts, "email"),
   );
 
-  r.get("/otp/generate-phone-otp", (req, res) =>
+  r.post("/otp/generate-phone-otp", (req, res) =>
     requestOtp(req, res, resolvedOpts, "phone"),
   );
-  r.get("/otp/generate-email-otp", (req, res) =>
+  r.post("/otp/generate-email-otp", (req, res) =>
     requestOtp(req, res, resolvedOpts, "email"),
   );
-  r.get("/otp/generate-login-phone-otp", (req, res) =>
+  r.post("/otp/generate-login-phone-otp", (req, res) =>
     requestOtp(req, res, resolvedOpts, "phone", "login"),
   );
-  r.get("/otp/generate-login-email-otp", (req, res) =>
+  r.post("/otp/generate-login-email-otp", (req, res) =>
     requestOtp(req, res, resolvedOpts, "email", "login"),
   );
 

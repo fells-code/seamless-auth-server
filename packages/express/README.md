@@ -175,11 +175,14 @@ Routes include:
 - `DELETE /auth/logout` for the current session
 - `DELETE /auth/logout/all` for every session owned by the current user
 - `POST /auth/magic-link` to request a magic-link email
+- `POST /auth/otp/generate-phone-otp`, `-email-otp`, and their `-login-` variants to send an OTP
 
-`GET /auth/logout` and `GET /auth/magic-link` were removed. Both were
-state-changing routes reachable as simple cross-site requests (an `<img src>` on
-any page could revoke every session or trigger magic-link emails). Use
-`DELETE /auth/logout/all` and `POST /auth/magic-link` instead.
+`GET /auth/logout` and `GET /auth/magic-link` were removed, and the four
+`GET /auth/otp/generate-*` routes are now POST only. All were state-changing
+routes reachable as simple cross-site requests (an `<img src>` on any page could
+revoke every session, trigger magic-link emails, or send unbounded OTP SMS and
+email). Use `DELETE /auth/logout/all`, `POST /auth/magic-link`, and the POST
+generate routes instead.
 
 **Options**
 
