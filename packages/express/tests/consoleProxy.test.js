@@ -108,6 +108,27 @@ describe("console proxy", () => {
     }
   });
 
+  it("rejects an encoded-slash traversal without fetching upstream", async () => {
+    const res = await request(createApp()).get("/console/..%2fadmin/users");
+
+    expect(res.status).toBe(400);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("rejects an encoded-backslash traversal without fetching upstream", async () => {
+    const res = await request(createApp()).get("/console/..%5cadmin");
+
+    expect(res.status).toBe(400);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 for an Express-normalized dot-segment without fetching upstream", async () => {
+    const res = await request(createApp()).get("/console/%2e%2e/admin");
+
+    expect(res.status).toBe(404);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
   it("does not forward Cookie or Authorization headers upstream", async () => {
     global.fetch.mockResolvedValue(
       createUpstreamResponse(200, "console.js()", {

@@ -18,15 +18,22 @@ function normalizeBasePath(basePath: string): string {
 }
 
 // Resolve the upstream URL and refuse anything that escapes the console subtree.
-// `new URL` normalizes `..` segments, so a request like `/console/../admin/users`
-// collapses to `/admin/users` and fails the prefix check instead of reaching the
-// auth API's admin routes.
+// Express collapses literal `..` and `%2e%2e` dot-segments before routing, so those
+// never reach here. `new URL` does NOT decode `%2f`/`%5c`, so `..%2fadmin` stays a
+// single opaque segment that passes the prefix check yet decodes to a traversal at an
+// upstream that does decode it. Reject encoded path separators outright: legitimate
+// console asset paths and SPA client routes never contain one, so this has no false
+// positives and does not depend on how the upstream decodes.
 function resolveUpstreamUrl(
   authServerUrl: string,
   basePath: string,
   subpath: string,
   search: string,
 ): URL | null {
+  if (/%2f|%5c/i.test(subpath)) {
+    return null;
+  }
+
   let baseUrl: URL;
   try {
     baseUrl = new URL(authServerUrl);
@@ -102,7 +109,10 @@ export function createSeamlessConsoleProxy(
 
     let response: globalThis.Response;
     try {
-      response = await fetch(upstream, { method: req.method });
+      response = await fetch(upstream, {
+        method: req.method,
+        signal: AbortSignal.timeout(10000),
+      });
     } catch {
       res.status(502).json({ error: "Console upstream unreachable" });
       return;

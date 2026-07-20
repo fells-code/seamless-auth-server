@@ -21,7 +21,7 @@ export async function verifyMagicLinkHandler(
   opts: VerifyMagicLinkOptions,
 ): Promise<VerifyMagicLinkResult> {
   const up = await authFetch(
-    `${opts.authServerUrl}/magic-link/verify/${input.token}`,
+    `${opts.authServerUrl}/magic-link/verify/${encodeURIComponent(input.token)}`,
     {
       method: "GET",
       serviceAuthorization: opts.serviceAuthorization,
