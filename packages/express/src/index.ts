@@ -3,6 +3,7 @@ import {
   SeamlessAuthServerOptions,
   SeamlessAuthUser,
 } from "./createServer";
+export { createSeamlessAuthServer };
 export { SeamlessAuthServerOptions, SeamlessAuthUser };
 export { createSeamlessConsoleProxy } from "./consoleProxy";
 export type { SeamlessConsoleProxyOptions } from "./consoleProxy";

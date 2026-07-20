@@ -482,15 +482,31 @@ Compatibility rules:
 
 ---
 
-### `getSeamlessUser(req, authServerUrl, cookieName?)`
+### `getSeamlessUser(req, options)`
 
 Optional helper that calls the Auth Server to retrieve the **fully hydrated user object**.
 
 This does **not** enforce authentication.
 
+`options` is the same `SeamlessAuthServerOptions` object passed to
+[`createSeamlessAuthServer`](#createseamlessauthserveroptions), so the usual pattern is to build the
+options once and reuse them.
+
 ```ts
-const user = await getSeamlessUser(req, process.env.AUTH_SERVER_URL);
+const authOptions = {
+  authServerUrl: process.env.AUTH_SERVER_URL!,
+  cookieSecret: process.env.COOKIE_SECRET!,
+  serviceSecret: process.env.SERVICE_SECRET!,
+  audience: process.env.AUTH_AUDIENCE!,
+};
+
+app.use("/auth", createSeamlessAuthServer(authOptions));
+
+const user = await getSeamlessUser(req, authOptions);
 ```
+
+`cookieSecret` is required and must be at least 32 characters, otherwise the call throws. The
+access cookie name is read from `accessCookieName` and defaults to `seamless-access`.
 
 Returns `SeamlessUser | null`:
 
