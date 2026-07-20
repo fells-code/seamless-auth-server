@@ -62,7 +62,7 @@ describe("login OTP routes", () => {
     );
 
     const res = await request(createApp())
-      .get("/auth/otp/generate-login-email-otp")
+      .post("/auth/otp/generate-login-email-otp")
       .set("Cookie", createPreAuthCookie());
 
     expect(res.status).toBe(200);
@@ -104,5 +104,26 @@ describe("login OTP routes", () => {
         }),
       }),
     );
+  });
+  // The generate routes are state changing (they send an SMS or email). Serving
+  // them over GET made them reachable as a simple cross-site request, so an
+  // <img> tag could trigger unbounded sends to a signed-in user. They are now
+  // POST only. Carries the pre-auth cookie so the cookie middleware does not
+  // answer 400 before routing, which would pass whether or not the route exists.
+  it("no longer exposes the generate routes over GET", async () => {
+    for (const path of [
+      "/auth/otp/generate-phone-otp",
+      "/auth/otp/generate-email-otp",
+      "/auth/otp/generate-login-phone-otp",
+      "/auth/otp/generate-login-email-otp",
+    ]) {
+      const res = await request(createApp())
+        .get(path)
+        .set("Cookie", createPreAuthCookie());
+
+      expect([404, 405]).toContain(res.status);
+    }
+
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 });
