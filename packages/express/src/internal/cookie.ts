@@ -16,9 +16,20 @@ export interface CookieSecurityOptions {
 }
 
 /**
+ * Resolves the effective `SameSite` policy from the security options. Shared so the
+ * cookie attributes and any policy that keys off `SameSite=None` cannot drift.
+ * Browsers reject `SameSite=None` without `Secure`, so the default tracks `secure`.
+ */
+export function resolveCookieSameSite(
+  opts: Pick<CookieSecurityOptions, "cookieSecure" | "cookieSameSite">,
+): CookieSameSite {
+  const secure = opts.cookieSecure ?? true;
+  return opts.cookieSameSite ?? (secure ? "none" : "lax");
+}
+
+/**
  * Single source of truth for cookie security policy. Defaults to secure so a deploy
- * cannot silently ship plaintext-visible cookies. Browsers reject `SameSite=None`
- * without `Secure`, so the SameSite default tracks `secure`.
+ * cannot silently ship plaintext-visible cookies.
  */
 export function buildCookieSigner(
   opts: CookieSecurityOptions,
@@ -27,12 +38,10 @@ export function buildCookieSigner(
     throw new Error("Missing COOKIE_SIGNING_KEY");
   }
 
-  const secure = opts.cookieSecure ?? true;
-
   return {
     secret: opts.cookieSecret,
-    secure,
-    sameSite: opts.cookieSameSite ?? (secure ? "none" : "lax"),
+    secure: opts.cookieSecure ?? true,
+    sameSite: resolveCookieSameSite(opts),
   };
 }
 
