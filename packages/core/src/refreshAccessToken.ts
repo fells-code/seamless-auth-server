@@ -32,6 +32,28 @@ const recentRefreshResults = new Map<
   { result: RefreshAccessTokenResult; expiresAt: number }
 >();
 const RECENT_REFRESH_RESULT_TTL_MS = 5000;
+// Refresh cookies rotate, so a completed entry's key is never looked up again and
+// would live forever without this. Sweep expired entries (throttled so it stays off
+// the hot path) and cap total size as a backstop against a burst of distinct cookies.
+const MAX_RECENT_REFRESH_RESULTS = 10_000;
+let lastPruneAt = 0;
+
+function pruneRecentRefreshResults(now: number): void {
+  if (now - lastPruneAt >= RECENT_REFRESH_RESULT_TTL_MS) {
+    for (const [key, entry] of recentRefreshResults) {
+      if (entry.expiresAt <= now) {
+        recentRefreshResults.delete(key);
+      }
+    }
+    lastPruneAt = now;
+  }
+
+  while (recentRefreshResults.size > MAX_RECENT_REFRESH_RESULTS) {
+    const oldest = recentRefreshResults.keys().next().value;
+    if (oldest === undefined) break;
+    recentRefreshResults.delete(oldest);
+  }
+}
 
 export async function refreshAccessToken(
   refreshCookie: string,
@@ -82,9 +104,11 @@ export async function refreshAccessToken(
   try {
     const result = await refreshPromise;
     if (result) {
+      const insertedAt = Date.now();
+      pruneRecentRefreshResults(insertedAt);
       recentRefreshResults.set(refreshCookie, {
         result,
-        expiresAt: Date.now() + RECENT_REFRESH_RESULT_TTL_MS,
+        expiresAt: insertedAt + RECENT_REFRESH_RESULT_TTL_MS,
       });
     }
     return result;

@@ -108,11 +108,13 @@ const COOKIE_REQUIREMENTS: Record<
     name: "preAuthCookieName",
     required: false,
   },
-  "/magic-link": {
+  // Must precede "/magic-link" for the same prefix-match reason; otherwise this
+  // entry is shadowed and would silently stop applying if its config diverged.
+  "/magic-link/check": {
     name: "preAuthCookieName",
     required: true,
   },
-  "/magic-link/check": {
+  "/magic-link": {
     name: "preAuthCookieName",
     required: true,
   },

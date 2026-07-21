@@ -52,5 +52,5 @@ export async function finishLogin(
     return res.status(result.status).json(result.error);
   }
 
-  res.status(result.status).json(result.body).end();
+  res.status(result.status).json(result.body);
 }

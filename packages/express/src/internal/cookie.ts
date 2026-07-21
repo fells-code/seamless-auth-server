@@ -35,7 +35,7 @@ export function buildCookieSigner(
   opts: CookieSecurityOptions,
 ): CookieSignerOptions {
   if (!opts.cookieSecret) {
-    throw new Error("Missing COOKIE_SIGNING_KEY");
+    throw new Error("Missing cookieSecret");
   }
 
   return {

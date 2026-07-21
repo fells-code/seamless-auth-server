@@ -91,6 +91,7 @@ Key exports include:
 - `getSeamlessUser(...)` – resolves the hydrated user, typed as `SeamlessUser | null`
 - `hasScopedRole(...)` – checks scoped role grants such as `admin:read`
 - `assertSecretStrength(...)` / `assertSecrets(...)` – enforce the minimum secret length
+- `redactSensitiveText(...)` – masks tokens, bearer values, and secrets before logging
 - `listOAuthProvidersHandler(...)` – retrieves public OAuth provider metadata
 - `startOAuthLoginHandler(...)` – starts an OAuth authorization-code login
 - `finishOAuthLoginHandler(...)` – finishes OAuth login and returns cookie instructions

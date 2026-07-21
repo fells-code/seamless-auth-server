@@ -26,7 +26,11 @@ import {
   startOAuthLogin,
 } from "./handlers/oauth";
 import * as admin from "./handlers/admin";
-import { authFetch, AuthFetchOptions } from "@seamless-auth/core";
+import {
+  authFetch,
+  AuthFetchOptions,
+  redactSensitiveText,
+} from "@seamless-auth/core";
 import {
   buildProxyServiceAuthorization,
   buildServiceAuthorization,
@@ -99,8 +103,8 @@ export type SeamlessAuthServerOptions = {
 export interface SeamlessAuthUser {
   id: string;
   roles: string[];
-  email: string;
-  phone: string;
+  email?: string;
+  phone?: string | null;
   iat?: number;
   exp?: number;
   token?: string;
@@ -129,7 +133,11 @@ function buildProxyQueryString(queryInput: Request["query"]): string {
 
 function routeParam(req: Request, name: string): string {
   const value = req.params[name];
-  return Array.isArray(value) ? value[0] : value;
+  const resolved = Array.isArray(value) ? value[0] : value;
+  if (typeof resolved !== "string") {
+    throw new Error(`Missing route parameter "${name}"`);
+  }
+  return resolved;
 }
 
 function clientErrorStatus(err: unknown): number | null {
@@ -683,7 +691,12 @@ export function createSeamlessAuthServer(
     const status = clientErrorStatus(err) ?? 500;
 
     if (status >= 500) {
-      console.error("[SEAMLESS-AUTH-EXPRESS] - Unhandled route error.", err);
+      const detail =
+        err instanceof Error ? (err.stack ?? err.message) : String(err);
+      console.error(
+        "[SEAMLESS-AUTH-EXPRESS] - Unhandled route error.",
+        redactSensitiveText(detail),
+      );
       res.status(500).json({ error: "internal_error" });
       return;
     }
