@@ -4,7 +4,7 @@ import { Request, Response, NextFunction, RequestHandler } from "express";
 /**
  * Express middleware that enforces role-based authorization for Seamless Auth.
  *
- * This middleware assumes `requireAuth()` has already:
+ * This middleware assumes `requireAuth` has already:
  * - authenticated the request
  * - populated `req.user` with the authenticated session payload
  *
@@ -17,11 +17,13 @@ import { Request, Response, NextFunction, RequestHandler } from "express";
  * `:write` role grants `:read` access.
  * Otherwise, a 403 Forbidden response is returned.
  *
- *  * ### Example
+ * ### Example
  * ```ts
+ * const guard = requireAuth({ cookieSecret: process.env.COOKIE_SECRET! });
+ *
  * // Require a single role
  * app.get("/admin/users",
- *   requireAuth(),
+ *   guard,
  *   requireRole("admin"),
  *   (req, res) => {
  *     res.send("Welcome admin!");
@@ -30,10 +32,11 @@ import { Request, Response, NextFunction, RequestHandler } from "express";
  *
  * // Allow any of multiple roles
  * app.post("/settings",
- *   requireAuth(),
+ *   guard,
  *   requireRole(["admin", "supervisor"]),
  *   updateSettingsHandler
  * );
+ * ```
  *
  * @param requiredRoles - A role or list of roles required to access the route
  */

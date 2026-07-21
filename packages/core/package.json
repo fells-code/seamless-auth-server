@@ -2,6 +2,14 @@
     "name": "@seamless-auth/core",
     "version": "0.7.0",
     "description": "Framework-agnostic core authentication logic for SeamlessAuth",
+    "keywords": [
+        "authentication",
+        "passwordless",
+        "webauthn",
+        "passkeys",
+        "jwt",
+        "seamless-auth"
+    ],
     "license": "AGPL-3.0-only",
     "author": "Fells Code, LLC",
     "sideEffects": false,

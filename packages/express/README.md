@@ -84,7 +84,7 @@ app.get("/admin", requireRole("admin"), (req, res) => {
   res.json({ message: "Welcome admin!" });
 });
 
-app.listen(5000, () => console.log("API running on http://localhost:3000"));
+app.listen(5000, () => console.log("API running on http://localhost:5000"));
 ```
 
 ---
@@ -196,6 +196,7 @@ generate routes instead.
   cookieDomain?: string;  // optional (defaults to host)
   cookieSecure?: boolean;  // optional (defaults to true)
   cookieSameSite?: "lax" | "none" | "strict";  // optional
+  resolveClientIp?: (req) => string | undefined;  // optional (see Client IP forwarding)
   accessCookieName?: string;
   registrationCookieName?: string;
   refreshCookieName?: string;
@@ -560,7 +561,7 @@ This does not affect the `sub` claim inside JWT payloads, which is unchanged.
 1. **Frontend** → `/auth/login`
    API proxies request and sets a short-lived _pre-auth_ cookie.
 
-2. **Frontend** → `/auth/webAuthn/finish`  
+2. **Frontend** → `/auth/webAuthn/login/finish`  
    API verifies response and sets a signed access cookie.
 
 3. **API routes** → `/api/*`  
