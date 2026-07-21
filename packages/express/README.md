@@ -491,8 +491,8 @@ app.get("/api/profile", guard, (req, res) => {
 {
   id: string;
   roles: string[];
-  email: string;
-  phone: string;
+  email?: string;
+  phone?: string | null;
   iat?: number;
   exp?: number;
   token?: string;

@@ -115,8 +115,7 @@ describe("route error handling", () => {
   });
 
   it("logs the underlying error server side", async () => {
-    const cause = new Error("network down");
-    global.fetch.mockRejectedValue(cause);
+    global.fetch.mockRejectedValue(new Error("network down"));
 
     await request(createApp())
       .get("/auth/magic-link/check")
@@ -124,7 +123,21 @@ describe("route error handling", () => {
 
     expect(errorSpy).toHaveBeenCalledWith(
       "[SEAMLESS-AUTH-EXPRESS] - Unhandled route error.",
-      cause,
+      expect.stringContaining("network down"),
     );
+  });
+
+  it("redacts sensitive values in the logged error", async () => {
+    global.fetch.mockRejectedValue(
+      new Error("upstream rejected Bearer sk-secret-token-value"),
+    );
+
+    await request(createApp())
+      .get("/auth/magic-link/check")
+      .set("Cookie", createPreAuthCookie());
+
+    const [, logged] = errorSpy.mock.calls[0];
+    expect(logged).not.toContain("sk-secret-token-value");
+    expect(logged).toContain("[REDACTED]");
   });
 });
