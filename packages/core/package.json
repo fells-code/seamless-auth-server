@@ -1,6 +1,6 @@
 {
     "name": "@seamless-auth/core",
-    "version": "0.7.0",
+    "version": "0.9.0",
     "description": "Framework-agnostic core authentication logic for SeamlessAuth",
     "keywords": [
         "authentication",
