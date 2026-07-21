@@ -2,6 +2,16 @@
   "name": "@seamless-auth/express",
   "version": "0.8.0",
   "description": "Express adapter for Seamless Auth passwordless authentication",
+  "keywords": [
+    "authentication",
+    "passwordless",
+    "express",
+    "webauthn",
+    "passkeys",
+    "session",
+    "cookies",
+    "seamless-auth"
+  ],
   "license": "AGPL-3.0-only",
   "type": "module",
   "main": "dist/index.js",
