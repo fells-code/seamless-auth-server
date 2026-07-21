@@ -196,6 +196,7 @@ generate routes instead.
   cookieDomain?: string;  // optional (defaults to host)
   cookieSecure?: boolean;  // optional (defaults to true)
   cookieSameSite?: "lax" | "none" | "strict";  // optional
+  allowedOrigins?: string[];  // optional (older-browser Origin fallback, see Cookie security)
   resolveClientIp?: (req) => string | undefined;  // optional (see Client IP forwarding)
   accessCookieName?: string;
   registrationCookieName?: string;
@@ -284,6 +285,44 @@ app.use(
     audience: "https://identifier.seamlessauth.com",
     // local HTTP dev only, never in a deployed environment
     cookieSecure: false,
+  }),
+);
+```
+
+#### Cross-site request protection
+
+A `SameSite=None` cookie is attached to cross-site requests, so a page on any
+origin could drive a state-changing call to the adapter with the signed-in
+user's session. When the effective `sameSite` is `none`, the router rejects
+cross-site state-changing requests with `403 { "error":
+"cross_site_request_blocked" }`. This runs by default and needs no configuration.
+
+- The guard reads `Sec-Fetch-Site`, which current Chrome, Firefox, and Safari
+  send and page JavaScript cannot forge. A non-safe request (anything other than
+  `GET`, `HEAD`, or `OPTIONS`) is rejected when that header is `cross-site`.
+  Same-origin single-page-app calls send `same-origin` or `same-site` and pass
+  with no allowlist.
+- Safe methods are never gated, so `GET /magic-link/verify/:token` and the CORS
+  preflight (`OPTIONS`) are unaffected.
+- A caller that sends neither `Origin` nor `Sec-Fetch-Site`, such as a
+  server-to-server request, passes.
+
+`allowedOrigins` is an opt-in fallback for older browsers that do not send
+`Sec-Fetch-Site`. It is consulted only when that header is absent: the request
+`Origin` must appear in the list, otherwise the request is rejected. When
+`Sec-Fetch-Site` is absent and `allowedOrigins` is unset, the request passes, so
+setting it is never required. Set it if you support browsers old enough to lack
+`Sec-Fetch-Site` and want the `Origin` check for them:
+
+```ts
+app.use(
+  "/auth",
+  createSeamlessAuthServer({
+    authServerUrl: "https://identifier.seamlessauth.com",
+    cookieSecret: process.env.COOKIE_SECRET,
+    serviceSecret: process.env.SERVICE_SECRET,
+    audience: "https://identifier.seamlessauth.com",
+    allowedOrigins: ["https://app.example.com"],
   }),
 );
 ```

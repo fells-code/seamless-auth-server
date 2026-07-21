@@ -2,6 +2,7 @@ import express, { NextFunction, Request, Response, Router } from "express";
 import cookieParser from "cookie-parser";
 
 import { createEnsureCookiesMiddleware } from "./middleware/ensureCookies";
+import { createOriginGuardMiddleware } from "./middleware/originGuard";
 import type { CookieSameSite } from "./internal/cookie";
 import type { SeamlessAuthMessagingOptions } from "./messaging";
 
@@ -68,6 +69,7 @@ type ResolvedSeamlessAuthServerOptions = {
   cookieDomain: string;
   cookieSecure?: boolean;
   cookieSameSite?: CookieSameSite;
+  allowedOrigins?: string[];
   accessCookieName: string;
   registrationCookieName: string;
   refreshCookieName: string;
@@ -85,6 +87,7 @@ export type SeamlessAuthServerOptions = {
   cookieDomain?: string;
   cookieSecure?: boolean;
   cookieSameSite?: CookieSameSite;
+  allowedOrigins?: string[];
   accessCookieName?: string;
   registrationCookieName?: string;
   refreshCookieName?: string;
@@ -215,6 +218,7 @@ export function createSeamlessAuthServer(
     cookieDomain: opts.cookieDomain ?? "",
     cookieSecure: opts.cookieSecure,
     cookieSameSite: opts.cookieSameSite,
+    allowedOrigins: opts.allowedOrigins,
     accessCookieName: opts.accessCookieName ?? "seamless-access",
     registrationCookieName: opts.registrationCookieName ?? "seamless-ephemeral",
     refreshCookieName: opts.refreshCookieName ?? "seamless-refresh",
@@ -288,6 +292,16 @@ export function createSeamlessAuthServer(
       const data = await upstream.json();
       res.status(upstream.status).json(data);
     };
+
+  // Runs before ensureCookies and the routes so a blocked cross-site request
+  // never triggers a token refresh or reaches a handler.
+  r.use(
+    createOriginGuardMiddleware({
+      cookieSecure: resolvedOpts.cookieSecure,
+      cookieSameSite: resolvedOpts.cookieSameSite,
+      allowedOrigins: resolvedOpts.allowedOrigins,
+    }),
+  );
 
   r.use(
     createEnsureCookiesMiddleware({
