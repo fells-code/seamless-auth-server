@@ -20,7 +20,7 @@ export async function me(
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-  } as any);
+  });
 
   if (result.clearCookies) {
     const signer = buildCookieSigner(opts);

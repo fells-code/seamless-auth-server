@@ -62,7 +62,7 @@ export function createEnsureCookiesMiddleware(
         audience: opts.audience,
         keyId: opts.keyId,
         forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-      } as any,
+      },
     );
 
     applyResult(res, req, result, opts, cookieSigner);

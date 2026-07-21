@@ -27,7 +27,7 @@ export async function register(
       serviceAuthorization: opts.messaging
         ? buildInternalServiceAuthorization(opts)
         : buildProxyServiceAuthorization(opts),
-    } as any,
+    },
   );
 
   if (result.setCookies) {

@@ -21,7 +21,7 @@ export async function login(
       preAuthCookieName: opts.preAuthCookieName!,
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-    } as any,
+    },
   );
 
   if (result.setCookies) {

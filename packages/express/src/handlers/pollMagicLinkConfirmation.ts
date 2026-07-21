@@ -22,7 +22,7 @@ export async function pollMagicLinkConfirmation(
     {
       authorization,
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-    } as any,
+    },
     {
       authServerUrl: opts.authServerUrl,
       audience: opts.audience,

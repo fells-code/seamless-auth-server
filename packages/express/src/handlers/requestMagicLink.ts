@@ -25,7 +25,7 @@ export async function requestMagicLink(
       serviceAuthorization: opts.messaging
         ? buildInternalServiceAuthorization(opts)
         : buildProxyServiceAuthorization(opts),
-    } as any,
+    },
   );
 
   if (result.error) {

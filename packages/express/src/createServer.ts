@@ -294,7 +294,7 @@ export function createSeamlessAuthServer(
       const resolvedPath = typeof path === "function" ? path(req) : path;
       const upstream = await authFetch(
         `${resolvedOpts.authServerUrl}/${resolvedPath}${queryString ? `?${queryString}` : ""}`,
-        options as any,
+        options,
       );
 
       const data = await upstream.json();
@@ -330,8 +330,7 @@ export function createSeamlessAuthServer(
       audience: "seamless-auth",
       keyId: resolvedOpts.jwksKid,
       resolveClientIp: resolvedOpts.resolveClientIp,
-      forwardedClientIp: undefined,
-    } as any),
+    }),
   );
 
   r.post(
@@ -494,7 +493,7 @@ export function createSeamlessAuthServer(
         method: "GET",
         serviceAuthorization: buildProxyServiceAuthorization(resolvedOpts),
         forwardedClientIp: buildForwardedClientIp(req, resolvedOpts.resolveClientIp),
-      } as any,
+      },
     );
 
     const data = await upstream.json();
