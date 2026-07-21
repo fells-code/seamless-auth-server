@@ -29,7 +29,7 @@ export async function requestOtp(
       serviceAuthorization: opts.messaging
         ? buildInternalServiceAuthorization(opts)
         : buildProxyServiceAuthorization(opts),
-    } as any,
+    },
   );
 
   if (result.error) {

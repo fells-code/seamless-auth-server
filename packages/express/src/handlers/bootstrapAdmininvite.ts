@@ -22,7 +22,7 @@ export async function bootstrapAdminInvite(
     serviceAuthorization: opts.messaging
       ? buildInternalServiceAuthorization(opts)
       : buildProxyServiceAuthorization(opts),
-  } as any);
+  });
 
   if (result.error) {
     return res.status(result.status).json({ error: result.error });

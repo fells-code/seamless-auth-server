@@ -22,6 +22,23 @@ function handle(res: Response, result: any) {
   return res.status(result.status).json(result.body);
 }
 
+// Express types req.query as ParsedQs, whose values may be arrays or nested
+// objects. The metrics handlers only forward scalar query params, so reduce to
+// the first string value per key instead of casting the whole object.
+function toQueryRecord(
+  query: Request["query"],
+): Record<string, string | undefined> {
+  const record: Record<string, string | undefined> = {};
+  for (const [key, value] of Object.entries(query)) {
+    if (typeof value === "string") {
+      record[key] = value;
+    } else if (Array.isArray(value) && typeof value[0] === "string") {
+      record[key] = value[0];
+    }
+  }
+  return record;
+}
+
 export async function getAuthEventSummary(
   req: Request,
   res: Response,
@@ -34,8 +51,8 @@ export async function getAuthEventSummary(
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-    query: req.query as any,
-  } as any);
+    query: toQueryRecord(req.query),
+  });
 
   return handle(res, result);
 }
@@ -52,8 +69,8 @@ export async function getAuthEventTimeseries(
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-    query: req.query as any,
-  } as any);
+    query: toQueryRecord(req.query),
+  });
 
   return handle(res, result);
 }
@@ -70,7 +87,7 @@ export async function getLoginStats(
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-  } as any);
+  });
 
   return handle(res, result);
 }
@@ -87,7 +104,7 @@ export async function getSecurityAnomalies(
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-  } as any);
+  });
 
   return handle(res, result);
 }
@@ -104,7 +121,7 @@ export async function getDashboardMetrics(
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-  } as any);
+  });
 
   return handle(res, result);
 }
@@ -121,8 +138,8 @@ export async function getGroupedEventSummary(
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-    query: req.query as any,
-  } as any);
+    query: toQueryRecord(req.query),
+  });
 
   return handle(res, result);
 }

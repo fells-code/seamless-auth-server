@@ -24,7 +24,7 @@ export async function getAvailableRoles(
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-  } as any);
+  });
 
   if (result.error) {
     return res.status(result.status).json({ error: result.error });
@@ -45,7 +45,7 @@ export async function getSystemConfigAdmin(
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-  } as any);
+  });
 
   if (result.error) {
     return res.status(result.status).json({ error: result.error });
@@ -67,7 +67,7 @@ export async function updateSystemConfig(
     payload: req.body,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-  } as any);
+  });
 
   if (result.error) {
     return res.status(result.status).json({ error: result.error });

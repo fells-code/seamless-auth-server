@@ -41,7 +41,7 @@ export const getUsers = async (
       authorization: buildServiceAuthorization(req, opts),
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-    } as any),
+    }),
   );
 
 export const createUser = async (
@@ -57,7 +57,7 @@ export const createUser = async (
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
       body: req.body,
-    } as any),
+    }),
   );
 
 export const deleteUser = async (
@@ -73,7 +73,7 @@ export const deleteUser = async (
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
       body: req.body,
-    } as any),
+    }),
   );
 
 export const updateUser = async (
@@ -89,7 +89,7 @@ export const updateUser = async (
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
       body: req.body,
-    } as any),
+    }),
   );
 
 export const getUserDetail = async (
@@ -104,7 +104,7 @@ export const getUserDetail = async (
       authorization: buildServiceAuthorization(req, opts),
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-    } as any),
+    }),
   );
 
 export const getUserAnomalies = async (
@@ -119,7 +119,7 @@ export const getUserAnomalies = async (
       authorization: buildServiceAuthorization(req, opts),
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-    } as any),
+    }),
   );
 
 export const getAuthEvents = async (
@@ -135,7 +135,7 @@ export const getAuthEvents = async (
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
       query: req.query,
-    } as any),
+    }),
   );
 
 export const getCredentialCount = async (
@@ -150,7 +150,7 @@ export const getCredentialCount = async (
       authorization: buildServiceAuthorization(req, opts),
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-    } as any),
+    }),
   );
 
 export const listAllSessions = async (
@@ -166,7 +166,7 @@ export const listAllSessions = async (
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
       query: req.query,
-    } as any),
+    }),
   );
 
 export const listUserSessions = async (
@@ -181,7 +181,7 @@ export const listUserSessions = async (
       authorization: buildServiceAuthorization(req, opts),
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-    } as any),
+    }),
   );
 
 export const revokeUserSession = async (
@@ -196,7 +196,7 @@ export const revokeUserSession = async (
       authorization: buildServiceAuthorization(req, opts),
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-    } as any),
+    }),
   );
 
 export const revokeAllUserSessions = async (
@@ -211,7 +211,7 @@ export const revokeAllUserSessions = async (
       authorization: buildServiceAuthorization(req, opts),
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-    } as any),
+    }),
   );
 
 export const recoverUserForDeviceReplacement = async (
@@ -227,5 +227,5 @@ export const recoverUserForDeviceReplacement = async (
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
       body: req.body,
-    } as any),
+    }),
   );

@@ -31,7 +31,7 @@ export async function listSessions(
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-  } as any);
+  });
 
   return handle(res, result);
 }
@@ -48,7 +48,7 @@ export async function revokeSession(
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-  } as any);
+  });
 
   return handle(res, result);
 }
@@ -65,7 +65,7 @@ export async function revokeAllSessions(
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-  } as any);
+  });
 
   return handle(res, result);
 }

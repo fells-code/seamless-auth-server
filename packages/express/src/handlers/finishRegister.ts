@@ -23,7 +23,7 @@ export async function finishRegister(
       authorization,
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-    } as any,
+    },
     {
       authServerUrl: opts.authServerUrl,
       audience: opts.audience,
