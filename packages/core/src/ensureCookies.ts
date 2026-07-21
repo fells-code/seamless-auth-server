@@ -175,6 +175,12 @@ const COOKIE_REQUIREMENTS: Record<
     required: true,
   },
 
+  // Prefix match covers both the collection and the id-scoped provider routes.
+  "/system-config/oauth-providers": {
+    name: "accessCookieName",
+    required: true,
+  },
+
   "/system-config/roles": {
     name: "accessCookieName",
     required: true,

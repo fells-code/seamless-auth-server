@@ -510,6 +510,31 @@ export function createSeamlessAuthServer(
     updateSystemConfig(req, res, resolvedOpts),
   );
 
+  r.get(
+    "/system-config/oauth-providers",
+    proxyWithIdentity("system-config/oauth-providers", "access", "GET"),
+  );
+  r.post(
+    "/system-config/oauth-providers",
+    proxyWithIdentity("system-config/oauth-providers", "access", "POST"),
+  );
+  r.patch(
+    "/system-config/oauth-providers/:id",
+    proxyWithIdentity(
+      (req) => `system-config/oauth-providers/${req.params.id}`,
+      "access",
+      "PATCH",
+    ),
+  );
+  r.delete(
+    "/system-config/oauth-providers/:id",
+    proxyWithIdentity(
+      (req) => `system-config/oauth-providers/${req.params.id}`,
+      "access",
+      "DELETE",
+    ),
+  );
+
   r.get("/internal/auth-events/summary", (req, res) =>
     getAuthEventSummary(req, res, resolvedOpts),
   );
