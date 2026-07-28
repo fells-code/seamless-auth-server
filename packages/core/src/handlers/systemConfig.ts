@@ -1,4 +1,5 @@
 import { authFetch } from "../authFetch.js";
+import { readUpstreamFailure } from "../upstreamError.js";
 
 export interface SystemConfigOptions {
   authServerUrl: string;
@@ -11,6 +12,7 @@ export interface SystemConfigResult {
   status: number;
   body?: any;
   error?: string;
+  details?: unknown;
 }
 
 export async function getAvailableRolesHandler(
@@ -28,7 +30,7 @@ export async function getAvailableRolesHandler(
   if (!up.ok) {
     return {
       status: up.status,
-      error: data?.error || "failed_to_fetch_roles",
+      ...readUpstreamFailure(data, "failed_to_fetch_roles"),
     };
   }
 
@@ -53,7 +55,7 @@ export async function getSystemConfigAdminHandler(
   if (!up.ok) {
     return {
       status: up.status,
-      error: data?.error || "failed_to_fetch_config",
+      ...readUpstreamFailure(data, "failed_to_fetch_config"),
     };
   }
 
@@ -79,7 +81,7 @@ export async function updateSystemConfigHandler(
   if (!up.ok) {
     return {
       status: up.status,
-      error: data?.error || "failed_to_update_config",
+      ...readUpstreamFailure(data, "failed_to_update_config"),
     };
   }
 

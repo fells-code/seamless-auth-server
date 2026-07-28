@@ -1,4 +1,5 @@
 import { authFetch } from "../authFetch.js";
+import { readUpstreamFailure } from "../upstreamError.js";
 
 type BaseOpts = {
   authServerUrl: string;
@@ -11,6 +12,7 @@ type Result = {
   status: number;
   body?: any;
   error?: string;
+  details?: unknown;
 };
 
 async function request(
@@ -30,7 +32,7 @@ async function request(
   if (!up.ok) {
     return {
       status: up.status,
-      error: data?.error || "session_request_failed",
+      ...readUpstreamFailure(data, "session_request_failed"),
     };
   }
 
