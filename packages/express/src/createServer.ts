@@ -44,7 +44,6 @@ import {
   buildForwardedClientIp,
   ClientIpResolver,
 } from "./internal/buildForwardedClientIp";
-import { bootstrapAdminInvite } from "./handlers/bootstrapAdmininvite";
 import {
   getAvailableRoles,
   getSystemConfigAdmin,
@@ -501,9 +500,6 @@ export function createSeamlessAuthServer(
   });
   r.get("/magic-link/check", (req, res) =>
     pollMagicLinkConfirmation(req, res, resolvedOpts),
-  );
-  r.post("/internal/bootstrap/admin-invite", (req, res) =>
-    bootstrapAdminInvite(req, res, resolvedOpts),
   );
   r.get("/system-config/roles", (req, res) =>
     getAvailableRoles(req, res, resolvedOpts),
