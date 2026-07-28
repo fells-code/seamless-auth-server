@@ -153,65 +153,6 @@ describe("messaging delivery routes", () => {
     );
   });
 
-  it("delivers bootstrap invites through the configured email transport and strips delivery details", async () => {
-    const emailTransport = {
-      name: "test-email",
-      send: jest.fn().mockResolvedValue({
-        accepted: true,
-        provider: "test-email",
-        channel: "email",
-      }),
-    };
-
-    global.fetch.mockResolvedValue(
-      createJsonResponse(201, {
-        success: true,
-        data: {
-          expiresAt: "2026-04-21T20:00:00.000Z",
-          delivery: {
-            kind: "bootstrap_invite_email",
-            to: "admin@example.com",
-            inviteUrl: "https://app.example.com/login?bootstrapToken=bootstrap-token",
-            token: "bootstrap-token",
-          },
-        },
-      }),
-    );
-
-    const res = await request(createApp(emailTransport))
-      .post("/auth/internal/bootstrap/admin-invite")
-      .set("Authorization", "Bearer bootstrap-secret")
-      .send({ email: "admin@example.com" });
-
-    expect(res.status).toBe(201);
-    expect(res.body).toEqual({
-      expiresAt: "2026-04-21T20:00:00.000Z",
-    });
-
-    expect(global.fetch).toHaveBeenCalledWith(
-      "https://auth.example.com/internal/bootstrap/admin-invite",
-      expect.objectContaining({
-        method: "POST",
-        headers: expect.objectContaining({
-          "Content-Type": "application/json",
-          Authorization: "Bearer bootstrap-secret",
-          "x-seamless-service-token": expect.stringMatching(/^Bearer /),
-          "x-seamless-client-ip": expect.any(String),
-          "x-seamless-auth-delivery-mode": "external",
-        }),
-      }),
-    );
-
-    expect(emailTransport.send).toHaveBeenCalledWith(
-      expect.objectContaining({
-        to: "admin@example.com",
-        from: "auth@example.com",
-        subject: "Seamless Review - Bootstrap invite",
-        text: expect.stringContaining("https://app.example.com/login?bootstrapToken=bootstrap-token"),
-        html: expect.stringContaining("https://app.example.com/login?bootstrapToken=bootstrap-token"),
-      }),
-    );
-  });
   it("warns and sends nothing when the auth API returns no delivery payload", async () => {
     const emailTransport = {
       name: "test-email",

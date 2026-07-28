@@ -53,13 +53,6 @@ export interface SendMagicLinkEmailInput {
   subject?: string;
 }
 
-export interface SendBootstrapInviteEmailInput {
-  to: string;
-  inviteUrl: string;
-  from?: string;
-  subject?: string;
-}
-
 export interface AuthMessageOverrideContext {
   appName?: string;
 }
@@ -80,11 +73,6 @@ export interface AuthMessageOverrides {
     defaults: EmailMessage,
     context: AuthMessageOverrideContext,
   ) => EmailMessage;
-  bootstrapInviteEmail?: (
-    input: SendBootstrapInviteEmailInput,
-    defaults: EmailMessage,
-    context: AuthMessageOverrideContext,
-  ) => EmailMessage;
 }
 
 export interface AuthMessagingHandlers {
@@ -92,9 +80,6 @@ export interface AuthMessagingHandlers {
   sendOtpSms(input: SendOtpSmsInput): Promise<DeliveryResult>;
   sendMagicLinkEmail(
     input: SendMagicLinkEmailInput,
-  ): Promise<DeliveryResult>;
-  sendBootstrapInviteEmail(
-    input: SendBootstrapInviteEmailInput,
   ): Promise<DeliveryResult>;
 }
 
@@ -126,10 +111,4 @@ export type AuthDeliveryInstruction =
       to: string;
       token?: string;
       magicLinkUrl: string;
-    }
-  | {
-      kind: "bootstrap_invite_email";
-      to: string;
-      token?: string;
-      inviteUrl: string;
     };

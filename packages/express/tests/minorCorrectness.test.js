@@ -150,30 +150,4 @@ describe("minor correctness fixes", () => {
       expect.objectContaining({ method: "GET" }),
     );
   });
-
-  it("surfaces a string-shaped upstream error from the bootstrap invite", async () => {
-    global.fetch.mockResolvedValue(
-      createJsonResponse(409, { error: "admin_already_exists" }),
-    );
-
-    const res = await request(createApp())
-      .post("/auth/internal/bootstrap/admin-invite")
-      .send({ email: "admin@example.com" });
-
-    expect(res.status).toBe(409);
-    expect(res.body).toEqual({ error: "admin_already_exists" });
-  });
-
-  it("does not throw on a bootstrap invite with no body", async () => {
-    global.fetch.mockResolvedValue(
-      createJsonResponse(400, { error: "email_required" }),
-    );
-
-    const res = await request(createApp()).post(
-      "/auth/internal/bootstrap/admin-invite",
-    );
-
-    expect(res.status).toBe(400);
-    expect(res.body).toEqual({ error: "email_required" });
-  });
 });

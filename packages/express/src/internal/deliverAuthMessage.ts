@@ -100,32 +100,6 @@ function buildMagicLinkMessage(
   );
 }
 
-function buildBootstrapInviteMessage(
-  input: Extract<AuthDeliveryInstruction, { kind: "bootstrap_invite_email" }>,
-  messaging: SeamlessAuthMessagingOptions,
-): EmailMessage {
-  const appName = messaging.defaults?.appName ?? "Seamless Auth";
-
-  return applyEmailOverride(
-    messaging.overrides?.bootstrapInviteEmail,
-    {
-      to: input.to,
-      inviteUrl: input.inviteUrl,
-      token: input.token,
-      from: messaging.defaults?.emailFrom,
-      subject: `${appName} - Bootstrap invite`,
-    },
-    {
-      to: input.to,
-      from: messaging.defaults?.emailFrom,
-      subject: `${appName} - Bootstrap invite`,
-      text: `You have been invited to bootstrap ${appName}.\n\nUse the link below to continue:\n${input.inviteUrl}`,
-      html: `<div><h1>Bootstrap invite for ${appName}</h1><p>Use the link below to continue:</p><p><a href="${input.inviteUrl}">${input.inviteUrl}</a></p></div>`,
-    },
-    appName,
-  );
-}
-
 export async function deliverAuthMessage(
   messaging: SeamlessAuthMessagingOptions | undefined,
   delivery: AuthDeliveryInstruction | undefined,
@@ -185,23 +159,6 @@ export async function deliverAuthMessage(
       }
 
       await messaging.email.send(buildMagicLinkMessage(delivery, messaging));
-      return;
-
-    case "bootstrap_invite_email":
-      if (messaging.handlers?.sendBootstrapInviteEmail) {
-        await messaging.handlers.sendBootstrapInviteEmail({
-          to: delivery.to,
-          inviteUrl: delivery.inviteUrl,
-          from: messaging.defaults?.emailFrom,
-        });
-        return;
-      }
-
-      if (!messaging.email) {
-        throw new Error("Missing email transport for bootstrap invite delivery.");
-      }
-
-      await messaging.email.send(buildBootstrapInviteMessage(delivery, messaging));
       return;
   }
 }
