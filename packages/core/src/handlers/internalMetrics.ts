@@ -1,4 +1,5 @@
 import { authFetch } from "../authFetch.js";
+import { readUpstreamFailure } from "../upstreamError.js";
 
 type BaseOpts = {
   authServerUrl: string;
@@ -15,6 +16,7 @@ type Result = {
   status: number;
   body?: any;
   error?: string;
+  details?: unknown;
 };
 
 function buildUrl(base: string, query?: WithQuery["query"]) {
@@ -44,7 +46,7 @@ async function get(path: string, opts: WithQuery): Promise<Result> {
   if (!up.ok) {
     return {
       status: up.status,
-      error: data?.error || "internal_request_failed",
+      ...readUpstreamFailure(data, "internal_request_failed"),
     };
   }
 

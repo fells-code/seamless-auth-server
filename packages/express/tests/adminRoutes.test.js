@@ -85,4 +85,22 @@ describe("admin routes", () => {
       }),
     );
   });
+
+  it("returns the upstream validation detail on a rejected user update (#115)", async () => {
+    const zodBody = {
+      name: "ZodError",
+      message:
+        '[{"code":"invalid_type","path":["phone"],"message":"Expected string, received null"}]',
+    };
+
+    global.fetch.mockResolvedValue(createJsonResponse(400, zodBody));
+
+    const res = await request(createApp())
+      .patch("/auth/admin/users/user-1")
+      .set("Cookie", createAccessCookie())
+      .send({ phone: "" });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ error: zodBody.message, details: zodBody });
+  });
 });

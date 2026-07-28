@@ -63,6 +63,51 @@ describe("admin handlers", () => {
     );
   });
 
+  it("surfaces an upstream validation body instead of the fallback code (#115)", async () => {
+    const { updateUserHandler } = await import("../dist/handlers/admin.js");
+
+    const zodBody = {
+      name: "ZodError",
+      message:
+        '[{"code":"invalid_type","path":["phone"],"message":"Expected string, received null"}]',
+    };
+
+    authFetchMock.mockResolvedValue(createJsonResponse(400, zodBody));
+
+    const result = await updateUserHandler("user-1", {
+      ...baseOptions,
+      body: { phone: "" },
+    });
+
+    expect(result).toEqual({
+      status: 400,
+      error: zodBody.message,
+      details: zodBody,
+    });
+  });
+
+  it("leaves an upstream error code untouched (#115)", async () => {
+    const { getUsersHandler } = await import("../dist/handlers/admin.js");
+
+    authFetchMock.mockResolvedValue(
+      createJsonResponse(403, { error: "forbidden" }),
+    );
+
+    const result = await getUsersHandler(baseOptions);
+
+    expect(result).toEqual({ status: 403, error: "forbidden" });
+  });
+
+  it("falls back to the constant code when the upstream body is empty (#115)", async () => {
+    const { getUsersHandler } = await import("../dist/handlers/admin.js");
+
+    authFetchMock.mockResolvedValue(createJsonResponse(502, undefined));
+
+    const result = await getUsersHandler(baseOptions);
+
+    expect(result).toEqual({ status: 502, error: "admin_request_failed" });
+  });
+
   it("keeps an injected session id in a single path segment (#65)", async () => {
     const { revokeSessionHandler } = await import(
       "../dist/handlers/sessions.js"

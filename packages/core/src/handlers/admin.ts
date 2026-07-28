@@ -1,4 +1,5 @@
 import { authFetch } from "../authFetch.js";
+import { readUpstreamFailure } from "../upstreamError.js";
 
 type BaseOpts = {
   authServerUrl: string;
@@ -19,6 +20,7 @@ type Result = {
   status: number;
   body?: any;
   error?: string;
+  details?: unknown;
 };
 
 function buildUrl(base: string, query?: Record<string, any>) {
@@ -54,7 +56,7 @@ async function request(
   if (!up.ok) {
     return {
       status: up.status,
-      error: data?.error || "admin_request_failed",
+      ...readUpstreamFailure(data, "admin_request_failed"),
     };
   }
 

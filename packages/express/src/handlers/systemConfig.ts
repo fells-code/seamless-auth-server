@@ -10,6 +10,7 @@ import {
   buildServiceAuthorization,
 } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
+import { errorBody } from "../internal/errorBody";
 import { SeamlessAuthServerOptions } from "../createServer";
 
 export async function getAvailableRoles(
@@ -27,7 +28,7 @@ export async function getAvailableRoles(
   });
 
   if (result.error) {
-    return res.status(result.status).json({ error: result.error });
+    return res.status(result.status).json(errorBody(result));
   }
 
   res.status(result.status).json(result.body);
@@ -48,7 +49,7 @@ export async function getSystemConfigAdmin(
   });
 
   if (result.error) {
-    return res.status(result.status).json({ error: result.error });
+    return res.status(result.status).json(errorBody(result));
   }
 
   res.status(result.status).json(result.body);
@@ -70,7 +71,7 @@ export async function updateSystemConfig(
   });
 
   if (result.error) {
-    return res.status(result.status).json({ error: result.error });
+    return res.status(result.status).json(errorBody(result));
   }
 
   res.status(result.status).json(result.body);
