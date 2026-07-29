@@ -6,7 +6,14 @@ export * from "./refreshAccessToken.js";
 export * from "./getSeamlessUser.js";
 export * from "./createServiceToken.js";
 export * from "./validateSecrets.js";
-export * from "./scopedRoles.js";
+// Role matching decides whether a request is authorized, and the auth API runs
+// the same check on its side. Both take it from @seamless-auth/types so the two
+// cannot drift into disagreeing about who can do what. The /role/matching entry
+// is the zod-free one, so importing core does not pull zod or the schema barrel.
+export {
+  hasScopedRole,
+  roleGrantsAccess,
+} from "@seamless-auth/types/role/matching";
 export * from "./redaction.js";
 
 export * from "./handlers/login.js";
