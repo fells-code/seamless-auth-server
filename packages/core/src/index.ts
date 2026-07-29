@@ -1,5 +1,6 @@
 export * from "./authFetch.js";
 export * from "./authMessaging.js";
+export * from "./deliverAuthMessage.js";
 export * from "./ensureCookies.js";
 export * from "./verifyCookieJwt.js";
 export * from "./refreshAccessToken.js";

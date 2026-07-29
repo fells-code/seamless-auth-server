@@ -6,7 +6,7 @@ import {
   buildInternalServiceAuthorization,
   buildProxyServiceAuthorization,
 } from "../internal/buildAuthorization";
-import { applyExternalDelivery } from "../internal/deliverAuthMessage";
+import { applyExternalDelivery } from "@seamless-auth/core";
 import { SeamlessAuthServerOptions } from "../createServer";
 
 export async function register(
