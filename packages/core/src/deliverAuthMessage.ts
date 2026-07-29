@@ -3,7 +3,7 @@ import type {
   EmailMessage,
   SeamlessAuthMessagingOptions,
   SmsMessage,
-} from "@seamless-auth/core";
+} from "./authMessaging.js";
 
 function applyEmailOverride<TInput>(
   override:
@@ -190,7 +190,7 @@ export async function applyExternalDelivery(
 
   if (messaging) {
     console.warn(
-      "[SEAMLESS-AUTH-EXPRESS] - External delivery was requested but the auth API returned no delivery payload, so no message was sent. Verify that serviceSecret matches the auth API's API_SERVICE_TOKEN.",
+      "[SeamlessAuth] External delivery was requested but the auth API returned no delivery payload, so no message was sent. Verify that serviceSecret matches the auth API's API_SERVICE_TOKEN.",
     );
   }
 

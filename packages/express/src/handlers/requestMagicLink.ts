@@ -6,7 +6,7 @@ import {
   buildServiceAuthorization,
 } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
-import { applyExternalDelivery } from "../internal/deliverAuthMessage";
+import { applyExternalDelivery } from "@seamless-auth/core";
 import { SeamlessAuthServerOptions } from "../createServer";
 
 export async function requestMagicLink(
