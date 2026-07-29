@@ -1,4 +1,5 @@
 import { authFetch } from "../authFetch.js";
+import type { ResultFailure } from "../result.js";
 import type { CookiePayload } from "../ensureCookies.js";
 
 export interface RegisterInput {
@@ -14,10 +15,9 @@ export interface RegisterOptions {
   serviceAuthorization?: string;
 }
 
-export interface RegisterResult {
+export interface RegisterResult extends ResultFailure {
   status: number;
   body?: unknown;
-  error?: unknown;
   setCookies?: {
     name: string;
     value: CookiePayload;
@@ -49,7 +49,7 @@ export async function registerHandler(
   if (!up.ok) {
     return {
       status: up.status,
-      error: data,
+      errorBody: data,
     };
   }
 

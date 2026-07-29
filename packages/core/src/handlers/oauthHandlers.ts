@@ -1,4 +1,5 @@
 import { authFetch } from "../authFetch.js";
+import type { ResultFailure } from "../result.js";
 import type { CookiePayload } from "../ensureCookies.js";
 import { verifySignedAuthResponse } from "../verifySignedAuthResponse.js";
 
@@ -17,10 +18,9 @@ export interface OAuthRequestInput {
   forwardedClientIp?: string;
 }
 
-export interface OAuthHandlerResult {
+export interface OAuthHandlerResult extends ResultFailure {
   status: number;
   body?: unknown;
-  error?: unknown;
   setCookies?: {
     name: string;
     value: CookiePayload;
@@ -40,7 +40,7 @@ export async function listOAuthProvidersHandler(
 
   return {
     status: up.status,
-    ...(up.ok ? { body: data } : { error: data }),
+    ...(up.ok ? { body: data } : { errorBody: data }),
   };
 }
 
@@ -62,7 +62,7 @@ export async function startOAuthLoginHandler(
 
   return {
     status: up.status,
-    ...(up.ok ? { body: data } : { error: data }),
+    ...(up.ok ? { body: data } : { errorBody: data }),
   };
 }
 
@@ -85,7 +85,7 @@ export async function finishOAuthLoginHandler(
   if (!up.ok) {
     return {
       status: up.status,
-      error: data,
+      errorBody: data,
     };
   }
 

@@ -1,4 +1,5 @@
 import { authFetch } from "../authFetch.js";
+import type { ResultFailure } from "../result.js";
 
 export interface RequestOtpInput {
   authorization?: string;
@@ -13,10 +14,9 @@ export interface RequestOtpOptions {
   serviceAuthorization?: string;
 }
 
-export interface RequestOtpResult {
+export interface RequestOtpResult extends ResultFailure {
   status: number;
   body?: unknown;
-  error?: unknown;
 }
 
 export async function requestOtpHandler(
@@ -52,7 +52,7 @@ export async function requestOtpHandler(
   if (!up.ok) {
     return {
       status: up.status,
-      error: data,
+      errorBody: data,
     };
   }
 

@@ -1,4 +1,5 @@
 import { authFetch } from "../authFetch.js";
+import type { ResultFailure } from "../result.js";
 import type { CookiePayload } from "../ensureCookies.js";
 import { verifySignedAuthResponse } from "../verifySignedAuthResponse.js";
 
@@ -16,10 +17,9 @@ export interface PollMagicLinkConfirmationOptions {
   serviceAuthorization?: string;
 }
 
-export interface PollMagicLinkConfirmationResult {
+export interface PollMagicLinkConfirmationResult extends ResultFailure {
   status: number;
   body?: unknown;
-  error?: unknown;
   setCookies?: {
     name: string;
     value: CookiePayload;
@@ -50,7 +50,7 @@ export async function pollMagicLinkConfirmationHandler(
   if (!up.ok) {
     return {
       status: up.status,
-      error: data,
+      errorBody: data,
     };
   }
 

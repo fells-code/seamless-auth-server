@@ -1,4 +1,5 @@
 import { authFetch } from "../authFetch.js";
+import type { ResultFailure } from "../result.js";
 
 export interface RequestMagicLinkInput {
   authorization?: string;
@@ -11,10 +12,9 @@ export interface RequestMagicLinkOptions {
   serviceAuthorization?: string;
 }
 
-export interface RequestMagicLinkResult {
+export interface RequestMagicLinkResult extends ResultFailure {
   status: number;
   body?: unknown;
-  error?: unknown;
 }
 
 export async function requestMagicLinkHandler(
@@ -40,7 +40,7 @@ export async function requestMagicLinkHandler(
   if (!up.ok) {
     return {
       status: up.status,
-      error: data,
+      errorBody: data,
     };
   }
 

@@ -1,4 +1,5 @@
 import { authFetch } from "../authFetch.js";
+import type { ResultFailure } from "../result.js";
 
 export interface VerifyMagicLinkInput {
   token: string;
@@ -10,10 +11,9 @@ export interface VerifyMagicLinkOptions {
   forwardedClientIp?: string;
 }
 
-export interface VerifyMagicLinkResult {
+export interface VerifyMagicLinkResult extends ResultFailure {
   status: number;
   body?: unknown;
-  error?: unknown;
 }
 
 export async function verifyMagicLinkHandler(
@@ -34,7 +34,7 @@ export async function verifyMagicLinkHandler(
   if (!up.ok) {
     return {
       status: up.status,
-      error: data,
+      errorBody: data,
     };
   }
 

@@ -1,4 +1,5 @@
 import { verifyCookieJwt } from "./verifyCookieJwt.js";
+import type { ResultFailure } from "./result.js";
 import { refreshAccessToken } from "./refreshAccessToken.js";
 import { assertSecrets } from "./validateSecrets.js";
 
@@ -25,10 +26,9 @@ export interface CookieInstruction {
   domain?: string;
 }
 
-export interface EnsureCookiesResult {
+export interface EnsureCookiesResult extends ResultFailure {
   type: "ok" | "error";
   status?: number;
-  error?: string;
   user?: {
     sub: string;
     sessionId?: string;
@@ -212,7 +212,7 @@ async function refreshRequiredCookie(
     return {
       type: "error",
       status: 401,
-      error: "Refresh failed",
+      errorCode: "Refresh failed",
       clearCookies: [
         cookieName,
         opts.registrationCookieName,
@@ -296,7 +296,7 @@ export async function ensureCookies(
     return {
       type: "error",
       status: 400,
-      error: "Missing required cookie",
+      errorCode: "Missing required cookie",
     };
   }
   const cookieValue = input.cookies[cookieName];
@@ -309,7 +309,7 @@ export async function ensureCookies(
       return {
         type: "error",
         status: 400,
-        error: `Missing required cookie "${cookieName}"`,
+        errorCode: `Missing required cookie "${cookieName}"`,
       };
     }
 
@@ -322,7 +322,7 @@ export async function ensureCookies(
       return {
         type: "error",
         status: 401,
-        error: `Invalid or expired ${cookieName} cookie`,
+        errorCode: `Invalid or expired ${cookieName} cookie`,
       };
     }
 
@@ -340,7 +340,7 @@ export async function ensureCookies(
       return {
         type: "error",
         status: 401,
-        error: `Invalid or expired ${cookieName} cookie`,
+        errorCode: `Invalid or expired ${cookieName} cookie`,
         clearCookies: [cookieName],
       };
     }

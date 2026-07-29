@@ -39,8 +39,8 @@ export async function login(
     }
   }
 
-  if (result.error) {
-    return res.status(result.status).json(result.error);
+  if (result.errorBody) {
+    return res.status(result.status).json(result.errorBody);
   }
 
   if (result.body) {
