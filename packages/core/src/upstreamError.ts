@@ -1,7 +1,4 @@
-export interface UpstreamFailure {
-  error: string;
-  details?: unknown;
-}
+import type { ResultFailure } from "./result.js";
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -20,12 +17,12 @@ function isObject(value: unknown): value is Record<string, unknown> {
 export function readUpstreamFailure(
   data: unknown,
   fallback: string,
-): UpstreamFailure {
+): ResultFailure {
   if (!isObject(data)) {
-    return { error: fallback };
+    return { errorCode: fallback };
   }
 
-  const error =
+  const errorCode =
     typeof data.error === "string"
       ? data.error
       : typeof data.message === "string"
@@ -33,9 +30,9 @@ export function readUpstreamFailure(
         : fallback;
 
   const keys = Object.keys(data);
-  if (keys.length === 1 && data[keys[0]] === error) {
-    return { error };
+  if (keys.length === 1 && data[keys[0]] === errorCode) {
+    return { errorCode };
   }
 
-  return { error, details: data };
+  return { errorCode, details: data };
 }

@@ -55,8 +55,8 @@ async function verifyOtp(
     }
   }
 
-  if (result.error) {
-    return res.status(result.status).json(result.error);
+  if (result.errorBody) {
+    return res.status(result.status).json(result.errorBody);
   }
 
   return res.status(result.status).json(result.body);

@@ -1,4 +1,5 @@
 import { authFetch } from "../authFetch.js";
+import type { ResultFailure } from "../result.js";
 import type { CookiePayload } from "../ensureCookies.js";
 import { verifySignedAuthResponse } from "../verifySignedAuthResponse.js";
 
@@ -18,10 +19,9 @@ export interface VerifyLoginOtpOptions {
   refreshCookieName: string;
 }
 
-export interface VerifyLoginOtpResult {
+export interface VerifyLoginOtpResult extends ResultFailure {
   status: number;
   body?: unknown;
-  error?: unknown;
   setCookies?: {
     name: string;
     value: CookiePayload;
@@ -53,7 +53,7 @@ async function verifyOtp(
   if (!up.ok) {
     return {
       status: up.status,
-      error: data,
+      errorBody: data,
     };
   }
 

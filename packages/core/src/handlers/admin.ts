@@ -1,4 +1,5 @@
 import { authFetch } from "../authFetch.js";
+import type { ResultFailure } from "../result.js";
 import { readUpstreamFailure } from "../upstreamError.js";
 
 type BaseOpts = {
@@ -16,11 +17,9 @@ type WithBody = BaseOpts & {
   body?: any;
 };
 
-type Result = {
+type Result = ResultFailure & {
   status: number;
   body?: any;
-  error?: string;
-  details?: unknown;
 };
 
 function buildUrl(base: string, query?: Record<string, any>) {

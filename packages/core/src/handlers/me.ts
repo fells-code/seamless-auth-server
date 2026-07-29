@@ -1,4 +1,5 @@
 import { authFetch } from "../authFetch.js";
+import type { ResultFailure } from "../result.js";
 
 export interface MeOptions {
   authServerUrl: string;
@@ -8,13 +9,12 @@ export interface MeOptions {
   forwardedClientIp?: string;
 }
 
-export interface MeResult {
+export interface MeResult extends ResultFailure {
   status: number;
   body?: {
     user: unknown;
     credentials?: unknown;
   };
-  error?: string;
   clearCookies?: string[];
 }
 
@@ -32,7 +32,7 @@ export async function meHandler(opts: MeOptions): Promise<MeResult> {
   if (!data?.user) {
     return {
       status: 401,
-      error: "unauthenticated",
+      errorCode: "unauthenticated",
       clearCookies,
     };
   }

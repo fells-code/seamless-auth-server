@@ -1,4 +1,5 @@
 import { authFetch } from "../authFetch.js";
+import type { ResultFailure } from "../result.js";
 import { readUpstreamFailure } from "../upstreamError.js";
 
 export interface SystemConfigOptions {
@@ -8,11 +9,9 @@ export interface SystemConfigOptions {
   forwardedClientIp?: string;
 }
 
-export interface SystemConfigResult {
+export interface SystemConfigResult extends ResultFailure {
   status: number;
   body?: any;
-  error?: string;
-  details?: unknown;
 }
 
 export async function getAvailableRolesHandler(

@@ -29,8 +29,8 @@ export async function me(
     }
   }
 
-  if (result.error) {
-    return res.status(result.status).json({ error: result.error });
+  if (result.errorCode) {
+    return res.status(result.status).json({ error: result.errorCode });
   }
 
   res.status(result.status).json(result.body);

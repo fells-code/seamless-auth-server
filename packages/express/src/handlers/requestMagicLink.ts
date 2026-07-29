@@ -28,8 +28,8 @@ export async function requestMagicLink(
     },
   );
 
-  if (result.error) {
-    return res.status(result.status).json(result.error);
+  if (result.errorBody) {
+    return res.status(result.status).json(result.errorBody);
   }
 
   const body = await applyExternalDelivery(opts.messaging, result.body);

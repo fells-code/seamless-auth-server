@@ -1,4 +1,5 @@
 import { authFetch } from "../authFetch.js";
+import type { ResultFailure } from "../result.js";
 import type { CookiePayload } from "../ensureCookies.js";
 import { verifySignedAuthResponse } from "../verifySignedAuthResponse.js";
 
@@ -18,9 +19,8 @@ export interface FinishRegisterOptions {
   refreshCookieName: string;
 }
 
-export interface FinishRegisterResult {
+export interface FinishRegisterResult extends ResultFailure {
   status: number;
-  error?: unknown;
   setCookies?: {
     name: string;
     value: CookiePayload;
@@ -47,7 +47,7 @@ export async function finishRegisterHandler(
   if (!up.ok) {
     return {
       status: up.status,
-      error: data,
+      errorBody: data,
     };
   }
 

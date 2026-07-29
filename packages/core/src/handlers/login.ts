@@ -1,4 +1,5 @@
 import { authFetch } from "../authFetch.js";
+import type { ResultFailure } from "../result.js";
 import type { CookiePayload } from "../ensureCookies.js";
 import { verifySignedAuthResponse } from "../verifySignedAuthResponse.js";
 
@@ -15,14 +16,13 @@ export interface LoginOptions {
   forwardedClientIp?: string;
 }
 
-export interface LoginResult {
+export interface LoginResult extends ResultFailure {
   status: number;
   body?: {
     message?: string;
     identifierType?: string;
     loginMethods?: string[];
   };
-  error?: unknown;
   setCookies?: {
     name: string;
     value: CookiePayload;
@@ -47,7 +47,7 @@ export async function loginHandler(
   if (!up.ok) {
     return {
       status: up.status,
-      error: data,
+      errorBody: data,
     };
   }
 

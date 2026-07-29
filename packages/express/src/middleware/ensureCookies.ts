@@ -107,6 +107,6 @@ function applyResult(
   }
 
   if (result.type === "error") {
-    res.status(result.status ?? 401).json({ error: result.error });
+    res.status(result.status ?? 401).json({ error: result.errorCode });
   }
 }

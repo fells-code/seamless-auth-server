@@ -81,7 +81,7 @@ describe("admin handlers", () => {
 
     expect(result).toEqual({
       status: 400,
-      error: zodBody.message,
+      errorCode: zodBody.message,
       details: zodBody,
     });
   });
@@ -95,7 +95,7 @@ describe("admin handlers", () => {
 
     const result = await getUsersHandler(baseOptions);
 
-    expect(result).toEqual({ status: 403, error: "forbidden" });
+    expect(result).toEqual({ status: 403, errorCode: "forbidden" });
   });
 
   it("falls back to the constant code when the upstream body is empty (#115)", async () => {
@@ -105,7 +105,7 @@ describe("admin handlers", () => {
 
     const result = await getUsersHandler(baseOptions);
 
-    expect(result).toEqual({ status: 502, error: "admin_request_failed" });
+    expect(result).toEqual({ status: 502, errorCode: "admin_request_failed" });
   });
 
   it("keeps an injected session id in a single path segment (#65)", async () => {

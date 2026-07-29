@@ -23,8 +23,8 @@ export async function listOAuthProviders(
     authServerUrl: opts.authServerUrl,
   });
 
-  if ("error" in result) {
-    return res.status(result.status).json(result.error);
+  if ("errorBody" in result) {
+    return res.status(result.status).json(result.errorBody);
   }
 
   return res.status(result.status).json(result.body);
@@ -47,8 +47,8 @@ export async function startOAuthLogin(
     },
   );
 
-  if ("error" in result) {
-    return res.status(result.status).json(result.error);
+  if ("errorBody" in result) {
+    return res.status(result.status).json(result.errorBody);
   }
 
   return res.status(result.status).json(result.body);
@@ -92,8 +92,8 @@ export async function finishOAuthLogin(
     }
   }
 
-  if (result.error) {
-    return res.status(result.status).json(result.error);
+  if (result.errorBody) {
+    return res.status(result.status).json(result.errorBody);
   }
 
   return res.status(result.status).json(result.body);

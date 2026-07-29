@@ -48,8 +48,8 @@ export async function finishRegister(
     }
   }
 
-  if (result.error) {
-    return res.status(result.status).json(result.error);
+  if (result.errorBody) {
+    return res.status(result.status).json(result.errorBody);
   }
 
   res.status(result.status).json({ message: "success" });

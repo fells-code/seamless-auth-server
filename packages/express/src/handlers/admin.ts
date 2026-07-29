@@ -20,12 +20,12 @@ import {
   buildServiceAuthorization,
 } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
-import { errorBody } from "../internal/errorBody";
+import { failureResponse } from "../internal/failureResponse";
 import { SeamlessAuthServerOptions } from "../createServer";
 
 function handle(res: Response, result: any) {
-  if (result.error) {
-    return res.status(result.status).json(errorBody(result));
+  if (result.errorCode) {
+    return res.status(result.status).json(failureResponse(result));
   }
   return res.status(result.status).json(result.body);
 }
