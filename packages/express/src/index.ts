@@ -7,6 +7,10 @@ export { createSeamlessAuthServer };
 export { SeamlessAuthServerOptions, SeamlessAuthUser };
 export { createSeamlessConsoleProxy } from "./consoleProxy";
 export type { SeamlessConsoleProxyOptions } from "./consoleProxy";
+export { requireAuth } from "./middleware/requireAuth";
+export { requireRole } from "./middleware/requireRole";
+export { createEnsureCookiesMiddleware } from "./middleware/ensureCookies";
+export { getSeamlessUser } from "./getSeamlessUser";
 export type {
   AuthMessageOverrides,
   AuthMessagingHandlers,
@@ -14,14 +18,10 @@ export type {
   EmailMessage,
   EmailTransport,
   SeamlessAuthMessagingOptions,
+  SeamlessUser,
   SmsMessage,
   SmsTransport,
-} from "./messaging";
-export { requireAuth } from "./middleware/requireAuth";
-export { requireRole } from "./middleware/requireRole";
-export { createEnsureCookiesMiddleware } from "./middleware/ensureCookies";
-export { getSeamlessUser } from "./getSeamlessUser";
-export type { SeamlessUser } from "@seamless-auth/core";
+} from "@seamless-auth/core";
 export { hasScopedRole, roleGrantsAccess } from "@seamless-auth/core";
 
 export default createSeamlessAuthServer;

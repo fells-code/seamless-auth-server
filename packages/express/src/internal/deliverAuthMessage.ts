@@ -1,9 +1,9 @@
-import {
+import type {
   AuthDeliveryInstruction,
   EmailMessage,
   SeamlessAuthMessagingOptions,
   SmsMessage,
-} from "../messaging";
+} from "@seamless-auth/core";
 
 function applyEmailOverride<TInput>(
   override:
