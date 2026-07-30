@@ -1,26 +1,34 @@
-export type MessagingChannel = "email" | "sms";
+/**
+ * The messaging contract.
+ *
+ * The wire shapes belong to `@seamless-auth/types`, so they are re-exported rather
+ * than declared again: the auth API sends the delivery instruction and this
+ * package consumes it, and two definitions of that could drift. The re-export is
+ * type-only, so it is erased at compile time and neither zod nor the schema
+ * barrel enters the runtime module graph.
+ *
+ * What stays here is what is genuinely this package's: the transport interfaces,
+ * which carry provider implementations, and the adopter-facing configuration.
+ */
+export type {
+  AuthDeliveryInstruction,
+  DeliveryResult,
+  EmailMessage,
+  MessagingChannel,
+  SendMagicLinkEmailInput,
+  SendOtpEmailInput,
+  SendOtpSmsInput,
+  SmsMessage,
+} from "@seamless-auth/types";
 
-export interface DeliveryResult {
-  accepted: boolean;
-  provider: string;
-  channel: MessagingChannel;
-  messageId?: string;
-  raw?: unknown;
-}
-
-export interface EmailMessage {
-  to: string;
-  from?: string;
-  subject: string;
-  text: string;
-  html?: string;
-}
-
-export interface SmsMessage {
-  to: string;
-  from?: string;
-  body: string;
-}
+import type {
+  DeliveryResult,
+  EmailMessage,
+  SendMagicLinkEmailInput,
+  SendOtpEmailInput,
+  SendOtpSmsInput,
+  SmsMessage,
+} from "@seamless-auth/types";
 
 export interface EmailTransport {
   readonly name: string;
@@ -30,27 +38,6 @@ export interface EmailTransport {
 export interface SmsTransport {
   readonly name: string;
   send(message: SmsMessage): Promise<DeliveryResult>;
-}
-
-export interface SendOtpEmailInput {
-  to: string;
-  token: string;
-  from?: string;
-  subject?: string;
-}
-
-export interface SendOtpSmsInput {
-  to: string;
-  token: string | number;
-  from?: string;
-}
-
-export interface SendMagicLinkEmailInput {
-  to: string;
-  magicLinkUrl: string;
-  token?: string;
-  from?: string;
-  subject?: string;
 }
 
 export interface AuthMessageOverrideContext {
@@ -78,9 +65,7 @@ export interface AuthMessageOverrides {
 export interface AuthMessagingHandlers {
   sendOtpEmail(input: SendOtpEmailInput): Promise<DeliveryResult>;
   sendOtpSms(input: SendOtpSmsInput): Promise<DeliveryResult>;
-  sendMagicLinkEmail(
-    input: SendMagicLinkEmailInput,
-  ): Promise<DeliveryResult>;
+  sendMagicLinkEmail(input: SendMagicLinkEmailInput): Promise<DeliveryResult>;
 }
 
 export interface SeamlessAuthMessagingOptions {
@@ -94,21 +79,3 @@ export interface SeamlessAuthMessagingOptions {
     smsFrom?: string;
   };
 }
-
-export type AuthDeliveryInstruction =
-  | {
-      kind: "otp_email";
-      to: string;
-      token: string;
-    }
-  | {
-      kind: "otp_sms";
-      to: string;
-      token: string | number;
-    }
-  | {
-      kind: "magic_link_email";
-      to: string;
-      token?: string;
-      magicLinkUrl: string;
-    };
