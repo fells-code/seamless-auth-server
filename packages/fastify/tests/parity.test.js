@@ -7,10 +7,10 @@ import Fastify from "fastify";
 import jwt from "jsonwebtoken";
 import request from "supertest";
 
-const { default: seamlessAuth } = await import("../dist/index.js");
-const { default: createSeamlessAuthServer } = await import(
-  "../../express/dist/index.js"
-);
+const { default: seamlessAuth, seamlessConsoleProxy } =
+  await import("../dist/index.js");
+const { default: createSeamlessAuthServer, createSeamlessConsoleProxy } =
+  await import("../../express/dist/index.js");
 
 const COOKIE_SECRET = "cookie-secret-cookie-secret-cookie-secret";
 const SERVICE_SECRET = "service-secret-service-secret-service-secret";
@@ -345,5 +345,186 @@ describe("fastify and express adapters agree", () => {
     } finally {
       await app.close();
     }
+  });
+});
+
+function consoleUpstream(status, body, headers = {}) {
+  const encoded = Buffer.from(body);
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    headers: new Headers(headers),
+    body: {},
+    arrayBuffer: async () =>
+      encoded.buffer.slice(
+        encoded.byteOffset,
+        encoded.byteOffset + encoded.byteLength,
+      ),
+  };
+}
+
+function fetchedUrls() {
+  return global.fetch.mock.calls.map(([url]) => url.toString());
+}
+
+async function viaFastifyConsole({ method, path, headers }) {
+  const app = Fastify();
+  await app.register(seamlessConsoleProxy, {
+    prefix: "/console",
+    authServerUrl: OPTIONS.authServerUrl,
+  });
+  await app.ready();
+
+  try {
+    const res = await app.inject({
+      method: method.toUpperCase(),
+      url: path,
+      headers: headers ?? {},
+    });
+
+    return {
+      status: res.statusCode,
+      body: parseBody(res.body),
+      contentType: res.headers["content-type"],
+      cacheControl: res.headers["cache-control"],
+    };
+  } finally {
+    await app.close();
+  }
+}
+
+async function viaExpressConsole({ method, path, headers }) {
+  const app = express();
+  app.use(
+    "/console",
+    createSeamlessConsoleProxy({ authServerUrl: OPTIONS.authServerUrl }),
+  );
+
+  let req = request(app)[method](path);
+  for (const [name, value] of Object.entries(headers ?? {})) {
+    req = req.set(name, value);
+  }
+
+  const res = await req;
+
+  return {
+    status: res.status,
+    body: parseBody(res.text),
+    contentType: res.headers["content-type"],
+    cacheControl: res.headers["cache-control"],
+  };
+}
+
+async function bothConsoleAdapters(scenario, respondUpstream) {
+  global.fetch = jest.fn(respondUpstream);
+  const fastify = {
+    ...(await viaFastifyConsole(scenario)),
+    urls: fetchedUrls(),
+  };
+
+  global.fetch = jest.fn(respondUpstream);
+  const expressResult = {
+    ...(await viaExpressConsole(scenario)),
+    urls: fetchedUrls(),
+  };
+
+  return { fastify, express: expressResult };
+}
+
+describe("fastify and express console proxies agree", () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  const ASSET = () =>
+    consoleUpstream(200, "console.js()", {
+      "content-type": "application/javascript",
+      "cache-control": "public, max-age=31536000, immutable",
+    });
+  const SHELL = () =>
+    consoleUpstream(200, "<!doctype html><div id=root>", {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+    });
+  const NOT_FOUND = () =>
+    consoleUpstream(404, "Not found", { "content-type": "text/plain" });
+  const UNREACHABLE = () => {
+    throw new Error("network down");
+  };
+
+  it.each([
+    [
+      "asset request forwards the body and the caching headers",
+      { method: "get", path: "/console/assets/x.js" },
+      ASSET,
+    ],
+    [
+      "deep client route gets the SPA shell",
+      { method: "get", path: "/console/settings" },
+      SHELL,
+    ],
+    [
+      "query string is forwarded upstream",
+      { method: "get", path: "/console/settings?tab=keys&tab=orgs" },
+      SHELL,
+    ],
+    [
+      "upstream 404 stays a 404",
+      { method: "get", path: "/console/missing.js" },
+      NOT_FOUND,
+    ],
+    [
+      "a write to the console is refused",
+      { method: "post", path: "/console/assets/x.js" },
+      ASSET,
+    ],
+    [
+      "encoded-slash traversal is refused",
+      { method: "get", path: "/console/..%2fadmin/users" },
+      ASSET,
+    ],
+    [
+      "encoded-backslash traversal is refused",
+      { method: "get", path: "/console/..%5cadmin" },
+      ASSET,
+    ],
+    [
+      "an unreachable upstream is a 502",
+      { method: "get", path: "/console/assets/x.js" },
+      UNREACHABLE,
+    ],
+  ])("%s", async (_label, scenario, respondUpstream) => {
+    const { fastify, express: expressResult } = await bothConsoleAdapters(
+      scenario,
+      async () => respondUpstream(),
+    );
+
+    expect(fastify.status).toBe(expressResult.status);
+    expect(fastify.body).toEqual(expressResult.body);
+    expect(fastify.contentType).toBe(expressResult.contentType);
+    expect(fastify.cacheControl).toBe(expressResult.cacheControl);
+    expect(fastify.urls).toEqual(expressResult.urls);
+  });
+
+  // The two frameworks normalize dot-segments at different points, so the status
+  // they answer with differs. What has to hold on both is that nothing outside
+  // the console subtree is ever requested upstream.
+  it.each([
+    ["/console/../auth/admin/users"],
+    ["/console/%2e%2e/auth/admin/users"],
+    ["/console/assets/../../auth/admin/users"],
+  ])("never proxies outside the console subtree (%s)", async (path) => {
+    const { fastify, express: expressResult } = await bothConsoleAdapters(
+      { method: "get", path },
+      async () => NOT_FOUND(),
+    );
+
+    for (const url of [...fastify.urls, ...expressResult.urls]) {
+      expect(url.startsWith("https://auth.example.com/console")).toBe(true);
+    }
+
+    expect(fastify.status).toBeGreaterThanOrEqual(400);
+    expect(expressResult.status).toBeGreaterThanOrEqual(400);
   });
 });

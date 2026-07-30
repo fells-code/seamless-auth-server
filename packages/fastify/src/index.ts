@@ -1,6 +1,8 @@
 import { seamlessAuth } from "./plugin";
 
 export { seamlessAuth };
+export { seamlessConsoleProxy } from "./consoleProxy";
+export type { SeamlessConsoleProxyOptions } from "./consoleProxy";
 export { requireAuth, requireRole } from "./guards";
 export type { RequireAuthOptions } from "./guards";
 export { getSeamlessUser } from "./getSeamlessUser";
