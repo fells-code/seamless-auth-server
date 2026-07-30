@@ -82,21 +82,65 @@ Core helpers enforce transitions between these states.
 
 ## Public API (Overview)
 
-Key exports include:
+Everything below is available from the package root. The `./handlers/*` subpaths
+remain for direct imports.
+
+**Sessions and cookies**
 
 - `ensureCookies(...)` – validates and refreshes session cookies
 - `refreshAccessToken(...)` – rotates expired access sessions
 - `verifyCookieJwt(...)` – verifies signed cookie payloads
-- `createServiceToken(...)` – creates short-lived M2M assertions
+- `verifyRefreshCookie(...)` – verifies a refresh cookie, returning `null` on failure
+- `verifySignedAuthResponse(...)` – verifies an auth API response signature against its JWKS
 - `getSeamlessUser(...)` – resolves the hydrated user, typed as `SeamlessUser | null`
 - `hasScopedRole(...)` – checks scoped role grants such as `admin:read`
+
+**Building an adapter**
+
+- `applyResult(result, adapter, opts)` – turns a handler result into a response
+- `applyCookies(result, adapter, opts)` – cookie instructions only, for middleware
+- `ResponseAdapter` – the three methods an adapter provides: `setCookie`, `clearCookie`, `send`
+- `proxyRequest(...)` – forwards a request to the auth API and returns its status and body
+- `checkProxyIdentity(...)` – checks a request carries the session a proxied route requires
+- `buildQueryString(...)` / `buildUpstreamUrl(...)` – build an upstream URL
+- `signSessionCookie(...)` / `resolveCookieSameSite(...)` – cookie format and policy
+- `authFetch(...)` – calls the auth API with the adapter's headers and a tolerant `json()`
+
+**Auth flow handlers**
+
+`loginHandler`, `finishLoginHandler`, `registerHandler`, `finishRegisterHandler`,
+`logoutHandler`, `meHandler`, `requestOtpHandler`, `verifyLoginOtpHandler`,
+`verifyRegistrationOtpHandler`, `requestMagicLinkHandler`, `verifyMagicLinkHandler`,
+`pollMagicLinkConfirmationHandler`, `switchOrganizationHandler`,
+`listOAuthProvidersHandler`, `startOAuthLoginHandler`, `finishOAuthLoginHandler`.
+
+**Admin and operations handlers**
+
+User, session, auth-event, metrics, and system-config handlers, for example
+`getUsersHandler`, `updateUserHandler`, `listSessionsHandler`,
+`getAuthEventsHandler`, `getDashboardMetricsHandler`, and
+`getAvailableRolesHandler`.
+
+**Message delivery**
+
+- `deliverAuthMessage(...)` – delivers an auth message through the configured transports
+- `applyExternalDelivery(...)` – delivers the payload on a response body and strips it
+- `stripDelivery(...)` – removes the delivery payload from a body
+
+**Auth API contract**
+
+- `SERVICE_TOKEN_ISSUER` / `SERVICE_TOKEN_AUDIENCE` – the fixed identity for M2M service tokens
+- `AUTH_DELIVERY_MODE_HEADER` / `EXTERNAL_DELIVERY_MODE` / `EXTERNAL_DELIVERY_HEADERS`
+- `DEV_JWKS_KID` – the fallback key id, which is a misconfiguration to deploy on
+- `createServiceToken(...)` / `buildExternalDeliveryAuthorization(...)` – mint service tokens
+
+**Utilities**
+
 - `assertSecretStrength(...)` / `assertSecrets(...)` – enforce the minimum secret length
 - `redactSensitiveText(...)` – masks tokens, bearer values, and secrets before logging
-- `listOAuthProvidersHandler(...)` – retrieves public OAuth provider metadata
-- `startOAuthLoginHandler(...)` – starts an OAuth authorization-code login
-- `finishOAuthLoginHandler(...)` – finishes OAuth login and returns cookie instructions
 
-These functions return **descriptive results**, not HTTP responses.
+Handlers return **descriptive results**, not HTTP responses. `applyResult` is what
+turns one into a response, and it is the only place that decides how.
 
 ### Secret strength
 
