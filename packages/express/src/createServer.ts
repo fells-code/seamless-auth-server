@@ -3,6 +3,7 @@ import cookieParser from "cookie-parser";
 
 import { createEnsureCookiesMiddleware } from "./middleware/ensureCookies";
 import { createOriginGuardMiddleware } from "./middleware/originGuard";
+import { respond } from "./internal/respond";
 import type { CookieSameSite } from "@seamless-auth/core";
 import type { SeamlessAuthMessagingOptions } from "@seamless-auth/core";
 
@@ -29,6 +30,8 @@ import * as admin from "./handlers/admin";
 import {
   authFetch,
   AuthFetchOptions,
+  checkProxyIdentity,
+  proxyRequest,
   redactSensitiveText,
 } from "@seamless-auth/core";
 import {
@@ -107,27 +110,6 @@ export interface SeamlessAuthUser {
   iat?: number;
   exp?: number;
   token?: string;
-}
-
-function buildProxyQueryString(queryInput: Request["query"]): string {
-  const query = new URLSearchParams();
-
-  for (const [key, value] of Object.entries(queryInput)) {
-    if (typeof value === "string") {
-      query.append(key, value);
-      continue;
-    }
-
-    if (Array.isArray(value)) {
-      for (const item of value) {
-        if (typeof item === "string") {
-          query.append(key, item);
-        }
-      }
-    }
-  }
-
-  return query.toString();
 }
 
 function routeParam(req: Request, name: string): string {
@@ -243,61 +225,41 @@ export function createSeamlessAuthServer(
       method: AuthFetchOptions["method"] = "POST",
     ) =>
     async (req: Request & { cookiePayload?: any }, res: Response) => {
-      if (!req.cookiePayload?.sub) {
-        console.warn(
-          "[SEAMLESS-AUTH-EXPRESS] - (proxyWithIdentity) - Missing expected cookie payload/sub.",
-        );
-        res.status(401).json({ error: "Unauthenticated request" });
+      const rejection = checkProxyIdentity({
+        subject: req.cookiePayload?.sub,
+        cookies: req.cookies ?? {},
+        identity,
+        accessCookieName: resolvedOpts.accessCookieName,
+        preAuthCookieName: resolvedOpts.preAuthCookieName,
+        registrationCookieName: resolvedOpts.registrationCookieName,
+      });
+
+      if (rejection) {
+        if (rejection.warn) {
+          console.warn(
+            `[SEAMLESS-AUTH-EXPRESS] - (proxyWithIdentity) - ${rejection.warn}`,
+          );
+        }
+
+        res.status(rejection.status).json({ error: rejection.errorCode });
         return;
       }
 
-      if (
-        identity === "access" &&
-        !req.cookies[resolvedOpts.accessCookieName]
-      ) {
-        res.status(401).json({ error: "access session required" });
-        return;
-      }
+      const result = await proxyRequest({
+        authServerUrl: resolvedOpts.authServerUrl,
+        path: typeof path === "function" ? path(req) : path,
+        method,
+        authorization: buildServiceAuthorization(req, resolvedOpts),
+        serviceAuthorization: buildProxyServiceAuthorization(resolvedOpts),
+        forwardedClientIp: buildForwardedClientIp(
+          req,
+          resolvedOpts.resolveClientIp,
+        ),
+        query: req.query,
+        body: req.body,
+      });
 
-      if (
-        identity === "preAuth" &&
-        !req.cookies[resolvedOpts.preAuthCookieName]
-      ) {
-        res.status(401).json({ error: "pre-auth session required" });
-        return;
-      }
-
-      if (
-        identity === "register" &&
-        !req.cookies[resolvedOpts.registrationCookieName]
-      ) {
-        res.status(401).json({ error: "registration session required" });
-        return;
-      }
-
-      const authorization = buildServiceAuthorization(req, resolvedOpts);
-      const forwardedClientIp = buildForwardedClientIp(req, resolvedOpts.resolveClientIp);
-      const serviceAuthorization = buildProxyServiceAuthorization(resolvedOpts);
-      const options =
-        method == "GET"
-          ? { method, authorization, serviceAuthorization, forwardedClientIp }
-          : {
-              method,
-              authorization,
-              serviceAuthorization,
-              forwardedClientIp,
-              body: req.body,
-            };
-
-      const queryString = buildProxyQueryString(req.query);
-      const resolvedPath = typeof path === "function" ? path(req) : path;
-      const upstream = await authFetch(
-        `${resolvedOpts.authServerUrl}/${resolvedPath}${queryString ? `?${queryString}` : ""}`,
-        options,
-      );
-
-      const data = await upstream.json();
-      res.status(upstream.status).json(data);
+      respond(res, result, resolvedOpts);
     };
 
   // Runs before ensureCookies and the routes so a blocked cross-site request
@@ -401,7 +363,8 @@ export function createSeamlessAuthServer(
   r.get(
     "/organizations/:organizationId",
     proxyWithIdentity(
-      req => `organizations/${encodeURIComponent(routeParam(req, "organizationId"))}`,
+      (req) =>
+        `organizations/${encodeURIComponent(routeParam(req, "organizationId"))}`,
       "access",
       "GET",
     ),
@@ -409,7 +372,8 @@ export function createSeamlessAuthServer(
   r.patch(
     "/organizations/:organizationId",
     proxyWithIdentity(
-      req => `organizations/${encodeURIComponent(routeParam(req, "organizationId"))}`,
+      (req) =>
+        `organizations/${encodeURIComponent(routeParam(req, "organizationId"))}`,
       "access",
       "PATCH",
     ),
@@ -420,7 +384,8 @@ export function createSeamlessAuthServer(
   r.get(
     "/organizations/:organizationId/members",
     proxyWithIdentity(
-      req => `organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/members`,
+      (req) =>
+        `organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/members`,
       "access",
       "GET",
     ),
@@ -428,14 +393,15 @@ export function createSeamlessAuthServer(
   r.post(
     "/organizations/:organizationId/members",
     proxyWithIdentity(
-      req => `organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/members`,
+      (req) =>
+        `organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/members`,
       "access",
     ),
   );
   r.patch(
     "/organizations/:organizationId/members/:userId",
     proxyWithIdentity(
-      req =>
+      (req) =>
         `organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/members/${encodeURIComponent(routeParam(req, "userId"))}`,
       "access",
       "PATCH",
@@ -444,7 +410,7 @@ export function createSeamlessAuthServer(
   r.delete(
     "/organizations/:organizationId/members/:userId",
     proxyWithIdentity(
-      req =>
+      (req) =>
         `organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/members/${encodeURIComponent(routeParam(req, "userId"))}`,
       "access",
       "DELETE",
@@ -491,7 +457,10 @@ export function createSeamlessAuthServer(
       {
         method: "GET",
         serviceAuthorization: buildProxyServiceAuthorization(resolvedOpts),
-        forwardedClientIp: buildForwardedClientIp(req, resolvedOpts.resolveClientIp),
+        forwardedClientIp: buildForwardedClientIp(
+          req,
+          resolvedOpts.resolveClientIp,
+        ),
       },
     );
 
@@ -600,7 +569,8 @@ export function createSeamlessAuthServer(
   r.get(
     "/admin/organizations/:organizationId",
     proxyWithIdentity(
-      req => `admin/organizations/${encodeURIComponent(routeParam(req, "organizationId"))}`,
+      (req) =>
+        `admin/organizations/${encodeURIComponent(routeParam(req, "organizationId"))}`,
       "access",
       "GET",
     ),
@@ -608,7 +578,8 @@ export function createSeamlessAuthServer(
   r.patch(
     "/admin/organizations/:organizationId",
     proxyWithIdentity(
-      req => `admin/organizations/${encodeURIComponent(routeParam(req, "organizationId"))}`,
+      (req) =>
+        `admin/organizations/${encodeURIComponent(routeParam(req, "organizationId"))}`,
       "access",
       "PATCH",
     ),
@@ -616,7 +587,7 @@ export function createSeamlessAuthServer(
   r.get(
     "/admin/organizations/:organizationId/members",
     proxyWithIdentity(
-      req =>
+      (req) =>
         `admin/organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/members`,
       "access",
       "GET",
@@ -625,7 +596,7 @@ export function createSeamlessAuthServer(
   r.post(
     "/admin/organizations/:organizationId/members",
     proxyWithIdentity(
-      req =>
+      (req) =>
         `admin/organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/members`,
       "access",
     ),
@@ -633,7 +604,7 @@ export function createSeamlessAuthServer(
   r.patch(
     "/admin/organizations/:organizationId/members/:userId",
     proxyWithIdentity(
-      req =>
+      (req) =>
         `admin/organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/members/${encodeURIComponent(routeParam(req, "userId"))}`,
       "access",
       "PATCH",
@@ -642,7 +613,7 @@ export function createSeamlessAuthServer(
   r.delete(
     "/admin/organizations/:organizationId/members/:userId",
     proxyWithIdentity(
-      req =>
+      (req) =>
         `admin/organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/members/${encodeURIComponent(routeParam(req, "userId"))}`,
       "access",
       "DELETE",

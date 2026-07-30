@@ -1,4 +1,5 @@
 import { authFetch } from "../authFetch.js";
+import { buildUpstreamUrl, type QueryInput } from "../proxyRequest.js";
 import type { ResultFailure } from "../result.js";
 import { readUpstreamFailure } from "../upstreamError.js";
 
@@ -10,7 +11,7 @@ type BaseOpts = {
 };
 
 type WithQuery = BaseOpts & {
-  query?: Record<string, any>;
+  query?: QueryInput;
 };
 
 type WithBody = BaseOpts & {
@@ -22,25 +23,13 @@ type Result = ResultFailure & {
   body?: any;
 };
 
-function buildUrl(base: string, query?: Record<string, any>) {
-  if (!query) return base;
-
-  const qs = new URLSearchParams(
-    Object.entries(query)
-      .filter(([, v]) => v !== undefined && v !== null)
-      .map(([k, v]) => [k, String(v)]),
-  ).toString();
-
-  return qs ? `${base}?${qs}` : base;
-}
-
 async function request(
   method: "GET" | "POST" | "PATCH" | "DELETE",
   path: string,
   opts: WithQuery & WithBody,
 ): Promise<Result> {
   const up = await authFetch(
-    buildUrl(`${opts.authServerUrl}${path}`, opts.query),
+    buildUpstreamUrl(opts.authServerUrl, path, opts.query),
     {
       method,
       authorization: opts.authorization,

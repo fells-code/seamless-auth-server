@@ -18,6 +18,8 @@ Cookie signing moves to core with them, because the cookie format is core's: an 
 
 The Express adapter drops 291 lines of source and 5.5KB of bundle, and `@seamless-auth/express` no longer carries its own cookie module. Nothing is removed from its public surface. `CookieSameSite` is now re-exported from core rather than declared locally, so `SeamlessAuthServerOptions` is unchanged for adopters.
 
-Responses are unchanged, verified rather than assumed. Status, body, and every `Set-Cookie` header were captured on both revisions across eleven scenarios covering session set and clear, secure and insecure policy, a custom cookie domain, coded and passthrough failures, an empty failure body, and success bodies. All are byte-identical, including `HttpOnly`, `Secure`, `SameSite`, `Domain`, `Path`, and `Max-Age`.
+Responses are unchanged with one exception, noted below. Status, body, and every `Set-Cookie` header were captured on both revisions across eleven scenarios covering session set and clear, secure and insecure policy, a custom cookie domain, coded and passthrough failures, an empty failure body, and success bodies. All are byte-identical, including `HttpOnly`, `Secure`, `SameSite`, `Domain`, `Path`, and `Max-Age`.
+
+Empty responses are now consistent about their content type. A route whose upstream returned success with no body previously sent `Content-Type: application/json` with a zero-length body, because the handler called the framework's JSON method with `undefined`. It now sends no content type, matching the routes that already ended the response instead. `Content-Length: 0` is unchanged either way, and a client reading the body sees nothing in both cases, since parsing an empty body fails regardless of the content type. Anything asserting on the content type of an empty response needs updating.
 
 Part of #72.
