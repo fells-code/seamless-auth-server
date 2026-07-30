@@ -1,5 +1,174 @@
 # @seamless-auth/core
 
+## 0.11.0
+
+### Minor Changes
+
+- f032a64: Move the remaining guard decisions into core, and fully specify a cookie's lifetime in the response contract.
+
+  `checkOrigin`, `authenticateCookie`, and `authorizeRoles` join `checkProxyIdentity`: each takes the request facts a guard needs and returns a `GuardRejection` or nothing, so an adapter reads headers and cookies and writes a response but decides nothing. The Express origin guard, `requireAuth`, and `requireRole` now call them, which is a straight substitution with no behavior change.
+
+  `SeamlessAuthUser` comes from `@seamless-auth/types`, which already defines it, rather than being declared again here. It is re-exported from `@seamless-auth/core` and `@seamless-auth/express` under the same name, so nothing changes for adopters. The re-export is type-only, so it is erased at compile time and neither `zod` nor the schema barrel enters the runtime module graph.
+
+  `SetCookieCommand` and `ClearCookieCommand` now carry an `expires` alongside `maxAgeSeconds`. Previously the command specified only a max age, and two adapters could satisfy it while emitting different headers: Express sent both `Expires` and `Max-Age`, and a second adapter sent only `Max-Age`, which older clients treat as a session cookie. Specifying both means every adapter emits the same header for the same instruction. Clearing carries the epoch for the same reason.
+
+  No change to what `@seamless-auth/express` sends. The `expires` it now receives explicitly is the value it was already deriving.
+
+- 519a1b0: Give the auth API's contract values one home in `@seamless-auth/core`.
+
+  The external-delivery header and the service-token identity were written out at each call site: the `x-seamless-auth-delivery-mode: "external"` header in three core handlers, the fixed issuer and audience in three places across the adapter, and the `dev-main` key id fallback in three more. Each is defined by `seamless-auth-api`, so changing one is coordinated cross-repo work, and finding every copy was part of the job.
+
+  New exports: `AUTH_DELIVERY_MODE_HEADER`, `EXTERNAL_DELIVERY_MODE`, `EXTERNAL_DELIVERY_HEADERS`, `SERVICE_TOKEN_ISSUER`, `SERVICE_TOKEN_AUDIENCE`, `DEV_JWKS_KID`, `EXTERNAL_DELIVERY_TOKEN_SUBJECT`, and `buildExternalDeliveryAuthorization`, which mints the `Authorization` value for an external-delivery request.
+
+  No behavior change. The minted tokens carry the same header and claims as before, confirmed by decoding them. A new test asserts each contract value literally, so a change to one breaks a named test rather than surfacing as an upstream rejection at runtime.
+
+  The service-token issuer and audience are fixed by the API and are not the adopter's configured audience, which applies to user tokens. That is now stated where the constants are defined rather than in a comment at one of the call sites.
+
+  Part of #72.
+
+- 3c5c1c5: Move the response contract into `@seamless-auth/core`.
+
+  Turning a handler result into an HTTP response was adapter knowledge: sign each session cookie, mirror the set attributes when clearing, clear before setting, write cookies before the body, send an upstream failure body untouched but wrap a code as `{ error, details }`. The Express adapter carried it, copied across nine handlers plus the cookie middleware, and every new adapter would have had to reproduce all of it correctly.
+
+  Core now owns it. New exports:
+
+  - `applyResult(result, adapter, opts)` applies a result to a response.
+  - `applyCookies(result, adapter, opts)` applies only the cookie instructions, for middleware that continues the request instead of answering it.
+  - `ResponseAdapter`, the three things an adapter must provide: `setCookie`, `clearCookie`, and `send`.
+  - `signSessionCookie`, `resolveCookieSameSite`, and the `CookieSameSite`, `CookieSecurityOptions`, `SetCookieCommand`, `ClearCookieCommand`, `SessionCookie`, and `AppliableResult` types.
+
+  Cookie signing moves to core with them, because the cookie format is core's: an adapter that signed differently would mint sessions this package cannot read back.
+
+  The Express adapter drops 291 lines of source and 5.5KB of bundle, and `@seamless-auth/express` no longer carries its own cookie module. Nothing is removed from its public surface. `CookieSameSite` is now re-exported from core rather than declared locally, so `SeamlessAuthServerOptions` is unchanged for adopters.
+
+  Responses are unchanged with one exception, noted below. Status, body, and every `Set-Cookie` header were captured on both revisions across eleven scenarios covering session set and clear, secure and insecure policy, a custom cookie domain, coded and passthrough failures, an empty failure body, and success bodies. All are byte-identical, including `HttpOnly`, `Secure`, `SameSite`, `Domain`, `Path`, and `Max-Age`.
+
+  Empty responses are now consistent about their content type. A route whose upstream returned success with no body previously sent `Content-Type: application/json` with a zero-length body, because the handler called the framework's JSON method with `undefined`. It now sends no content type, matching the routes that already ended the response instead. `Content-Length: 0` is unchanged either way, and a client reading the body sees nothing in both cases, since parsing an empty body fails regardless of the content type. Anything asserting on the content type of an empty response needs updating.
+
+  Part of #72.
+
+- d17896b: Move the passthrough proxy into `@seamless-auth/core`, and fix repeated query parameters being joined.
+
+  The 33 organizations, step-up, TOTP, users, and admin passthrough routes existed only inside the Express adapter, with no core equivalent, so a new adapter would have had to rebuild both the upstream call and the session gate that guards it. New exports:
+
+  - `proxyRequest({ authServerUrl, path, method, authorization, serviceAuthorization, forwardedClientIp, query, body })` forwards a request and returns the upstream status and body unchanged.
+  - `checkProxyIdentity({ subject, cookies, identity, ...cookieNames })` is the pure session gate, returning the rejection to send or `undefined` to proceed.
+  - `buildQueryString` and `buildUpstreamUrl` replace three separate querystring builders that had drifted apart.
+
+  **Fix:** a repeated query parameter reached the auth API joined into a single comma-separated value on the admin and internal-metrics routes. `GET /admin/auth-events?type=login&type=logout` was forwarded as `type=login,logout`, and the API's `AuthEventQuerySchema` accepts `type` as an array, so the joined value matched no event type and the filter silently returned the wrong set. Array parameters are now forwarded as repeated parameters on every route. Nested objects are dropped rather than stringified, so a query like `?filter[from]=x` can no longer reach the API as `filter=[object Object]`.
+
+  The Express adapter drops 38 lines, `createServer.ts` drops from 705 to 667 lines, and the proxy handler is now a gate check, a call, and a response.
+
+- 9735f83: Export the remaining handlers and verifiers from the package root.
+
+  The admin, session, internal-metrics, and system-config handlers, along with `verifySignedAuthResponse` and `verifyRefreshCookie`, were reachable only through a subpath import. Everything else came from the root, so which import an adapter needed depended on which handler it wanted. 27 names are now available from `@seamless-auth/core` as well.
+
+  Purely additive. Nothing is removed or renamed, the `./handlers/*` subpaths keep working, and a test asserts that a subpath import and a root import resolve to the same function rather than two copies.
+
+  The README's public API overview is rewritten to match, grouped by what an adapter author is looking for, and now covers the response contract, proxy, delivery, and contract-value exports added earlier in this epic that it had never listed.
+
+  Part of #72.
+
+- 17c5487: Move auth message delivery into `@seamless-auth/core`.
+
+  `deliverAuthMessage`, `applyExternalDelivery`, and `stripDelivery` lived in the Express adapter but had no framework coupling: their only imports were the messaging types, which already came from core. Every future adapter would have had to reimplement or copy them. They now sit beside the messaging contract in core and are exported from the package root, and the adapter imports them.
+
+  `applyExternalDelivery`, `deliverAuthMessage`, and `stripDelivery` are new named exports of `@seamless-auth/core`. Nothing is removed from `@seamless-auth/express`: the three helpers were internal to it and were never exported.
+
+  The warning logged when external delivery is requested but the auth API returns no delivery payload is now prefixed `[SeamlessAuth]` rather than `[SEAMLESS-AUTH-EXPRESS]`, matching the rest of core. The text is unchanged. Anything matching on that prefix in log processing needs updating.
+
+  Part of #72.
+
+- 8e03099: Split the handler result `error` field into `errorCode` and `errorBody`.
+
+  BREAKING for direct consumers of the handler result types. Released as a minor because these packages are pre-1.0, where a minor is the breaking bump. The details are below.
+
+  `error` meant two different things depending on which handler produced it. On 12 sites it held the auth API's whole failure body, forwarded to the caller unchanged. On 8 sites it held a short code that the adapter wrapped as `{ error }`. The declared types could not describe either honestly, and `FinishLoginResult` declared `error?: string` while assigning the whole body. Nothing in the type told an adapter which rendering applied, which is the first thing a second adapter has to get right.
+
+  Failures are now reported through `ResultFailure`, exported from `@seamless-auth/core`:
+
+  - `errorCode?: string` is a code this package chose. Adapters render it as `{ error, details }`.
+  - `errorBody?: unknown` is the auth API's own failure body. Adapters forward it unchanged.
+
+  BREAKING for code that reads `result.error` off a handler imported from `@seamless-auth/core/handlers/*`. Read `errorBody` for the auth-flow handlers (login, finishLogin, register, finishRegister, requestOtp, verifyLoginOtp, requestMagicLink, pollMagicLinkConfirmation, verifyMagicLink, switchOrganization, and the OAuth handlers) and `errorCode` for the rest (me, ensureCookies, admin, sessions, internalMetrics, systemConfig). The OAuth handlers return a union, so `"error" in result` becomes `"errorBody" in result`.
+
+  The HTTP responses are unchanged, so no adopter application, SDK, or dashboard needs to change. This was verified rather than assumed: the adapter's failure responses were captured on both revisions across 6 upstream body shapes and 3 route kinds and compared, and all 18 are byte-identical. They were also run through `extractMessage` and `getOAuthErrorCode` from `seamless-auth-react`, with identical results, including the OAuth `code` that has to stay at the top level of the body.
+
+  A new `failureWireFormat` test in `@seamless-auth/express` locks these shapes so later refactors cannot move them silently.
+
+### Patch Changes
+
+- c52b5d1: Take `@seamless-auth/types` 0.4.0.
+
+  That release adds a `z.infer` alias for each of the 43 exported schemas that
+  lacked one, so the naming convention now covers all 123. It is additive: no
+  existing export changed name or shape, and nothing core imports from the package
+  moved. Core keeps importing the same type names it always has.
+
+  Adopters who resolve `@seamless-auth/types` through core pick up the new aliases
+  and can name a response body without adding a direct `zod` dependency to call
+  `z.infer` themselves.
+
+- 9e04625: Take the remaining duplicated types from `@seamless-auth/types`.
+
+  `SeamlessUser` is now an alias of the types package's `MeUser`, and the eight messaging wire shapes (`MessagingChannel`, `DeliveryResult`, `EmailMessage`, `SmsMessage`, `SendOtpEmailInput`, `SendOtpSmsInput`, `SendMagicLinkEmailInput`, `AuthDeliveryInstruction`) are re-exported rather than declared again. Each was field for field identical to a definition that already existed upstream, which is the drift `@seamless-auth/types` exists to prevent.
+
+  What stays declared here is what genuinely belongs to this package: the transport interfaces, which carry provider implementations, and the adopter-facing configuration (`EmailTransport`, `SmsTransport`, `AuthMessageOverrideContext`, `AuthMessageOverrides`, `AuthMessagingHandlers`, `SeamlessAuthMessagingOptions`).
+
+  No public API change and no runtime cost. Every name is still exported from `@seamless-auth/core` and both adapters, the re-exports are type-only so they are erased at compile time, and the built output still imports only `@seamless-auth/types/role/matching` at runtime, so neither `zod` nor the schema barrel enters the module graph.
+
+  Closes #133.
+
+- 82fc15a: Return a code instead of an empty response when the auth API fails with no body.
+
+  The auth-flow routes forward the API's failure body rather than interpreting it, and an empty body left nothing to forward: the caller got a bare 4xx with no content, and `seamless-auth-react` fell back to its per-call generic message with no way to tell an expired session from a rate limit from an upstream outage. The proxy routes already handled this, so the two families disagreed on the one case where the caller had least to go on.
+
+  An empty failure body now becomes `{ "error": "upstream_error" }`. A body that is present is still forwarded untouched, including the top-level `code` the React SDK reads to tell OAuth failures apart.
+
+  New exports: `readPassthroughFailure` and `UPSTREAM_ERROR_CODE`.
+
+  Closes #125.
+
+- d7d408d: Extract the copy-pasted session helpers, with a typed `UpstreamSessionResponse`.
+
+  Seven handlers repeated the same block: verify the signed access token, check it describes the same subject as the response body, read the `sid` claim, then build the access and refresh cookie payloads. Seven copies of a security-relevant check is seven places to get an early return wrong, and the upstream fields were read untyped, so a rename on the API side surfaced as an undefined cookie field at runtime rather than a type error.
+
+  `issueSessionCookies` now does the whole thing in one call, `verifyUpstreamSession` is available for the one flow that verifies without issuing a session (login, which issues only the pre-auth cookie), and `UpstreamSessionResponse` states what the auth API returns when it issues a session. The handlers drop 220 lines.
+
+  One behavior change: the access cookie issued by `POST /webAuthn/register/finish` now carries `organizationId: null` where it previously omitted the key. Every other flow already included it, and the refresh path writes it on every reissue, so that session disagreed with itself after a single refresh. It is now consistent from the start.
+
+  New exports: `issueSessionCookies`, `verifyUpstreamSession`, `UpstreamSessionResponse`, `VerifiedUpstreamSession`, `IssueSessionCookiesOptions`.
+
+  Closes #136.
+
+- 744418b: Let adopters route this package's diagnostics somewhere other than `console`.
+
+  Core wrote to `console` directly, so an adopter could not capture, level, or silence its output. An adapter with its own logger still leaked core's lines to `console`, which meant one request could produce output in two places.
+
+  `setSeamlessLogger(logger)` accepts anything with `warn` and `error`, which a platform logger already satisfies, and `setSeamlessLogger()` with no argument goes back to `console`. Nothing changes for callers that do not set one.
+
+  The logger is process-wide, not per-request, so it changes where core's diagnostics go rather than attaching request context to them. Core logs two things (a failed signature verification and a misconfigured external-delivery setup), and neither depends on request context. Threading a per-request logger through every handler would be a larger change.
+
+  New exports: `setSeamlessLogger`, `getSeamlessLogger`, `SeamlessLogger`.
+
+  Closes #137.
+
+- 583271a: Preserve the upstream error detail on the admin, session, internal-metrics, and system-config proxy routes.
+
+  These handlers read the failure code out of the upstream body's `error` key and fell back to a constant (`admin_request_failed`, `session_request_failed`, `internal_request_failed`, `failed_to_fetch_roles`, `failed_to_fetch_config`, `failed_to_update_config`) whenever that key was missing. The auth API answers a validation failure with a Zod body shaped `{ name, message }` and no `error` key, so every validation failure collapsed to the constant. A `PATCH /admin/users/:id` rejected for its `phone` field came back as `{"error":"admin_request_failed"}`, with nothing naming the field, and the detail was not recoverable from the API's request logs either.
+
+  The handler results and the Express responses now carry the upstream detail. `error` is the upstream `error` string when present, otherwise the upstream `message` string, and only then the constant fallback for an empty or non-JSON-object body. A new optional `details` field carries the parsed upstream body whenever it holds more than the derived `error` string, so a Zod body reaches the caller intact.
+
+  This is additive: a response that already carried an upstream `error` code is unchanged and gains no `details` key. Callers that switch on the constant fallback for validation failures should read `details` (or the now-descriptive `error`) instead.
+
+- a5e3070: Take the scoped-role matching from `@seamless-auth/types` instead of maintaining a second copy.
+
+  `packages/core/src/scopedRoles.ts` reimplemented the same logic as the auth API's `src/lib/scopedRoles.ts`. They agreed, but nothing kept them in step, and they are the two places that decide whether a request is authorized. A divergence there means the API and an adopter's server disagree about who can do what. Both sides now take `roleGrantsAccess` and `hasScopedRole` from `@seamless-auth/types`, so there is one definition.
+
+  No public API change. `@seamless-auth/core` exports the same two names, and `@seamless-auth/express` already re-exported them from core. Behavior is unchanged: the replacement was checked against the deleted implementation over every granted/required pair built from a 594-string role corpus (352,836 pairs), including wildcard grants, unscoped grants, write-implies-read, empty and whitespace-padded roles, and non-array or non-string `grantedRoles`, with no differences.
+
+  Core imports the `@seamless-auth/types/role/matching` entry point, which carries the matching helpers with no dependencies of its own, so this adds nothing to what an adopter loads at runtime: `zod` stays out of the module graph and cold `import` of `@seamless-auth/core` is unchanged.
+
 ## 0.10.0
 
 ### Minor Changes
