@@ -1,3 +1,5 @@
+import type { MeUser } from "@seamless-auth/types";
+
 import { verifyCookieJwt } from "./verifyCookieJwt.js";
 import { authFetch } from "./authFetch.js";
 import { assertSecretStrength } from "./validateSecrets.js";
@@ -8,14 +10,14 @@ import { assertSecretStrength } from "./validateSecrets.js";
  * `lastLogin` is an ISO 8601 timestamp, null until the user's first login.
  * `activeOrganizationId` is null when the access token carries no org context.
  */
-export interface SeamlessUser {
-  id: string;
-  email: string;
-  phone: string | null;
-  roles: string[];
-  lastLogin?: string | null;
-  activeOrganizationId?: string | null;
-}
+/**
+ * The caller's own user record, hydrated from the auth API. Distinct from
+ * `SeamlessAuthUser`, which is only what the access cookie carries.
+ *
+ * Aliased to the types package's `MeUser` rather than declared again. The name
+ * stays `SeamlessUser` here because that is what adapters and adopters import.
+ */
+export type SeamlessUser = MeUser;
 
 export interface GetSeamlessUserOptions {
   authServerUrl: string;
