@@ -15,6 +15,7 @@ export {
   hasScopedRole,
   roleGrantsAccess,
 } from "@seamless-auth/types/role/matching";
+export * from "./apiContract.js";
 export * from "./applyResult.js";
 export * from "./proxyRequest.js";
 export * from "./result.js";

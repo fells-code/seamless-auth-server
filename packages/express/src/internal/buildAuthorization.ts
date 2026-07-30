@@ -1,4 +1,10 @@
-import { createServiceToken } from "@seamless-auth/core";
+import {
+  buildExternalDeliveryAuthorization,
+  createServiceToken,
+  DEV_JWKS_KID,
+  SERVICE_TOKEN_AUDIENCE,
+  SERVICE_TOKEN_ISSUER,
+} from "@seamless-auth/core";
 import { Request } from "express";
 import { SeamlessAuthServerOptions } from "../createServer";
 
@@ -34,7 +40,7 @@ export function buildProxyServiceAuthorization(
     return undefined;
   }
 
-  const keyId = opts.jwksKid || "dev-main";
+  const keyId = opts.jwksKid || DEV_JWKS_KID;
   const now = Date.now();
 
   if (
@@ -48,8 +54,8 @@ export function buildProxyServiceAuthorization(
 
   const authorization = `Bearer ${createServiceToken({
     subject: PROXY_TOKEN_SUBJECT,
-    issuer: "seamless-portal-api",
-    audience: "seamless-auth",
+    issuer: SERVICE_TOKEN_ISSUER,
+    audience: SERVICE_TOKEN_AUDIENCE,
     serviceSecret: opts.serviceSecret,
     keyId,
   })}`;
@@ -67,13 +73,5 @@ export function buildProxyServiceAuthorization(
 export function buildInternalServiceAuthorization(
   opts: SeamlessAuthServerOptions,
 ) {
-  const token = createServiceToken({
-    subject: "seamless-auth-external-delivery",
-    issuer: "seamless-portal-api",
-    audience: "seamless-auth",
-    serviceSecret: opts.serviceSecret,
-    keyId: opts.jwksKid || "dev-main",
-  });
-
-  return `Bearer ${token}`;
+  return buildExternalDeliveryAuthorization(opts);
 }

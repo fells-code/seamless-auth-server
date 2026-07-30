@@ -4,7 +4,7 @@ export {
   assertSecrets,
 } from "@seamless-auth/core";
 
-const DEV_JWKS_KID = "dev-main";
+import { DEV_JWKS_KID } from "@seamless-auth/core";
 
 export function warnOnDevJwksKid(jwksKid: string | undefined): void {
   if (!jwksKid || jwksKid === DEV_JWKS_KID) {
