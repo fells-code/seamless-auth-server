@@ -97,3 +97,39 @@ describe("proxy query forwarding", () => {
     );
   });
 });
+
+// A route param interpolated raw into the upstream URL can append query
+// parameters or reshape the path, which is what #65 fixed elsewhere. These two
+// oauth-provider routes were missed by that pass.
+describe("route params stay in one upstream path segment", () => {
+  const originalFetch = global.fetch;
+  let requestedUrl;
+
+  beforeEach(() => {
+    requestedUrl = undefined;
+    global.fetch = jest.fn(async (url) => {
+      requestedUrl = String(url);
+      return createJsonResponse(200, { ok: true });
+    });
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it.each([
+    ["patch", "abc?admin=1"],
+    ["delete", "abc?admin=1"],
+    ["patch", "abc#frag"],
+    ["patch", "../../admin/users"],
+  ])("%s /system-config/oauth-providers/:id encodes %s", async (method, id) => {
+    await request(createApp())
+      [method](`/auth/system-config/oauth-providers/${encodeURIComponent(id)}`)
+      .set("Cookie", createAccessCookie())
+      .send({});
+
+    expect(requestedUrl).toBe(
+      `https://auth.example.com/system-config/oauth-providers/${encodeURIComponent(id)}`,
+    );
+  });
+});

@@ -495,7 +495,8 @@ export function createSeamlessAuthServer(
   r.patch(
     "/system-config/oauth-providers/:id",
     proxyWithIdentity(
-      (req) => `system-config/oauth-providers/${req.params.id}`,
+      (req) =>
+        `system-config/oauth-providers/${encodeURIComponent(routeParam(req, "id"))}`,
       "access",
       "PATCH",
     ),
@@ -503,7 +504,8 @@ export function createSeamlessAuthServer(
   r.delete(
     "/system-config/oauth-providers/:id",
     proxyWithIdentity(
-      (req) => `system-config/oauth-providers/${req.params.id}`,
+      (req) =>
+        `system-config/oauth-providers/${encodeURIComponent(routeParam(req, "id"))}`,
       "access",
       "DELETE",
     ),
