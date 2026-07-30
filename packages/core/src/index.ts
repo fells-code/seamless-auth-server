@@ -7,6 +7,7 @@ export * from "./verifyRefreshCookie.js";
 export * from "./verifySignedAuthResponse.js";
 export * from "./refreshAccessToken.js";
 export * from "./getSeamlessUser.js";
+export * from "./logger.js";
 export * from "./guards.js";
 export * from "./createServiceToken.js";
 export * from "./validateSecrets.js";
@@ -22,6 +23,7 @@ export * from "./apiContract.js";
 export * from "./applyResult.js";
 export * from "./proxyRequest.js";
 export * from "./result.js";
+export * from "./upstreamSession.js";
 export * from "./redaction.js";
 
 export * from "./handlers/login.js";
