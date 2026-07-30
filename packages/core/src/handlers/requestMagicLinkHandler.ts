@@ -1,4 +1,5 @@
 import { authFetch } from "../authFetch.js";
+import { EXTERNAL_DELIVERY_HEADERS } from "../apiContract.js";
 import type { ResultFailure } from "../result.js";
 
 export interface RequestMagicLinkInput {
@@ -28,9 +29,7 @@ export async function requestMagicLinkHandler(
     serviceAuthorization: opts.serviceAuthorization,
     ...(opts.externalDelivery
       ? {
-          headers: {
-            "x-seamless-auth-delivery-mode": "external",
-          },
+          headers: EXTERNAL_DELIVERY_HEADERS,
         }
       : {}),
   });

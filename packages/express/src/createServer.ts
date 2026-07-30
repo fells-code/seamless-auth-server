@@ -33,6 +33,8 @@ import {
   checkProxyIdentity,
   proxyRequest,
   redactSensitiveText,
+  SERVICE_TOKEN_AUDIENCE,
+  SERVICE_TOKEN_ISSUER,
 } from "@seamless-auth/core";
 import {
   buildProxyServiceAuthorization,
@@ -284,11 +286,11 @@ export function createSeamlessAuthServer(
       preAuthCookieName: resolvedOpts.preAuthCookieName,
       cookieSecret: resolvedOpts.cookieSecret,
       serviceSecret: resolvedOpts.serviceSecret,
-      // The silent-refresh path mints an M2M service token that the auth API
-      // validates with a fixed issuer/audience (see buildInternalServiceAuthorization),
-      // not the adopter-configured audience.
-      issuer: "seamless-portal-api",
-      audience: "seamless-auth",
+      // The silent-refresh path mints an M2M service token, which the auth API
+      // validates against a fixed issuer and audience rather than the
+      // adopter-configured one.
+      issuer: SERVICE_TOKEN_ISSUER,
+      audience: SERVICE_TOKEN_AUDIENCE,
       keyId: resolvedOpts.jwksKid,
       resolveClientIp: resolvedOpts.resolveClientIp,
     }),
