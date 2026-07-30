@@ -22,14 +22,19 @@ function getLogoutPath(scope: LogoutScope) {
   return scope === "all_sessions" ? "/logout/all" : "/logout";
 }
 
-export async function logoutHandler(opts: LogoutOptions): Promise<LogoutResult> {
+export async function logoutHandler(
+  opts: LogoutOptions,
+): Promise<LogoutResult> {
   const scope = opts.scope ?? "all_sessions";
-  const upstream = await authFetch(`${opts.authServerUrl}${getLogoutPath(scope)}`, {
-    method: "DELETE",
-    authorization: opts.authorization,
-    serviceAuthorization: opts.serviceAuthorization,
-    forwardedClientIp: opts.forwardedClientIp,
-  });
+  const upstream = await authFetch(
+    `${opts.authServerUrl}${getLogoutPath(scope)}`,
+    {
+      method: "DELETE",
+      authorization: opts.authorization,
+      serviceAuthorization: opts.serviceAuthorization,
+      forwardedClientIp: opts.forwardedClientIp,
+    },
+  );
 
   return {
     status: upstream.ok ? 204 : upstream.status,
@@ -41,7 +46,9 @@ export async function logoutHandler(opts: LogoutOptions): Promise<LogoutResult> 
   };
 }
 
-export function logoutCurrentSessionHandler(opts: Omit<LogoutOptions, "scope">) {
+export function logoutCurrentSessionHandler(
+  opts: Omit<LogoutOptions, "scope">,
+) {
   return logoutHandler({ ...opts, scope: "current_session" });
 }
 

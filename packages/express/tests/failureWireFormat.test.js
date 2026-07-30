@@ -100,6 +100,19 @@ describe("failure wire format", () => {
     });
   });
 
+  // An empty upstream body has nothing to forward. Returning it as-is produced a
+  // bare status with no body, so the SDK showed a generic message (#125).
+  it("falls back to a code when the upstream body is empty", async () => {
+    global.fetch.mockResolvedValue(createJsonResponse(400, undefined));
+
+    const res = await request(createApp())
+      .post("/auth/login")
+      .send({ identifier: "someone@example.com" });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ error: "upstream_error" });
+  });
+
   describe("a proxy route normalizes to a code", () => {
     async function patchUser(upstream) {
       global.fetch.mockResolvedValue(createJsonResponse(400, upstream));

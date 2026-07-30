@@ -5,6 +5,31 @@ function isObject(value: unknown): value is Record<string, unknown> {
 }
 
 /**
+ * Last-resort code for a failure the auth API sent with no body at all.
+ *
+ * A passthrough route has nothing else to say: it does not interpret the
+ * response, so when there is no body there is no detail to forward.
+ */
+export const UPSTREAM_ERROR_CODE = "upstream_error";
+
+/**
+ * Reads an upstream failure for a route that forwards the auth API's response
+ * rather than interpreting it.
+ *
+ * The body goes through verbatim whenever there is one, because callers read
+ * fields off it directly and reshaping it breaks them. An empty body has nothing
+ * to forward, and returning it as-is produced a bare status with no body, which
+ * left the caller with nothing to act on and the SDK falling back to a generic
+ * message (#125). That case becomes a code instead.
+ */
+export function readPassthroughFailure(
+  data: unknown,
+  fallback: string = UPSTREAM_ERROR_CODE,
+): ResultFailure {
+  return isObject(data) ? { errorBody: data } : { errorCode: fallback };
+}
+
+/**
  * Reads an upstream error body into the `{ error, details }` pair the proxy
  * handlers return.
  *
