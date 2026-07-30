@@ -1,9 +1,11 @@
 ---
-"@seamless-auth/core": major
-"@seamless-auth/express": major
+"@seamless-auth/core": minor
+"@seamless-auth/express": minor
 ---
 
 Split the handler result `error` field into `errorCode` and `errorBody`.
+
+BREAKING for direct consumers of the handler result types. Released as a minor because these packages are pre-1.0, where a minor is the breaking bump. The details are below.
 
 `error` meant two different things depending on which handler produced it. On 12 sites it held the auth API's whole failure body, forwarded to the caller unchanged. On 8 sites it held a short code that the adapter wrapped as `{ error }`. The declared types could not describe either honestly, and `FinishLoginResult` declared `error?: string` while assigning the whole body. Nothing in the type told an adapter which rendering applied, which is the first thing a second adapter has to get right.
 
