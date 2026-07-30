@@ -1,4 +1,4 @@
-import { hasScopedRole } from "@seamless-auth/core";
+import { authorizeRoles } from "@seamless-auth/core";
 import { Request, Response, NextFunction, RequestHandler } from "express";
 
 /**
@@ -41,32 +41,13 @@ import { Request, Response, NextFunction, RequestHandler } from "express";
  * @param requiredRoles - A role or list of roles required to access the route
  */
 export function requireRole(requiredRoles: string | string[]): RequestHandler {
-  const roles = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
-
   return (req: Request, res: Response, next: NextFunction): void => {
-    const user = req.user;
+    const rejection = authorizeRoles(req.user, requiredRoles);
 
-    if (!user) {
-      res.status(401).json({
-        error: "Authentication required",
-      });
-      return;
-    }
-
-    if (!Array.isArray(user.roles)) {
-      res.status(403).json({
-        error: "User has no roles assigned",
-      });
-      return;
-    }
-
-    const hasRole = hasScopedRole(user.roles, roles);
-
-    if (!hasRole) {
-      res.status(403).json({
-        error: "Insufficient role",
-        required: roles,
-        actual: user.roles,
+    if (rejection) {
+      res.status(rejection.status).json({
+        error: rejection.errorCode,
+        ...rejection.detail,
       });
       return;
     }
