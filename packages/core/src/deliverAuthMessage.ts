@@ -4,10 +4,15 @@ import type {
   SeamlessAuthMessagingOptions,
   SmsMessage,
 } from "./authMessaging.js";
+import { getSeamlessLogger } from "./logger.js";
 
 function applyEmailOverride<TInput>(
   override:
-    | ((input: TInput, defaults: EmailMessage, context: { appName?: string }) => EmailMessage)
+    | ((
+        input: TInput,
+        defaults: EmailMessage,
+        context: { appName?: string },
+      ) => EmailMessage)
     | undefined,
   input: TInput,
   defaults: EmailMessage,
@@ -18,7 +23,11 @@ function applyEmailOverride<TInput>(
 
 function applySmsOverride<TInput>(
   override:
-    | ((input: TInput, defaults: SmsMessage, context: { appName?: string }) => SmsMessage)
+    | ((
+        input: TInput,
+        defaults: SmsMessage,
+        context: { appName?: string },
+      ) => SmsMessage)
     | undefined,
   input: TInput,
   defaults: SmsMessage,
@@ -163,7 +172,9 @@ export async function deliverAuthMessage(
   }
 }
 
-export function stripDelivery<T extends { delivery?: unknown }>(body: T): Omit<T, "delivery"> {
+export function stripDelivery<T extends { delivery?: unknown }>(
+  body: T,
+): Omit<T, "delivery"> {
   const { delivery: _delivery, ...rest } = body;
   return rest;
 }
@@ -189,7 +200,7 @@ export async function applyExternalDelivery(
   }
 
   if (messaging) {
-    console.warn(
+    getSeamlessLogger().warn(
       "[SeamlessAuth] External delivery was requested but the auth API returned no delivery payload, so no message was sent. Verify that serviceSecret matches the auth API's API_SERVICE_TOKEN.",
     );
   }

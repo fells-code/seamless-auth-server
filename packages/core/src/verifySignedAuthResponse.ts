@@ -1,4 +1,5 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
+import { getSeamlessLogger } from "./logger.js";
 
 // jose caches keys and applies a refetch cooldown per JWKS instance, so the instance
 // must outlive a single call. Memoize per JWKS URL (one per auth server, so the map
@@ -31,7 +32,9 @@ export async function verifySignedAuthResponse<T = any>(
 
     return payload as T;
   } catch {
-    console.error("[SeamlessAuth] Failed to verify signed auth response.");
+    getSeamlessLogger().error(
+      "[SeamlessAuth] Failed to verify signed auth response.",
+    );
     return null;
   }
 }

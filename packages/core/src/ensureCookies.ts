@@ -303,7 +303,11 @@ export async function ensureCookies(
   const refreshCookie = input.cookies[opts.refreshCookieName];
 
   if (required && !cookieValue) {
-    const refreshed = await refreshRequiredCookie(cookieName, refreshCookie, opts);
+    const refreshed = await refreshRequiredCookie(
+      cookieName,
+      refreshCookie,
+      opts,
+    );
 
     if (!refreshed) {
       return {
@@ -329,7 +333,11 @@ export async function ensureCookies(
     const token = typeof payload.token === "string" ? payload.token : undefined;
 
     if (required && !token && cookieName === opts.accessCookieName) {
-      const refreshed = await refreshRequiredCookie(cookieName, refreshCookie, opts);
+      const refreshed = await refreshRequiredCookie(
+        cookieName,
+        refreshCookie,
+        opts,
+      );
 
       if (refreshed) {
         return refreshed;
