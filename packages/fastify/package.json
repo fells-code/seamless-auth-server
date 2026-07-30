@@ -1,6 +1,6 @@
 {
   "name": "@seamless-auth/fastify",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Fastify adapter for Seamless Auth passwordless authentication",
   "keywords": [
     "authentication",
