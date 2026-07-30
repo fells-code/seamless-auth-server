@@ -13,6 +13,7 @@ Published packages:
 
 - `@seamless-auth/core` (`packages/core`): framework-agnostic core.
 - `@seamless-auth/express` (`packages/express`): the Express adapter.
+- `@seamless-auth/fastify` (`packages/fastify`): the Fastify adapter.
 
 These are public, adopter-facing packages. Their public API is a contract, and
 they bridge cookie sessions to the Bearer/JWKS contract of the
@@ -66,8 +67,8 @@ guidance may extend them but must not contradict them.
 
 - pnpm workspace (`pnpm-workspace.yaml`) with packages under `packages/*`.
 - TypeScript libraries built and published via Changesets.
-- `@seamless-auth/express` depends on `@seamless-auth/core`; keep the core free
-  of framework-specific code.
+- `@seamless-auth/express` and `@seamless-auth/fastify` depend on
+  `@seamless-auth/core`; keep the core free of framework-specific code.
 
 ## Architecture Map
 
@@ -75,6 +76,7 @@ guidance may extend them but must not contradict them.
 packages/
   core/       framework-agnostic auth core and shared logic
   express/    Express adapter built on top of core
+  fastify/    Fastify adapter built on top of core
 ```
 
 - Keep framework specifics in the adapter package, not in `core`.
