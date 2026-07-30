@@ -2,7 +2,7 @@ import { authFetch } from "../authFetch.js";
 import { readPassthroughFailure } from "../upstreamError.js";
 import type { ResultFailure } from "../result.js";
 import type { CookiePayload } from "../ensureCookies.js";
-import { verifySignedAuthResponse } from "../verifySignedAuthResponse.js";
+import { verifyUpstreamSession } from "../upstreamSession.js";
 
 export interface LoginInput {
   body: unknown;
@@ -52,19 +52,9 @@ export async function loginHandler(
     };
   }
 
-  const verified = await verifySignedAuthResponse(
-    data.token,
-    opts.authServerUrl,
-    opts.audience,
-  );
-
-  if (!verified) {
-    throw new Error("Invalid signed response from Auth Server");
-  }
-
-  if (verified.sub !== data.sub) {
-    throw new Error("Signature mismatch with data payload");
-  }
+  // Login issues only the pre-auth cookie, so it verifies the response without
+  // building session cookies from it.
+  await verifyUpstreamSession(data, opts.authServerUrl, opts.audience);
 
   const body = {
     ...(typeof data.message === "string" ? { message: data.message } : {}),

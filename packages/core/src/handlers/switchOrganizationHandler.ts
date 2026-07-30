@@ -1,8 +1,8 @@
 import { authFetch } from "../authFetch.js";
+import { issueSessionCookies } from "../upstreamSession.js";
 import { readPassthroughFailure } from "../upstreamError.js";
 import type { ResultFailure } from "../result.js";
 import type { CookiePayload } from "../ensureCookies.js";
-import { verifySignedAuthResponse } from "../verifySignedAuthResponse.js";
 
 export interface SwitchOrganizationInput {
   organizationId: string;
@@ -59,43 +59,14 @@ export async function switchOrganizationHandler(
     };
   }
 
-  const verifiedAccessToken = await verifySignedAuthResponse(
-    data.token,
-    opts.authServerUrl,
-    opts.audience,
-  );
-
-  if (!verifiedAccessToken) {
-    throw new Error("Invalid signed response from Auth Server");
-  }
-
-  if (verifiedAccessToken.sub !== data.sub) {
-    throw new Error("Signature mismatch with data payload");
-  }
-
-  const sessionId =
-    typeof verifiedAccessToken.sid === "string"
-      ? verifiedAccessToken.sid
-      : undefined;
-
   return {
     status: up.status,
     body: data,
-    setCookies: [
-      {
-        name: opts.accessCookieName,
-        value: {
-          sub: data.sub,
-          ...(sessionId === undefined ? {} : { sessionId }),
-          token: data.token,
-          roles: data.roles,
-          email: data.email,
-          phone: data.phone,
-          organizationId: data.organizationId ?? null,
-        },
-        ttl: data.ttl,
-        domain: opts.cookieDomain,
-      },
-    ],
+    setCookies: await issueSessionCookies(data, {
+      authServerUrl: opts.authServerUrl,
+      audience: opts.audience,
+      accessCookieName: opts.accessCookieName,
+      cookieDomain: opts.cookieDomain,
+    }),
   };
 }
