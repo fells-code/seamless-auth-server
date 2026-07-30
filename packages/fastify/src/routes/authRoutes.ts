@@ -4,6 +4,7 @@ import {
   finishLoginHandler,
   finishOAuthLoginHandler,
   finishRegisterHandler,
+  getPublicSystemConfigHandler,
   listOAuthProvidersHandler,
   loginHandler,
   logoutHandler,
@@ -183,6 +184,19 @@ export function registerAuthRoutes(
       respond(reply, result, opts);
     });
   }
+
+  // Public: the sign-in screens read this before there is a session, so no
+  // identity is forwarded and none is expected upstream.
+  fastify.get("/system-config/public", async (req, reply) => {
+    respond(
+      reply,
+      await getPublicSystemConfigHandler({
+        authServerUrl: opts.authServerUrl,
+        forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+      }),
+      opts,
+    );
+  });
 
   fastify.get("/oauth/providers", async (_req, reply) => {
     respond(

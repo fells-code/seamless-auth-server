@@ -242,6 +242,16 @@ describe("fastify and express adapters agree", () => {
       { method: "get", path: "/oauth/providers" },
       upstream(200, { providers: [] }),
     ],
+    [
+      "public system config with no cookie",
+      { method: "get", path: "/system-config/public" },
+      upstream(200, { loginMethods: ["passkey", "magic_link"] }),
+    ],
+    [
+      "public system config passes an upstream failure through",
+      { method: "get", path: "/system-config/public" },
+      upstream(503, { error: "upstream_unavailable" }),
+    ],
   ])("%s", async (_label, scenario, upstreamResponse) => {
     const { fastify, express: expressResult } = await bothAdapters(
       scenario,
@@ -251,6 +261,49 @@ describe("fastify and express adapters agree", () => {
     expect(fastify.status).toBe(expressResult.status);
     expect(fastify.body).toEqual(expressResult.body);
     expect(fastify.cookies).toEqual(expressResult.cookies);
+  });
+
+  // The sign-in screens call this with no session at all. Forwarding an identity
+  // would be pointless on a route upstream serves publicly, and it would put a
+  // stale cookie in the path of the one call a signed-out client has to make.
+  // Asserted with a valid cookie present so a future refactor cannot quietly
+  // start attaching one.
+  it("sends no identity upstream for the public system config", async () => {
+    const scenario = {
+      method: "get",
+      path: "/system-config/public",
+      cookie: accessCookie(),
+    };
+    const upstreamResponse = upstream(200, { loginMethods: ["passkey"] });
+
+    const headersFor = async (runner) => {
+      global.fetch = jest.fn(async () => upstreamResponse);
+      await runner(scenario);
+
+      const [, init] = global.fetch.mock.calls[0];
+
+      return Object.fromEntries(
+        Object.entries(init?.headers ?? {}).map(([key, value]) => [
+          key.toLowerCase(),
+          value,
+        ]),
+      );
+    };
+
+    const fastifyHeaders = await headersFor(viaFastify);
+    const expressHeaders = await headersFor(viaExpress);
+
+    for (const headers of [fastifyHeaders, expressHeaders]) {
+      expect(headers.authorization).toBeUndefined();
+      expect(headers["x-seamless-service-token"]).toBeUndefined();
+    }
+
+    // Not a full header comparison: the two frameworks report the loopback
+    // address differently (127.0.0.1 against ::ffff:127.0.0.1), which is the
+    // test socket rather than anything either adapter decides.
+    expect(Object.keys(fastifyHeaders).sort()).toEqual(
+      Object.keys(expressHeaders).sort(),
+    );
   });
 
   it.each([
