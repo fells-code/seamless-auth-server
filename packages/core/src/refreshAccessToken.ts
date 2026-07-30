@@ -26,7 +26,10 @@ type RefreshAccessTokenResult = {
   refreshTtl: number;
 };
 
-const inFlightRefreshes = new Map<string, Promise<RefreshAccessTokenResult | null>>();
+const inFlightRefreshes = new Map<
+  string,
+  Promise<RefreshAccessTokenResult | null>
+>();
 const recentRefreshResults = new Map<
   string,
   { result: RefreshAccessTokenResult; expiresAt: number }
