@@ -148,11 +148,36 @@ describe("cookies", () => {
       {
         name: "seamless-ephemeral",
         domain: "acme.test",
+        expires: new Date(0),
         secure: true,
         sameSite: "none",
         path: "/",
       },
     ]);
+  });
+
+  // Both lifetimes are specified so every adapter emits the same header. Left to
+  // the adapter, one framework sends Max-Age only and another sends both, and
+  // the two issue different cookies for the same session.
+  it("gives a set cookie both a max age and a matching absolute expiry", () => {
+    const adapter = recorder();
+    const before = Date.now();
+
+    applyResult(cookieResult, adapter, { cookieSecret: SECRET });
+
+    const { maxAgeSeconds, expires } = adapter.calls.set[0];
+    expect(maxAgeSeconds).toBe(300);
+    expect(expires).toBeInstanceOf(Date);
+    expect(expires.getTime()).toBeGreaterThanOrEqual(before + 300 * 1000);
+    expect(expires.getTime()).toBeLessThanOrEqual(Date.now() + 300 * 1000);
+  });
+
+  it("clears with the epoch", () => {
+    const adapter = recorder();
+
+    applyResult(cookieResult, adapter, { cookieSecret: SECRET });
+
+    expect(adapter.calls.cleared[0].expires.getTime()).toBe(0);
   });
 
   it("clears before setting, since doing both replaces a session", () => {

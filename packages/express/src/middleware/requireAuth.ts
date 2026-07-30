@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { assertSecretStrength, verifyCookieJwt } from "@seamless-auth/core";
-import { SeamlessAuthUser } from "../createServer";
+import { assertSecretStrength, authenticateCookie } from "@seamless-auth/core";
 
 export interface RequireAuthOptions {
   cookieName?: string;
@@ -34,39 +33,25 @@ export interface RequireAuthOptions {
 export function requireAuth(opts: RequireAuthOptions) {
   const { cookieName = "seamless-access", cookieSecret } = opts;
 
+  // Eagerly, so a weak secret fails at setup rather than on the first request.
   assertSecretStrength("requireAuth: cookieSecret", cookieSecret);
 
   return function (req: Request, res: Response, next: NextFunction) {
-    const token = req.cookies?.[cookieName];
+    const { user, rejection } = authenticateCookie({
+      token: req.cookies?.[cookieName],
+      cookieSecret,
+    });
 
-    if (!token) {
-      console.warn(
-        "[SEAMLESS-AUTH-EXPRESS] - (requireAuth) - Missing expected auth cookie. Ensure you are using `cookieParser` in your express server",
-      );
-      res.status(401).json({
-        error: "Failed to find authentication token required",
-      });
+    if (rejection) {
+      if (rejection.warn) {
+        console.warn(
+          `[SEAMLESS-AUTH-EXPRESS] - (requireAuth) - ${rejection.warn} Ensure you are using \`cookieParser\` in your express server`,
+        );
+      }
+
+      res.status(rejection.status).json({ error: rejection.errorCode });
       return;
     }
-
-    const payload = verifyCookieJwt(token, cookieSecret);
-
-    if (!payload || !payload.sub) {
-      res.status(401).json({
-        error: "Invalid or expired session",
-      });
-      return;
-    }
-
-    const user: SeamlessAuthUser = {
-      id: payload.sub,
-      roles: Array.isArray(payload.roles) ? payload.roles : [],
-      email: payload.email,
-      phone: payload.phone,
-      iat: payload.iat,
-      exp: payload.exp,
-      token: payload.token,
-    };
 
     req.user = user;
     next();

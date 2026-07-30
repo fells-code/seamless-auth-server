@@ -7,6 +7,7 @@ export * from "./verifyRefreshCookie.js";
 export * from "./verifySignedAuthResponse.js";
 export * from "./refreshAccessToken.js";
 export * from "./getSeamlessUser.js";
+export * from "./guards.js";
 export * from "./createServiceToken.js";
 export * from "./validateSecrets.js";
 // Role matching decides whether a request is authorized, and the auth API runs

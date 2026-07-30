@@ -1,5 +1,4 @@
-import { NextFunction, Request, Response } from "express";
-
+import type { FastifyReply, FastifyRequest } from "fastify";
 import { checkOrigin, type CookieSameSite } from "@seamless-auth/core";
 
 export interface OriginGuardOptions {
@@ -9,12 +8,12 @@ export interface OriginGuardOptions {
 }
 
 /**
- * Rejects cross-site state-changing requests when the adapter issues
+ * Rejects cross-site state-changing requests when the plugin issues
  * `SameSite=None` cookies. The decision is core's; this reads the headers and
  * writes the response.
  */
-export function createOriginGuardMiddleware(opts: OriginGuardOptions) {
-  return function originGuard(req: Request, res: Response, next: NextFunction) {
+export function createOriginGuardHook(opts: OriginGuardOptions) {
+  return async function originGuard(req: FastifyRequest, reply: FastifyReply) {
     const rejection = checkOrigin({
       method: req.method,
       secFetchSite: firstHeader(req.headers["sec-fetch-site"]),
@@ -25,11 +24,10 @@ export function createOriginGuardMiddleware(opts: OriginGuardOptions) {
     });
 
     if (rejection) {
-      res.status(rejection.status).json({ error: rejection.errorCode });
-      return;
+      return reply
+        .status(rejection.status)
+        .send({ error: rejection.errorCode });
     }
-
-    next();
   };
 }
 

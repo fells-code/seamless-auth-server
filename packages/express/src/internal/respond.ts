@@ -24,6 +24,7 @@ export function expressResponseAdapter(res: Response): ResponseAdapter {
         path: command.path,
         domain: command.domain,
         maxAge: command.maxAgeSeconds * 1000,
+        expires: command.expires,
       });
     },
 
@@ -33,6 +34,7 @@ export function expressResponseAdapter(res: Response): ResponseAdapter {
         sameSite: command.sameSite,
         domain: command.domain,
         path: command.path,
+        expires: command.expires,
       });
     },
 

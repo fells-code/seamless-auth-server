@@ -30,6 +30,16 @@ export interface SetCookieCommand {
   value: string;
   domain?: string;
   maxAgeSeconds: number;
+  /**
+   * The same lifetime as `maxAgeSeconds`, as an absolute time.
+   *
+   * Both are specified so every adapter emits the same header. `Max-Age` wins
+   * wherever it is understood; `Expires` is the fallback for clients that do
+   * not, which would otherwise treat the cookie as a session cookie. Leaving
+   * this to the adapter is how two adapters end up issuing different cookies for
+   * the same session.
+   */
+  expires: Date;
   httpOnly: boolean;
   secure: boolean;
   sameSite: CookieSameSite;
@@ -39,10 +49,19 @@ export interface SetCookieCommand {
 export interface ClearCookieCommand {
   name: string;
   domain?: string;
+  /**
+   * The epoch, which is what tells the browser to drop the cookie. Specified
+   * here for the same reason as on the set path: so every adapter emits the
+   * same header rather than each picking its own expression of "delete this".
+   */
+  expires: Date;
   secure: boolean;
   sameSite: CookieSameSite;
   path: string;
 }
+
+/** Any time in the past drops the cookie; the epoch is the conventional one. */
+const COOKIE_EPOCH = new Date(0);
 
 /**
  * The three things an adapter has to be able to do with its framework's
@@ -117,6 +136,7 @@ export function applyCookies(
       adapter.clearCookie({
         name,
         domain: opts.cookieDomain,
+        expires: COOKIE_EPOCH,
         secure,
         sameSite,
         path: "/",
@@ -127,12 +147,15 @@ export function applyCookies(
   if (result.setCookies?.length) {
     const secret = requireSecret(opts);
 
+    const now = Date.now();
+
     for (const cookie of result.setCookies) {
       adapter.setCookie({
         name: cookie.name,
         value: signSessionCookie(cookie.value, secret, cookie.ttl),
         domain: cookie.domain,
         maxAgeSeconds: cookie.ttl,
+        expires: new Date(now + cookie.ttl * 1000),
         httpOnly: true,
         secure,
         sameSite,
