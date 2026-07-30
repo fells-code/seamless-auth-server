@@ -13,14 +13,11 @@ import {
   buildServiceAuthorization,
 } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
-import { failureResponse } from "../internal/failureResponse";
+import { respond } from "../internal/respond";
 import { SeamlessAuthServerOptions } from "../createServer";
 
-function handle(res: Response, result: any) {
-  if (result.errorCode) {
-    return res.status(result.status).json(failureResponse(result));
-  }
-  return res.status(result.status).json(result.body);
+function handle(res: Response, result: any, opts: SeamlessAuthServerOptions) {
+  respond(res, result, opts);
 }
 
 // Express types req.query as ParsedQs, whose values may be arrays or nested
@@ -55,7 +52,7 @@ export async function getAuthEventSummary(
     query: toQueryRecord(req.query),
   });
 
-  return handle(res, result);
+  return handle(res, result, opts);
 }
 
 export async function getAuthEventTimeseries(
@@ -73,7 +70,7 @@ export async function getAuthEventTimeseries(
     query: toQueryRecord(req.query),
   });
 
-  return handle(res, result);
+  return handle(res, result, opts);
 }
 
 export async function getLoginStats(
@@ -90,7 +87,7 @@ export async function getLoginStats(
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
   });
 
-  return handle(res, result);
+  return handle(res, result, opts);
 }
 
 export async function getSecurityAnomalies(
@@ -107,7 +104,7 @@ export async function getSecurityAnomalies(
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
   });
 
-  return handle(res, result);
+  return handle(res, result, opts);
 }
 
 export async function getDashboardMetrics(
@@ -124,7 +121,7 @@ export async function getDashboardMetrics(
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
   });
 
-  return handle(res, result);
+  return handle(res, result, opts);
 }
 
 export async function getGroupedEventSummary(
@@ -142,5 +139,5 @@ export async function getGroupedEventSummary(
     query: toQueryRecord(req.query),
   });
 
-  return handle(res, result);
+  return handle(res, result, opts);
 }

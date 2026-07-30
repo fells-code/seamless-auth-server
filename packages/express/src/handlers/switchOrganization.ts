@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { switchOrganizationHandler } from "@seamless-auth/core/handlers/switchOrganizationHandler";
-import { buildCookieSigner, setSessionCookie } from "../internal/cookie";
+import { respond } from "../internal/respond";
 import {
   buildProxyServiceAuthorization,
   buildServiceAuthorization,
@@ -18,8 +18,6 @@ export async function switchOrganization(
   res: Response,
   opts: SeamlessAuthServerOptions,
 ) {
-  const cookieSigner = buildCookieSigner(opts);
-
   const result = await switchOrganizationHandler(
     {
       organizationId: routeParam(req, "organizationId"),
@@ -35,24 +33,5 @@ export async function switchOrganization(
     },
   );
 
-  if (result.setCookies) {
-    for (const c of result.setCookies) {
-      setSessionCookie(
-        res,
-        {
-          name: c.name,
-          payload: c.value,
-          domain: c.domain,
-          ttlSeconds: c.ttl,
-        },
-        cookieSigner,
-      );
-    }
-  }
-
-  if (result.errorBody) {
-    return res.status(result.status).json(result.errorBody);
-  }
-
-  return res.status(result.status).json(result.body);
+  respond(res, result, opts);
 }

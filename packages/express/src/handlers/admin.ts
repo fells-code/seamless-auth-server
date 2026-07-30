@@ -20,14 +20,11 @@ import {
   buildServiceAuthorization,
 } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
-import { failureResponse } from "../internal/failureResponse";
+import { respond } from "../internal/respond";
 import { SeamlessAuthServerOptions } from "../createServer";
 
-function handle(res: Response, result: any) {
-  if (result.errorCode) {
-    return res.status(result.status).json(failureResponse(result));
-  }
-  return res.status(result.status).json(result.body);
+function handle(res: Response, result: any, opts: SeamlessAuthServerOptions) {
+  respond(res, result, opts);
 }
 
 export const getUsers = async (
@@ -43,6 +40,7 @@ export const getUsers = async (
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
     }),
+    opts,
   );
 
 export const createUser = async (
@@ -59,6 +57,7 @@ export const createUser = async (
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
       body: req.body,
     }),
+    opts,
   );
 
 export const deleteUser = async (
@@ -75,6 +74,7 @@ export const deleteUser = async (
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
       body: req.body,
     }),
+    opts,
   );
 
 export const updateUser = async (
@@ -91,6 +91,7 @@ export const updateUser = async (
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
       body: req.body,
     }),
+    opts,
   );
 
 export const getUserDetail = async (
@@ -106,6 +107,7 @@ export const getUserDetail = async (
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
     }),
+    opts,
   );
 
 export const getUserAnomalies = async (
@@ -121,6 +123,7 @@ export const getUserAnomalies = async (
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
     }),
+    opts,
   );
 
 export const getAuthEvents = async (
@@ -137,6 +140,7 @@ export const getAuthEvents = async (
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
       query: req.query,
     }),
+    opts,
   );
 
 export const getCredentialCount = async (
@@ -152,6 +156,7 @@ export const getCredentialCount = async (
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
     }),
+    opts,
   );
 
 export const listAllSessions = async (
@@ -168,6 +173,7 @@ export const listAllSessions = async (
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
       query: req.query,
     }),
+    opts,
   );
 
 export const listUserSessions = async (
@@ -183,6 +189,7 @@ export const listUserSessions = async (
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
     }),
+    opts,
   );
 
 export const revokeUserSession = async (
@@ -198,6 +205,7 @@ export const revokeUserSession = async (
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
     }),
+    opts,
   );
 
 export const revokeAllUserSessions = async (
@@ -213,6 +221,7 @@ export const revokeAllUserSessions = async (
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
     }),
+    opts,
   );
 
 export const recoverUserForDeviceReplacement = async (
@@ -229,4 +238,5 @@ export const recoverUserForDeviceReplacement = async (
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
       body: req.body,
     }),
+    opts,
   );

@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { registerHandler } from "@seamless-auth/core/handlers/register";
-import { buildCookieSigner, setSessionCookie } from "../internal/cookie";
+import { respond } from "../internal/respond";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import {
   buildInternalServiceAuthorization,
@@ -14,8 +14,6 @@ export async function register(
   res: Response,
   opts: SeamlessAuthServerOptions,
 ) {
-  const cookieSigner = buildCookieSigner(opts);
-
   const result = await registerHandler(
     { body: req.body },
     {
@@ -30,26 +28,11 @@ export async function register(
     },
   );
 
-  if (result.setCookies) {
-    for (const c of result.setCookies) {
-      setSessionCookie(
-        res,
-        {
-          name: c.name,
-          payload: c.value,
-          domain: c.domain ?? opts.cookieDomain,
-          ttlSeconds: c.ttl,
-        },
-        cookieSigner,
-      );
-    }
-  }
-
   if (result.errorBody) {
-    return res.status(result.status).json(result.errorBody);
+    return respond(res, result, opts);
   }
 
   const body = await applyExternalDelivery(opts.messaging, result.body);
 
-  res.status(result.status).json(body).end();
+  respond(res, { ...result, body }, opts);
 }

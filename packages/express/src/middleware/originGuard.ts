@@ -1,6 +1,9 @@
 import { NextFunction, Request, Response } from "express";
 
-import { CookieSameSite, resolveCookieSameSite } from "../internal/cookie";
+import {
+  resolveCookieSameSite,
+  type CookieSameSite,
+} from "@seamless-auth/core";
 
 export interface OriginGuardOptions {
   cookieSecure?: boolean;
@@ -74,9 +77,7 @@ function reject(res: Response): void {
   res.status(403).json({ error: "cross_site_request_blocked" });
 }
 
-function firstHeader(
-  value: string | string[] | undefined,
-): string | undefined {
+function firstHeader(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 

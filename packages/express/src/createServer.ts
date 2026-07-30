@@ -3,7 +3,7 @@ import cookieParser from "cookie-parser";
 
 import { createEnsureCookiesMiddleware } from "./middleware/ensureCookies";
 import { createOriginGuardMiddleware } from "./middleware/originGuard";
-import type { CookieSameSite } from "./internal/cookie";
+import type { CookieSameSite } from "@seamless-auth/core";
 import type { SeamlessAuthMessagingOptions } from "@seamless-auth/core";
 
 import { login } from "./handlers/login";

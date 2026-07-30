@@ -10,7 +10,7 @@ import {
   buildServiceAuthorization,
 } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
-import { failureResponse } from "../internal/failureResponse";
+import { respond } from "../internal/respond";
 import { SeamlessAuthServerOptions } from "../createServer";
 
 export async function getAvailableRoles(
@@ -27,11 +27,7 @@ export async function getAvailableRoles(
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
   });
 
-  if (result.errorCode) {
-    return res.status(result.status).json(failureResponse(result));
-  }
-
-  res.status(result.status).json(result.body);
+  respond(res, result, opts);
 }
 
 export async function getSystemConfigAdmin(
@@ -48,11 +44,7 @@ export async function getSystemConfigAdmin(
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
   });
 
-  if (result.errorCode) {
-    return res.status(result.status).json(failureResponse(result));
-  }
-
-  res.status(result.status).json(result.body);
+  respond(res, result, opts);
 }
 
 export async function updateSystemConfig(
@@ -70,9 +62,5 @@ export async function updateSystemConfig(
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
   });
 
-  if (result.errorCode) {
-    return res.status(result.status).json(failureResponse(result));
-  }
-
-  res.status(result.status).json(result.body);
+  respond(res, result, opts);
 }

@@ -10,14 +10,11 @@ import {
   buildServiceAuthorization,
 } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
-import { failureResponse } from "../internal/failureResponse";
+import { respond } from "../internal/respond";
 import { SeamlessAuthServerOptions } from "../createServer";
 
-function handle(res: Response, result: any) {
-  if (result.errorCode) {
-    return res.status(result.status).json(failureResponse(result));
-  }
-  return res.status(result.status).json(result.body);
+function handle(res: Response, result: any, opts: SeamlessAuthServerOptions) {
+  respond(res, result, opts);
 }
 
 export async function listSessions(
@@ -34,7 +31,7 @@ export async function listSessions(
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
   });
 
-  return handle(res, result);
+  return handle(res, result, opts);
 }
 
 export async function revokeSession(
@@ -51,7 +48,7 @@ export async function revokeSession(
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
   });
 
-  return handle(res, result);
+  return handle(res, result, opts);
 }
 
 export async function revokeAllSessions(
@@ -68,5 +65,5 @@ export async function revokeAllSessions(
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
   });
 
-  return handle(res, result);
+  return handle(res, result, opts);
 }
