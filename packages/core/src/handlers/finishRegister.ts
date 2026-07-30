@@ -1,4 +1,5 @@
 import { authFetch } from "../authFetch.js";
+import { readPassthroughFailure } from "../upstreamError.js";
 import type { ResultFailure } from "../result.js";
 import type { CookiePayload } from "../ensureCookies.js";
 import { verifySignedAuthResponse } from "../verifySignedAuthResponse.js";
@@ -47,7 +48,7 @@ export async function finishRegisterHandler(
   if (!up.ok) {
     return {
       status: up.status,
-      errorBody: data,
+      ...readPassthroughFailure(data),
     };
   }
 
@@ -65,8 +66,7 @@ export async function finishRegisterHandler(
     throw new Error("Signature mismatch with data payload");
   }
 
-  const sessionId =
-    typeof verified.sid === "string" ? verified.sid : undefined;
+  const sessionId = typeof verified.sid === "string" ? verified.sid : undefined;
 
   return {
     status: 204,

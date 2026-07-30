@@ -1,4 +1,5 @@
 import { authFetch } from "../authFetch.js";
+import { readPassthroughFailure } from "../upstreamError.js";
 import type { ResultFailure } from "../result.js";
 import type { CookiePayload } from "../ensureCookies.js";
 import { verifySignedAuthResponse } from "../verifySignedAuthResponse.js";
@@ -40,7 +41,7 @@ export async function listOAuthProvidersHandler(
 
   return {
     status: up.status,
-    ...(up.ok ? { body: data } : { errorBody: data }),
+    ...(up.ok ? { body: data } : readPassthroughFailure(data)),
   };
 }
 
@@ -62,7 +63,7 @@ export async function startOAuthLoginHandler(
 
   return {
     status: up.status,
-    ...(up.ok ? { body: data } : { errorBody: data }),
+    ...(up.ok ? { body: data } : readPassthroughFailure(data)),
   };
 }
 
@@ -85,7 +86,7 @@ export async function finishOAuthLoginHandler(
   if (!up.ok) {
     return {
       status: up.status,
-      errorBody: data,
+      ...readPassthroughFailure(data),
     };
   }
 

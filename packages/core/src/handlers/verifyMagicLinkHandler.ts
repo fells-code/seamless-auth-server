@@ -1,4 +1,5 @@
 import { authFetch } from "../authFetch.js";
+import { readPassthroughFailure } from "../upstreamError.js";
 import type { ResultFailure } from "../result.js";
 
 export interface VerifyMagicLinkInput {
@@ -34,7 +35,7 @@ export async function verifyMagicLinkHandler(
   if (!up.ok) {
     return {
       status: up.status,
-      errorBody: data,
+      ...readPassthroughFailure(data),
     };
   }
 

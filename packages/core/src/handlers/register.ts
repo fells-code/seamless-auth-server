@@ -1,4 +1,5 @@
 import { authFetch } from "../authFetch.js";
+import { readPassthroughFailure } from "../upstreamError.js";
 import { EXTERNAL_DELIVERY_HEADERS } from "../apiContract.js";
 import type { ResultFailure } from "../result.js";
 import type { CookiePayload } from "../ensureCookies.js";
@@ -48,7 +49,7 @@ export async function registerHandler(
   if (!up.ok) {
     return {
       status: up.status,
-      errorBody: data,
+      ...readPassthroughFailure(data),
     };
   }
 
