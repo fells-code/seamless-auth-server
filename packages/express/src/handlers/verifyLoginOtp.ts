@@ -3,7 +3,7 @@ import {
   verifyLoginOtpHandler,
   verifyRegistrationOtpHandler,
 } from "@seamless-auth/core/handlers/verifyLoginOtpHandler";
-import { buildCookieSigner, setSessionCookie } from "../internal/cookie";
+import { respond } from "../internal/respond";
 import {
   buildProxyServiceAuthorization,
   buildServiceAuthorization,
@@ -18,8 +18,6 @@ async function verifyOtp(
   kind: "email" | "phone",
   flow: "login" | "register",
 ) {
-  const cookieSigner = buildCookieSigner(opts);
-
   const handler =
     flow === "register" ? verifyRegistrationOtpHandler : verifyLoginOtpHandler;
 
@@ -40,26 +38,7 @@ async function verifyOtp(
     },
   );
 
-  if (result.setCookies) {
-    for (const c of result.setCookies) {
-      setSessionCookie(
-        res,
-        {
-          name: c.name,
-          payload: c.value,
-          domain: c.domain,
-          ttlSeconds: c.ttl,
-        },
-        cookieSigner,
-      );
-    }
-  }
-
-  if (result.errorBody) {
-    return res.status(result.status).json(result.errorBody);
-  }
-
-  return res.status(result.status).json(result.body);
+  respond(res, result, opts);
 }
 
 export function verifyLoginOtp(

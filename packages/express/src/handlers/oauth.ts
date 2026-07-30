@@ -7,7 +7,7 @@ import {
 import { SeamlessAuthServerOptions } from "../createServer";
 import { buildProxyServiceAuthorization } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
-import { buildCookieSigner, setSessionCookie } from "../internal/cookie";
+import { respond } from "../internal/respond";
 
 function routeParam(req: Request, name: string): string {
   const value = req.params[name];
@@ -23,11 +23,7 @@ export async function listOAuthProviders(
     authServerUrl: opts.authServerUrl,
   });
 
-  if ("errorBody" in result) {
-    return res.status(result.status).json(result.errorBody);
-  }
-
-  return res.status(result.status).json(result.body);
+  respond(res, result, opts);
 }
 
 export async function startOAuthLogin(
@@ -47,11 +43,7 @@ export async function startOAuthLogin(
     },
   );
 
-  if ("errorBody" in result) {
-    return res.status(result.status).json(result.errorBody);
-  }
-
-  return res.status(result.status).json(result.body);
+  respond(res, result, opts);
 }
 
 export async function finishOAuthLogin(
@@ -59,8 +51,6 @@ export async function finishOAuthLogin(
   res: Response,
   opts: SeamlessAuthServerOptions,
 ) {
-  const cookieSigner = buildCookieSigner(opts);
-
   const result = await finishOAuthLoginHandler(
     {
       providerId: routeParam(req, "providerId"),
@@ -77,24 +67,5 @@ export async function finishOAuthLogin(
     },
   );
 
-  if (result.setCookies) {
-    for (const c of result.setCookies) {
-      setSessionCookie(
-        res,
-        {
-          name: c.name,
-          payload: c.value,
-          domain: c.domain,
-          ttlSeconds: c.ttl,
-        },
-        cookieSigner,
-      );
-    }
-  }
-
-  if (result.errorBody) {
-    return res.status(result.status).json(result.errorBody);
-  }
-
-  return res.status(result.status).json(result.body);
+  respond(res, result, opts);
 }

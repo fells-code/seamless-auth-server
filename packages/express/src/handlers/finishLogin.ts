@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { finishLoginHandler } from "@seamless-auth/core/handlers/finishLogin";
-import { buildCookieSigner, setSessionCookie } from "../internal/cookie";
+import { respond } from "../internal/respond";
 import {
   buildProxyServiceAuthorization,
   buildServiceAuthorization,
@@ -13,8 +13,6 @@ export async function finishLogin(
   res: Response,
   opts: SeamlessAuthServerOptions,
 ) {
-  const cookieSigner = buildCookieSigner(opts);
-
   const authorization = buildServiceAuthorization(req, opts);
 
   const result = await finishLoginHandler(
@@ -33,24 +31,5 @@ export async function finishLogin(
     },
   );
 
-  if (result.setCookies) {
-    for (const c of result.setCookies) {
-      setSessionCookie(
-        res,
-        {
-          name: c.name,
-          payload: c.value,
-          domain: c.domain,
-          ttlSeconds: c.ttl,
-        },
-        cookieSigner,
-      );
-    }
-  }
-
-  if (result.errorBody) {
-    return res.status(result.status).json(result.errorBody);
-  }
-
-  res.status(result.status).json(result.body);
+  respond(res, result, opts);
 }

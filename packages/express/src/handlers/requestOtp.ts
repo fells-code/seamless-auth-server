@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { respond } from "../internal/respond";
 import { requestOtpHandler } from "@seamless-auth/core/handlers/requestOtpHandler";
 import {
   buildInternalServiceAuthorization,
@@ -33,10 +34,10 @@ export async function requestOtp(
   );
 
   if (result.errorBody) {
-    return res.status(result.status).json(result.errorBody);
+    return respond(res, result, opts);
   }
 
   const body = await applyExternalDelivery(opts.messaging, result.body);
 
-  return res.status(result.status).json(body);
+  respond(res, { ...result, body }, opts);
 }

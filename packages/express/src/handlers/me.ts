@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { meHandler } from "@seamless-auth/core/handlers/me";
-import { buildCookieSigner, clearSessionCookie } from "../internal/cookie";
+import { respond } from "../internal/respond";
 import {
   buildProxyServiceAuthorization,
   buildServiceAuthorization,
@@ -22,16 +22,5 @@ export async function me(
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
   });
 
-  if (result.clearCookies) {
-    const signer = buildCookieSigner(opts);
-    for (const name of result.clearCookies) {
-      clearSessionCookie(res, signer, opts.cookieDomain || "", name);
-    }
-  }
-
-  if (result.errorCode) {
-    return res.status(result.status).json({ error: result.errorCode });
-  }
-
-  res.status(result.status).json(result.body);
+  respond(res, result, opts);
 }

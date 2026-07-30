@@ -6,13 +6,8 @@ import {
   ClientIpResolver,
 } from "../internal/buildForwardedClientIp";
 import { assertSecrets } from "../internal/validateSecrets";
-import {
-  buildCookieSigner,
-  clearAllCookies,
-  setSessionCookie,
-  CookieSameSite,
-  CookieSignerOptions,
-} from "../internal/cookie";
+import { applyCookies, type CookieSameSite } from "@seamless-auth/core";
+import { expressResponseAdapter } from "../internal/respond";
 
 export interface EnsureCookiesMiddlewareOptions {
   authServerUrl: string;
@@ -36,8 +31,6 @@ export function createEnsureCookiesMiddleware(
   opts: EnsureCookiesMiddlewareOptions,
 ) {
   assertSecrets(opts);
-
-  const cookieSigner = buildCookieSigner(opts);
 
   return async function ensureCookiesMiddleware(
     req: Request,
@@ -65,42 +58,19 @@ export function createEnsureCookiesMiddleware(
       },
     );
 
-    applyResult(res, req, result, opts, cookieSigner);
+    applyMiddlewareResult(res, req, result, opts);
     if (result.type === "error") return;
     next();
   };
 }
 
-function applyResult(
+function applyMiddlewareResult(
   res: Response,
   req: any,
   result: EnsureCookiesResult,
   opts: EnsureCookiesMiddlewareOptions,
-  cookieSigner: CookieSignerOptions,
 ) {
-  if (result.clearCookies?.length) {
-    clearAllCookies(
-      res,
-      cookieSigner,
-      opts.cookieDomain,
-      ...result.clearCookies,
-    );
-  }
-
-  if (result.setCookies) {
-    for (const c of result.setCookies) {
-      setSessionCookie(
-        res,
-        {
-          name: c.name,
-          payload: c.value,
-          domain: c.domain,
-          ttlSeconds: c.ttl,
-        },
-        cookieSigner,
-      );
-    }
-  }
+  applyCookies(result, expressResponseAdapter(res), opts);
 
   if (result.user) {
     req.cookiePayload = result.user;
