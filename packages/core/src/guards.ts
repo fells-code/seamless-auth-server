@@ -1,22 +1,19 @@
+import type { SeamlessAuthUser } from "@seamless-auth/types";
+
 import { resolveCookieSameSite, type CookieSameSite } from "./applyResult.js";
 import { hasScopedRole } from "@seamless-auth/types/role/matching";
 import { assertSecretStrength } from "./validateSecrets.js";
 import { verifyCookieJwt } from "./verifyCookieJwt.js";
 
 /**
- * The session a verified access cookie describes. Distinct from `SeamlessUser`,
- * which is the hydrated profile fetched from the auth API: this one is only
- * what the cookie itself carries.
+ * The session a verified access cookie describes: the access token's claims as
+ * a resource server reads them off a request. Distinct from `MeUser`, which is
+ * the hydrated profile fetched from the auth API.
+ *
+ * A type-only re-export, so it costs nothing at runtime: the import is erased at
+ * compile time and neither zod nor the schema barrel enters the module graph.
  */
-export interface SeamlessAuthUser {
-  id: string;
-  roles: string[];
-  email?: string;
-  phone?: string | null;
-  iat?: number;
-  exp?: number;
-  token?: string;
-}
+export type { SeamlessAuthUser } from "@seamless-auth/types";
 
 /**
  * A guard's decision to refuse a request. Adapters render it as
