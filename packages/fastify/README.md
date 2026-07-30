@@ -90,6 +90,41 @@ await app.register(seamlessAuth, {
 Delivery payloads carry one-time codes and links. They are stripped from the
 response before it reaches the browser.
 
+## Serving the admin console
+
+`seamlessConsoleProxy` reverse-proxies the Seamless admin dashboard, so the
+console loads from your own origin instead of a second one:
+
+```ts
+import seamlessAuth, { seamlessConsoleProxy } from "@seamless-auth/fastify";
+
+await app.register(seamlessAuth, { prefix: "/auth", ...options });
+
+await app.register(seamlessConsoleProxy, {
+  prefix: "/console",
+  authServerUrl: process.env.AUTH_SERVER_URL!,
+});
+```
+
+Register it at the top-level `/console` prefix the dashboard is built against,
+as a sibling of the auth prefix. The console then talks to the cookie-based
+`/auth/*` endpoints on the same origin, with no cross-site request in the way.
+
+Only `GET` and `HEAD` are proxied, and nothing from the incoming request is
+forwarded but the method and the path: the console is public static hosting, and
+the browser's session cookies have no business at the auth API. Requests that
+resolve outside the console subtree are refused with a 400 and never reach the
+upstream. `content-type`, `cache-control`, `etag`, and `last-modified` come back
+from the upstream unchanged, so the dashboard's own caching still applies.
+
+| Option | Default | Purpose |
+| --- | --- | --- |
+| `authServerUrl` | required | Base URL of your Seamless Auth instance |
+| `basePath` | `/console` | Subtree requested upstream |
+
+Unknown paths under the prefix are forwarded too, which is what makes deep links
+into the dashboard work: the upstream answers them with the SPA shell.
+
 ## Options
 
 | Option | Default | Purpose |
@@ -124,12 +159,12 @@ caller chose. Set `trustProxy` to an explicit hop count or subnet, or pass
 Both adapters serve the same routes and issue the same cookies. A parity suite
 runs the same requests through both against the same mocked auth API and asserts
 the status, body, and every `Set-Cookie` header match, so the two cannot drift.
+The console proxy is covered by the same suite.
 
-## Not included
-
-`createSeamlessConsoleProxy` from the Express adapter, which proxies the admin
-console's static assets, has no Fastify equivalent yet. It is a separate concern
-from the auth routes.
+The Express adapter exposes the console proxy as
+`createSeamlessConsoleProxy(options)`, a router you mount. Here it is a plugin
+you register under a prefix, so the mount path comes from Fastify rather than
+from the options.
 
 ## License
 
