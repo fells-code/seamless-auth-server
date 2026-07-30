@@ -51,6 +51,7 @@ import {
 } from "./internal/buildForwardedClientIp";
 import {
   getAvailableRoles,
+  getPublicSystemConfig,
   getSystemConfigAdmin,
   updateSystemConfig,
 } from "./handlers/systemConfig";
@@ -472,6 +473,11 @@ export function createSeamlessAuthServer(
   r.get("/magic-link/check", (req, res) =>
     pollMagicLinkConfirmation(req, res, resolvedOpts),
   );
+  // Public: the sign-in screens read this before there is a session.
+  r.get("/system-config/public", (req, res) =>
+    getPublicSystemConfig(req, res, resolvedOpts),
+  );
+
   r.get("/system-config/roles", (req, res) =>
     getAvailableRoles(req, res, resolvedOpts),
   );
