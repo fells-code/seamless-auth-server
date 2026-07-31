@@ -271,3 +271,60 @@ describe("signSessionCookie", () => {
     expect(decoded.exp - decoded.iat).toBe(300);
   });
 });
+
+// The auth API's registration response has sent `ttl` as the string "300".
+// Handler results declare it a number, but they fill it from a parsed JSON body,
+// so nothing caught it. Express hid it by multiplying into milliseconds, which
+// coerces; Fastify passed it to `cookie`, whose Number.isInteger check threw and
+// failed the request. Normalizing here is what stops the two disagreeing.
+describe("cookie ttl arriving from an untyped upstream body", () => {
+  const setCookie = (ttl) => {
+    const adapter = recorder();
+
+    applyCookies(
+      { setCookies: [{ name: "seamless-ephemeral", value: { sub: "u1" }, ttl }] },
+      adapter,
+      { cookieSecret: SECRET },
+    );
+
+    return adapter.calls.set[0];
+  };
+
+  it("treats a numeric string exactly like the number", () => {
+    const fromString = setCookie("300");
+    const fromNumber = setCookie(300);
+
+    expect(fromString.maxAgeSeconds).toBe(300);
+    expect(fromString.maxAgeSeconds).toBe(fromNumber.maxAgeSeconds);
+  });
+
+  it("emits a maxAge the cookie library will accept", () => {
+    expect(Number.isInteger(setCookie("300").maxAgeSeconds)).toBe(true);
+  });
+
+  it("dates the expiry from the parsed seconds", () => {
+    const before = Date.now();
+    const { expires } = setCookie("300");
+
+    expect(expires.getTime()).toBeGreaterThanOrEqual(before + 300 * 1000);
+    expect(expires.getTime()).toBeLessThan(before + 301 * 1000);
+  });
+
+  it("signs the cookie for the same lifetime either way", () => {
+    const decoded = jwt.verify(setCookie("300").value, SECRET);
+
+    expect(decoded.exp - decoded.iat).toBe(300);
+  });
+
+  it.each([
+    ["a non-numeric string", "15m"],
+    ["an empty string", ""],
+    ["a fraction", 300.5],
+    ["zero", 0],
+    ["a negative", -300],
+    ["null", null],
+    ["undefined", undefined],
+  ])("refuses %s rather than issuing a cookie nobody can vouch for", (_l, ttl) => {
+    expect(() => setCookie(ttl)).toThrow(/unusable cookie ttl/);
+  });
+});

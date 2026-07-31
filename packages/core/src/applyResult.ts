@@ -106,6 +106,34 @@ export function signSessionCookie(
   });
 }
 
+/**
+ * Normalizes a cookie lifetime arriving from upstream.
+ *
+ * Handler results declare `ttl` as a number, but they populate it from a parsed
+ * JSON body, which is untyped. When the value arrives as a numeric string the
+ * declaration is simply wrong, and the two adapters then disagree: Express
+ * multiplies it into milliseconds, which coerces it to a number and hides the
+ * problem, while Fastify passes it through to `cookie`, whose `Number.isInteger`
+ * check rejects it and fails the request. That is the difference between an
+ * adapter working and an adapter throwing on the same upstream response, so it
+ * is settled here rather than in either one.
+ *
+ * Anything that is not a positive whole number of seconds throws. A cookie is
+ * the session, and emitting one with a lifetime nobody can vouch for is worse
+ * than refusing the response.
+ */
+function toTtlSeconds(ttl: unknown): number {
+  const seconds = typeof ttl === "string" ? Number(ttl) : ttl;
+
+  if (typeof seconds !== "number" || !Number.isInteger(seconds) || seconds <= 0) {
+    throw new Error(
+      `Upstream returned an unusable cookie ttl: ${JSON.stringify(ttl)}`,
+    );
+  }
+
+  return seconds;
+}
+
 function requireSecret(opts: CookieSecurityOptions): string {
   if (!opts.cookieSecret) {
     throw new Error("Missing cookieSecret");
@@ -150,12 +178,14 @@ export function applyCookies(
     const now = Date.now();
 
     for (const cookie of result.setCookies) {
+      const ttlSeconds = toTtlSeconds(cookie.ttl);
+
       adapter.setCookie({
         name: cookie.name,
-        value: signSessionCookie(cookie.value, secret, cookie.ttl),
+        value: signSessionCookie(cookie.value, secret, ttlSeconds),
         domain: cookie.domain,
-        maxAgeSeconds: cookie.ttl,
-        expires: new Date(now + cookie.ttl * 1000),
+        maxAgeSeconds: ttlSeconds,
+        expires: new Date(now + ttlSeconds * 1000),
         httpOnly: true,
         secure,
         sameSite,

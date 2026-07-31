@@ -306,6 +306,35 @@ describe("fastify and express adapters agree", () => {
     );
   });
 
+  // The auth API's registration response sends `ttl` as the string "300". Every
+  // scenario in this file hand-writes a number, so the suite agreed on input the
+  // real upstream does not send: Express coerced the string by multiplying into
+  // milliseconds, Fastify handed it to `cookie` and got a TypeError, and
+  // registration failed on Fastify only.
+  it("issues identical session cookies when upstream sends ttl as a string", async () => {
+    const scenario = {
+      method: "post",
+      path: "/registration/register",
+      payload: { email: "user@example.com" },
+    };
+    const upstreamResponse = upstream(200, {
+      message: "Registration started",
+      sub: "user-123",
+      token: "registration-token",
+      ttl: "300",
+    });
+
+    const { fastify, express: expressResult } = await bothAdapters(
+      scenario,
+      upstreamResponse,
+    );
+
+    expect(fastify.status).toBe(200);
+    expect(fastify.status).toBe(expressResult.status);
+    expect(fastify.cookies).toEqual(expressResult.cookies);
+    expect(fastify.cookies.length).toBeGreaterThan(0);
+  });
+
   it.each([
     ["default policy", {}],
     ["insecure dev", { cookieSecure: false }],
