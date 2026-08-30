@@ -309,10 +309,14 @@ export async function ensureCookies(
       opts,
     );
 
+    // 401, not 400: the request is well formed, there is simply nobody signed
+    // in. Answering 400 made every signed-out page view look like a malformed
+    // request in the adopter's logs, and left consumers unable to tell "sign in
+    // again" from "that request was not understood".
     if (!refreshed) {
       return {
         type: "error",
-        status: 400,
+        status: 401,
         errorCode: `Missing required cookie "${cookieName}"`,
       };
     }
