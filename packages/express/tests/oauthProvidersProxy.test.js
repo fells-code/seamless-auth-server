@@ -154,9 +154,9 @@ describe("oauth provider admin proxy routes", () => {
     );
 
     // ensureCookies gates access-required routes before the handler: with no
-    // access or refresh cookie present it returns a 400 "missing cookie" rather
-    // than forwarding upstream.
-    expect(res.status).toBe(400);
+    // access or refresh cookie present it answers 401 rather than forwarding
+    // upstream.
+    expect(res.status).toBe(401);
     expect(global.fetch).not.toHaveBeenCalled();
   });
 });

@@ -67,7 +67,9 @@ describe("ensureCookies", () => {
     });
   });
 
-  it("returns error when required cookie missing and no refresh cookie", async () => {
+  // Nobody is signed in, which is 401. The request itself is perfectly well
+  // formed, so 400 both misreported it and buried real 400s in adopter logs.
+  it("answers 401 when required cookie missing and no refresh cookie", async () => {
     const { ensureCookies } = await import("../dist/ensureCookies.js");
 
     const result = await ensureCookies(
@@ -79,7 +81,35 @@ describe("ensureCookies", () => {
     );
 
     expect(result.type).toBe("error");
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(401);
+    expect(result.errorCode).toBe('Missing required cookie "access"');
+  });
+
+  it("answers 401 for a pre-auth route reached with no cookies", async () => {
+    const { ensureCookies } = await import("../dist/ensureCookies.js");
+
+    const result = await ensureCookies(
+      { path: "/webAuthn/login/start", cookies: {} },
+      BASE_OPTS,
+    );
+
+    expect(result.status).toBe(401);
+  });
+
+  // The neighbouring signed-out branches already answered 401. This pins that
+  // all three now agree, so the status no longer depends on which way the
+  // session happened to be absent.
+  it("answers 401 when the refresh cookie is present but refreshing fails", async () => {
+    const { ensureCookies } = await import("../dist/ensureCookies.js");
+
+    refreshAccessTokenMock.mockResolvedValue(null);
+
+    const result = await ensureCookies(
+      { path: "/users/me", cookies: { refresh: "refresh.jwt" } },
+      BASE_OPTS,
+    );
+
+    expect(result.status).toBe(401);
   });
 
   it("refreshes session when required cookie missing but refresh cookie exists", async () => {
