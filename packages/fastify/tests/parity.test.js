@@ -263,6 +263,35 @@ describe("fastify and express adapters agree", () => {
     expect(fastify.cookies).toEqual(expressResult.cookies);
   });
 
+  // The parity case above proves the two adapters agree on this, not what they
+  // agree on, so it passed just as happily when both answered 400. The status
+  // itself is the contract a consumer reads to tell "sign in again" from "that
+  // request was not understood", so it is pinned here by value.
+  it.each([
+    ["access-gated", { method: "get", path: "/organizations" }],
+    [
+      "pre-auth gated",
+      { method: "post", path: "/webAuthn/login/start", payload: {} },
+    ],
+  ])("answers 401 on a %s route with no session, and asks upstream nothing", async (
+    _label,
+    scenario,
+  ) => {
+    const upstreamResponse = upstream(200, {});
+
+    global.fetch = jest.fn(async () => upstreamResponse);
+    const fastifyResult = await viaFastify(scenario);
+    const fastifyCalls = global.fetch.mock.calls.length;
+
+    global.fetch = jest.fn(async () => upstreamResponse);
+    const expressResult = await viaExpress(scenario);
+
+    expect(fastifyResult.status).toBe(401);
+    expect(expressResult.status).toBe(401);
+    expect(fastifyCalls).toBe(0);
+    expect(global.fetch.mock.calls.length).toBe(0);
+  });
+
   // The sign-in screens call this with no session at all. Forwarding an identity
   // would be pointless on a route upstream serves publicly, and it would put a
   // stale cookie in the path of the one call a signed-out client has to make.
