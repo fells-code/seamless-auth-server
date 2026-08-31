@@ -639,3 +639,52 @@ describe("fastify and express console proxies agree", () => {
     expect(expressResult.status).toBeGreaterThanOrEqual(400);
   });
 });
+
+// A browser sends the magic link destination in the body; the auth API wants it as a
+// query parameter on a GET. Asserted on both adapters because each reads its own
+// request body, so only the forwarding underneath them is shared.
+describe("both adapters forward a magic link destination", () => {
+  const originalFetch = global.fetch;
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  async function upstreamUrl(run, payload) {
+    let requested;
+
+    global.fetch = jest.fn(async (url) => {
+      requested = String(url);
+      return upstream(200, { message: "sent" });
+    });
+
+    await run({
+      method: "post",
+      path: "/magic-link",
+      cookie: preAuthCookie(),
+      payload,
+    });
+
+    return requested;
+  }
+
+  it("sends a requested target as a query parameter", async () => {
+    const payload = { redirectUri: "https://app.example.com/magic" };
+
+    const viaF = await upstreamUrl(viaFastify, payload);
+    const viaE = await upstreamUrl(viaExpress, payload);
+
+    expect(viaF).toBe(viaE);
+    expect(new URL(viaF).searchParams.get("redirectUri")).toBe(
+      "https://app.example.com/magic",
+    );
+  });
+
+  it("asks for the tenant default when no target is given", async () => {
+    const viaF = await upstreamUrl(viaFastify, {});
+    const viaE = await upstreamUrl(viaExpress, {});
+
+    expect(viaF).toBe(viaE);
+    expect(viaF).toBe("https://auth.example.com/magic-link");
+  });
+});
