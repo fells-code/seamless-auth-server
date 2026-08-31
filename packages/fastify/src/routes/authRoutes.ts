@@ -235,8 +235,13 @@ export function registerAuthRoutes(
   });
 
   fastify.post("/magic-link", async (req, reply) => {
+    const { redirectUri } = (req.body ?? {}) as { redirectUri?: unknown };
+
     const result = await requestMagicLinkHandler(
-      { authorization: buildServiceAuthorization(req) },
+      {
+        authorization: buildServiceAuthorization(req),
+        redirectUri: typeof redirectUri === "string" ? redirectUri : undefined,
+      },
       {
         ...common(req),
         externalDelivery: Boolean(opts.messaging),

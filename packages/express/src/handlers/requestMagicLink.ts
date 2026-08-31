@@ -15,9 +15,12 @@ export async function requestMagicLink(
   res: Response,
   opts: SeamlessAuthServerOptions,
 ) {
+  const { redirectUri } = (req.body ?? {}) as { redirectUri?: unknown };
+
   const result = await requestMagicLinkHandler(
     {
       authorization: buildServiceAuthorization(req, opts),
+      redirectUri: typeof redirectUri === "string" ? redirectUri : undefined,
     },
     {
       authServerUrl: opts.authServerUrl,
