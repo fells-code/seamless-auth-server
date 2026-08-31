@@ -50,11 +50,11 @@ describe("authFetch", () => {
     );
   });
 
-  it("does not throw when the response body is non-JSON (e.g. a 429)", async () => {
+  it("does not throw when the response body is non-JSON (e.g. a proxy error page)", async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: false,
-      status: 429,
-      text: async () => "Too many requests, please try again later.",
+      status: 502,
+      text: async () => "<html><body>502 Bad Gateway</body></html>",
     });
 
     const { authFetch } = await import("../dist/authFetch.js");
@@ -63,7 +63,7 @@ describe("authFetch", () => {
     });
 
     await expect(res.json()).resolves.toEqual({
-      message: "Too many requests, please try again later.",
+      message: "<html><body>502 Bad Gateway</body></html>",
     });
   });
 

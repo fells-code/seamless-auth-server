@@ -36,11 +36,18 @@ export async function authFetch(
   return makeJsonTolerant(response);
 }
 
-// Upstream responses aren't always JSON: a rate-limited request comes back as plain
-// text ("Too many requests…") and a 204 has no body. Native Response.json() throws on
-// both, which would crash callers that parse the body before checking the status. Make
-// json() tolerant so callers always get a value: parsed JSON, { message: text } for a
+// Upstream responses aren't always JSON, and native Response.json() throws on the ones
+// that aren't, which would crash the 24 call sites that parse a body before checking
+// the status. Make json() tolerant instead: parsed JSON, { message: text } for a
 // non-JSON body, or undefined for an empty one.
+//
+// Two things still reach this. A 204 carries no body, which is what GET
+// /magic-link/check answers while a link is unconfirmed. And the auth API sits behind a
+// load balancer, so a 502 or a gateway timeout arrives as that proxy's HTML error page
+// without the API being involved at all, which no change upstream can prevent.
+//
+// The rate-limited case this used to name is fixed: a 429 has answered the JSON error
+// shape since seamless-auth-api#241. That removed a reason for this shim, not the shim.
 function makeJsonTolerant(response: Response): Response {
   if (typeof response.text !== "function") {
     return response;
