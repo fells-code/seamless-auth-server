@@ -1,5 +1,8 @@
 import { authFetch } from "../authFetch.js";
-import { issueSessionCookies } from "../upstreamSession.js";
+import {
+  issueSessionCookies,
+  withoutSessionMaterial,
+} from "../upstreamSession.js";
 import { readPassthroughFailure } from "../upstreamError.js";
 import type { ResultFailure } from "../result.js";
 import type { CookiePayload } from "../ensureCookies.js";
@@ -67,7 +70,7 @@ async function verifyOtp(
 
   return {
     status: up.status,
-    body: data,
+    body: withoutSessionMaterial(data),
     setCookies: await issueSessionCookies(data, {
       authServerUrl: opts.authServerUrl,
       audience: opts.audience,
