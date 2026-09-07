@@ -1,5 +1,87 @@
 # @seamless-auth/core
 
+## 0.13.0
+
+### Minor Changes
+
+- 3d64c6b: Answer 401, not 400, when nobody is signed in.
+
+  `ensureCookies` gates every access-required route. When the required cookie was
+  absent and there was no refresh cookie to fall back on, which is exactly the
+  signed-out case, it answered `400`. The request was perfectly well formed. There
+  was simply no session, and that is what `401` means.
+
+  This is a behaviour change for adopters. Anything branching on `400` from an
+  `/auth` route to detect a malformed request will now see `401` for a signed-out
+  visitor instead.
+
+  Two things went wrong with the old status. Every signed-out page view produced
+  `400`s, so `400` became ordinary background traffic in adopter logs and would
+  hide a real malformed request from anyone watching. And consumers translate
+  status codes into words for readers: `400` asks a product to say "that request
+  did not come through in a form we could use" when the true sentence is "you have
+  been signed out, sign in again".
+
+  The neighbouring branches in the same function already answered `401` for a
+  refresh that failed and for a cookie that was invalid or expired, so this branch
+  was the outlier rather than the convention. All three now agree, and the status
+  no longer depends on which way the session happened to be absent. The response
+  body is unchanged.
+
+- e24dd78: Stop repeating the session credentials in the body of the response that sets them as
+  cookies.
+
+  Five handlers that issue session cookies returned the upstream body unchanged, and that body
+  carries the access token and the refresh token, because it is the same body
+  `issueSessionCookies` reads them out of to build the cookies. So every completed sign-in
+  answered with `Set-Cookie: httpOnly` and then handed the same two values to the caller as
+  JSON.
+
+  The `httpOnly` flag exists to keep those tokens out of reach of page scripts. A response body
+  is not: it is readable by anything that can see the response, and it reaches places a cookie
+  does not, including a devtools or HAR export shared while debugging, a service worker, a
+  browser extension with request access, an APM tool that records payloads, and a proxy
+  configured to log bodies. The refresh token is the durable session credential, so it is the
+  half that matters.
+
+  `finishRegisterHandler` already had this right, answering `204` with no body at all. The five
+  that did not are `finishLoginHandler`, `verifyLoginOtpHandler`, `finishOAuthLoginHandler`,
+  `pollMagicLinkConfirmationHandler` and `switchOrganizationHandler`.
+
+  Only `token` and `refreshToken` are removed, by one exported helper rather than five copies,
+  so the handlers cannot drift apart on it again. Everything callers actually read survives:
+  `message`, `sub`, `email`, `roles`, `phone`, `organizationId`, `ttl`, `refreshTtl` and
+  `returnTo`. The cookies are unchanged, so sessions work exactly as before.
+
+  Nothing in `@seamless-auth/react` reads either field off a response, and its result types
+  already declare them absent, with the comment that sessions are carried by cookies so
+  adopters have no reason to handle raw tokens. An adopter reading `token` or `refreshToken`
+  directly off one of these responses, against that guidance, no longer can.
+
+- fb5c039: Forward a magic link destination to the auth API.
+
+  `seamless-auth-api` now accepts an optional `redirectUri` on `GET /magic-link`,
+  deciding where the emailed link lands. Until now the adapters called that route with
+  no query, so the feature was reachable only by a backend calling the API directly. A
+  browser or mobile client could not use it, which was most of the point: a tenant with
+  both a web app and a mobile app needs each to receive a link that opens in the right
+  place.
+
+  `RequestMagicLinkInput` gains an optional `redirectUri`, and both adapters read it
+  from the request body of their own `POST /magic-link` and pass it through. Omit it and
+  nothing changes: the upstream URL is exactly what it was, so no adopter has to do
+  anything.
+
+  The adapters forward the value rather than checking it. The auth API validates it
+  against the configured origins and answers `400` if it is not allowed, and an
+  allowlist that lives in two places is one that eventually disagrees with itself. A
+  value that is not a string is dropped rather than coerced, so it cannot turn into a
+  query parameter meaning something the caller did not send.
+
+  Requires an auth API that understands the parameter. Against an older one the
+  parameter is ignored and the link keeps the tenant-wide destination, which is the
+  behaviour adopters have today.
+
 ## 0.12.1
 
 ### Patch Changes
