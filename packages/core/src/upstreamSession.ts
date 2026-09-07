@@ -25,6 +25,26 @@ export interface UpstreamSessionResponse {
   [key: string]: unknown;
 }
 
+/**
+ * The response body minus the credentials the cookies now carry.
+ *
+ * The access and refresh tokens go out as `httpOnly` cookies precisely so that
+ * page scripts cannot read them. Returning the upstream body unchanged handed the
+ * same two values straight back to the caller in the response that set those
+ * cookies, which put them everywhere a body goes and a cookie does not: a devtools
+ * export, a service worker, an APM tool that records payloads, a proxy logging
+ * bodies.
+ *
+ * Everything else survives. Callers read `message`, `email`, `roles`,
+ * `organizationId` and `returnTo` off these responses, so this removes the
+ * credentials rather than the body.
+ */
+export function withoutSessionMaterial<T extends UpstreamSessionResponse>(data: T) {
+  const { token: _token, refreshToken: _refreshToken, ...rest } = data;
+
+  return rest;
+}
+
 export interface VerifiedUpstreamSession {
   /** The `sid` claim, when the access token carries one. */
   sessionId?: string;
