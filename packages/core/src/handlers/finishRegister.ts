@@ -1,8 +1,6 @@
 import { authFetch } from "../authFetch.js";
-import { issueSessionCookies } from "../upstreamSession.js";
 import { readPassthroughFailure } from "../upstreamError.js";
 import type { ResultFailure } from "../result.js";
-import type { CookiePayload } from "../ensureCookies.js";
 
 export interface FinishRegisterInput {
   authorization?: string;
@@ -14,20 +12,10 @@ export interface FinishRegisterInput {
 
 export interface FinishRegisterOptions {
   authServerUrl: string;
-  audience: string;
-  cookieDomain?: string;
-  accessCookieName: string;
-  refreshCookieName: string;
 }
 
 export interface FinishRegisterResult extends ResultFailure {
   status: number;
-  setCookies?: {
-    name: string;
-    value: CookiePayload;
-    ttl: number;
-    domain?: string;
-  }[];
 }
 
 export async function finishRegisterHandler(
@@ -52,14 +40,10 @@ export async function finishRegisterHandler(
     };
   }
 
-  return {
-    status: 204,
-    setCookies: await issueSessionCookies(data, {
-      authServerUrl: opts.authServerUrl,
-      audience: opts.audience,
-      accessCookieName: opts.accessCookieName,
-      refreshCookieName: opts.refreshCookieName,
-      cookieDomain: opts.cookieDomain,
-    }),
-  };
+  // Enrolling a passkey is not a sign-in. This route takes the access cookie,
+  // so the caller already holds a session, and issuing a second one left the
+  // first live and unrevoked while counting against the API's concurrent
+  // session limit, which can evict the user's other devices. The auth API
+  // stopped returning tokens here for the same reason.
+  return { status: 204 };
 }

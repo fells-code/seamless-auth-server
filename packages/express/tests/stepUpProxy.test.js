@@ -189,14 +189,39 @@ describe("step-up proxy routes", () => {
     const res = await request(createApp())
       .get("/auth/webAuthn/register/start")
       .query({ requirePrf: "true" })
-      .set("Cookie", createRegistrationCookie());
+      .set("Cookie", createAccessCookie());
 
     expect(res.status).toBe(200);
     expect(global.fetch).toHaveBeenCalledWith(
       "https://auth.example.com/webAuthn/register/start?requirePrf=true",
       expect.objectContaining({
         method: "GET",
+        headers: expect.objectContaining({
+          Authorization: "Bearer access-token",
+        }),
       }),
     );
+  });
+
+  // The auth API refuses an ephemeral token at enrollment: it mints one for
+  // an account that already exists from an email address alone, so forwarding
+  // it would offer anyone who knew an address a credential on that account.
+  it("refuses passkey registration start on a registration cookie", async () => {
+    const res = await request(createApp())
+      .get("/auth/webAuthn/register/start")
+      .set("Cookie", createRegistrationCookie());
+
+    expect(res.status).toBe(401);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("refuses passkey registration finish on a registration cookie", async () => {
+    const res = await request(createApp())
+      .post("/auth/webAuthn/register/finish")
+      .set("Cookie", createRegistrationCookie())
+      .send({ attestationResponse: {} });
+
+    expect(res.status).toBe(401);
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 });
