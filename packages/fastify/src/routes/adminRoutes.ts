@@ -65,7 +65,11 @@ function param(req: FastifyRequest, name: string): string {
  */
 const ROUTES: Array<["GET" | "POST" | "PATCH" | "DELETE", string, Call]> = [
   // Users
-  ["GET", "/admin/users", (c) => getUsersHandler(c)],
+  [
+    "GET",
+    "/admin/users",
+    (c, r) => getUsersHandler({ ...c, query: r.query as Record<string, unknown> }),
+  ],
   ["POST", "/admin/users", (c, r) => createUserHandler({ ...c, body: r.body })],
   [
     "DELETE",
@@ -160,7 +164,12 @@ const ROUTES: Array<["GET" | "POST" | "PATCH" | "DELETE", string, Call]> = [
         query: r.query as Record<string, unknown>,
       }),
   ],
-  ["GET", "/internal/auth-events/login-stats", (c) => getLoginStatsHandler(c)],
+  [
+    "GET",
+    "/internal/auth-events/login-stats",
+    (c, r) =>
+      getLoginStatsHandler({ ...c, query: r.query as Record<string, unknown> }),
+  ],
   [
     "GET",
     "/internal/auth-events/grouped",

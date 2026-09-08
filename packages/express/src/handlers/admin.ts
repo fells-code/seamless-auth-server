@@ -39,6 +39,7 @@ export const getUsers = async (
       authorization: buildServiceAuthorization(req, opts),
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+      query: req.query,
     }),
     opts,
   );
