@@ -60,12 +60,18 @@ const COOKIE_REQUIREMENTS: Record<
 > = {
   "/webAuthn/login/finish": { name: "preAuthCookieName", required: true },
   "/webAuthn/login/start": { name: "preAuthCookieName", required: true },
+  // Enrollment takes the access cookie, not the registration one. The auth
+  // API refuses an ephemeral token here: it mints one for an account that
+  // already exists from an email address alone, so accepting it let anyone
+  // who knew an address enroll a credential and take the account over.
+  // Signup reaches this point holding a session already, because verifying
+  // the email OTP issues one.
   "/webAuthn/register/start": {
-    name: "registrationCookieName",
+    name: "accessCookieName",
     required: true,
   },
   "/webAuthn/register/finish": {
-    name: "registrationCookieName",
+    name: "accessCookieName",
     required: true,
   },
   "/otp/verify-email-otp": {

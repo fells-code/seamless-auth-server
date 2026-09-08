@@ -307,7 +307,7 @@ export function createSeamlessAuthServer(
 
   r.get(
     "/webAuthn/register/start",
-    proxyWithIdentity("webAuthn/register/start", "preAuth", "GET"),
+    proxyWithIdentity("webAuthn/register/start", "access", "GET"),
   );
   r.post("/webAuthn/register/finish", (req, res) =>
     finishRegister(req, res, resolvedOpts),

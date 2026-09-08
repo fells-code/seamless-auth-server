@@ -22,13 +22,7 @@ export async function finishRegister(
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
     },
-    {
-      authServerUrl: opts.authServerUrl,
-      audience: opts.audience,
-      cookieDomain: opts.cookieDomain,
-      accessCookieName: opts.accessCookieName!,
-      refreshCookieName: opts.refreshCookieName!,
-    },
+    { authServerUrl: opts.authServerUrl },
   );
 
   respond(res, { ...result, body: { message: "success" } }, opts);

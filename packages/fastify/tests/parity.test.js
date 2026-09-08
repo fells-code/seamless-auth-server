@@ -252,6 +252,28 @@ describe("fastify and express adapters agree", () => {
       { method: "get", path: "/system-config/public" },
       upstream(503, { error: "upstream_unavailable" }),
     ],
+    [
+      "passkey enrollment start on an access session",
+      {
+        method: "get",
+        path: "/webAuthn/register/start",
+        cookie: accessCookie(),
+      },
+      upstream(200, { challenge: "challenge" }),
+    ],
+    // Enrollment moved off the pre-auth cookie because the auth API mints
+    // one for an account that already exists from an email address alone.
+    // Both adapters have to refuse it, or the one that does not hands the
+    // account over.
+    [
+      "passkey enrollment start refuses a pre-auth session",
+      {
+        method: "get",
+        path: "/webAuthn/register/start",
+        cookie: preAuthCookie(),
+      },
+      upstream(200, { challenge: "challenge" }),
+    ],
   ])("%s", async (_label, scenario, upstreamResponse) => {
     const { fastify, express: expressResult } = await bothAdapters(
       scenario,
@@ -268,12 +290,27 @@ describe("fastify and express adapters agree", () => {
   // itself is the contract a consumer reads to tell "sign in again" from "that
   // request was not understood", so it is pinned here by value.
   it.each([
-    ["access-gated", { method: "get", path: "/organizations" }],
     [
-      "pre-auth gated",
+      "an access-gated route with no session",
+      { method: "get", path: "/organizations" },
+    ],
+    [
+      "a pre-auth gated route with no session",
       { method: "post", path: "/webAuthn/login/start", payload: {} },
     ],
-  ])("answers 401 on a %s route with no session, and asks upstream nothing", async (
+    [
+      "an enrollment route with no session",
+      { method: "get", path: "/webAuthn/register/start" },
+    ],
+    [
+      "an enrollment route holding only a pre-auth session",
+      {
+        method: "get",
+        path: "/webAuthn/register/start",
+        cookie: preAuthCookie(),
+      },
+    ],
+  ])("answers 401 on %s, and asks upstream nothing", async (
     _label,
     scenario,
   ) => {

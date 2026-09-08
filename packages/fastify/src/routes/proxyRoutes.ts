@@ -30,7 +30,7 @@ export const PROXY_ROUTES: ProxyRouteDefinition[] = [
     method: "GET",
     path: "/webAuthn/register/start",
     upstream: "webAuthn/register/start",
-    identity: "preAuth",
+    identity: "access",
   },
 
   {

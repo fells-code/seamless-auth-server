@@ -120,7 +120,7 @@ export function registerAuthRoutes(
         serviceAuthorization: buildProxyServiceAuthorization(opts),
         forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
       },
-      { authServerUrl: opts.authServerUrl, ...sessionCookies },
+      { authServerUrl: opts.authServerUrl },
     );
 
     respond(reply, { ...result, body: { message: "success" } }, opts);
