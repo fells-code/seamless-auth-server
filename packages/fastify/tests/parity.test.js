@@ -208,6 +208,24 @@ describe("fastify and express adapters agree", () => {
       upstream(403, { error: "forbidden" }),
     ],
     [
+      "admin organization delete success",
+      {
+        method: "delete",
+        path: "/admin/organizations/org-1",
+        cookie: accessCookie(),
+      },
+      upstream(200, { message: "Success" }),
+    ],
+    [
+      "admin organization delete forwards a 404",
+      {
+        method: "delete",
+        path: "/admin/organizations/org-1",
+        cookie: accessCookie(),
+      },
+      upstream(404, { error: "Organization not found" }),
+    ],
+    [
       "proxy without the required session",
       { method: "get", path: "/organizations" },
       upstream(200, {}),
