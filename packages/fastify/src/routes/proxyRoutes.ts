@@ -201,6 +201,12 @@ export const PROXY_ROUTES: ProxyRouteDefinition[] = [
     identity: "access",
   },
   {
+    method: "DELETE",
+    path: "/admin/organizations/:organizationId",
+    upstream: "admin/organizations/:organizationId",
+    identity: "access",
+  },
+  {
     method: "GET",
     path: "/admin/organizations/:organizationId/members",
     upstream: "admin/organizations/:organizationId/members",

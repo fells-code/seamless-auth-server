@@ -594,6 +594,15 @@ export function createSeamlessAuthServer(
       "PATCH",
     ),
   );
+  r.delete(
+    "/admin/organizations/:organizationId",
+    proxyWithIdentity(
+      (req) =>
+        `admin/organizations/${encodeURIComponent(routeParam(req, "organizationId"))}`,
+      "access",
+      "DELETE",
+    ),
+  );
   r.get(
     "/admin/organizations/:organizationId/members",
     proxyWithIdentity(

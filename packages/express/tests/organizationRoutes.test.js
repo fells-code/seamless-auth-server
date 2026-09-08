@@ -88,6 +88,60 @@ describe("organization proxy routes", () => {
     );
   });
 
+  it("proxies the organization list query so paging reaches the API", async () => {
+    global.fetch.mockResolvedValue(
+      createJsonResponse(200, { organizations: [], total: 140 }),
+    );
+
+    const res = await request(createApp())
+      .get("/auth/admin/organizations?limit=25&offset=50&search=acme")
+      .set("Cookie", createAccessCookie());
+
+    expect(res.status).toBe(200);
+
+    const [url] = global.fetch.mock.calls[0];
+    const forwarded = new URL(url);
+    expect(forwarded.pathname).toBe("/admin/organizations");
+    expect(Object.fromEntries(forwarded.searchParams)).toEqual({
+      limit: "25",
+      offset: "50",
+      search: "acme",
+    });
+  });
+
+  it("proxies organization deletion with access identity", async () => {
+    global.fetch.mockResolvedValue(
+      createJsonResponse(200, { message: "Success" }),
+    );
+
+    const res = await request(createApp())
+      .delete("/auth/admin/organizations/org-1")
+      .set("Cookie", createAccessCookie());
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ message: "Success" });
+    expect(global.fetch).toHaveBeenCalledWith(
+      "https://auth.example.com/admin/organizations/org-1",
+      expect.objectContaining({
+        method: "DELETE",
+        headers: expect.objectContaining({
+          Authorization: "Bearer access-token",
+        }),
+      }),
+    );
+  });
+
+  // Without a session the adapter must answer on its own rather than forwarding a
+  // destructive call upstream with no identity attached.
+  it("refuses organization deletion without an access session", async () => {
+    const res = await request(createApp()).delete(
+      "/auth/admin/organizations/org-1",
+    );
+
+    expect(res.status).toBe(401);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
   it("proxies organization member writes with path params and body", async () => {
     global.fetch.mockResolvedValue(
       createJsonResponse(200, {
