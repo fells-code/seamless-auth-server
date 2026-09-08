@@ -51,7 +51,7 @@ export const getAuthEventSummaryHandler = (opts: WithQuery) =>
 export const getAuthEventTimeseriesHandler = (opts: WithQuery) =>
   get("/internal/auth-events/timeseries", opts);
 
-export const getLoginStatsHandler = (opts: BaseOpts) =>
+export const getLoginStatsHandler = (opts: WithQuery) =>
   get("/internal/auth-events/login-stats", opts);
 
 export const getSecurityAnomaliesHandler = (opts: BaseOpts) =>

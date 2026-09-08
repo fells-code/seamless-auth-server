@@ -54,7 +54,7 @@ async function request(
   };
 }
 
-export const getUsersHandler = (opts: BaseOpts) =>
+export const getUsersHandler = (opts: WithQuery) =>
   request("GET", "/admin/users", opts);
 
 export const createUserHandler = (opts: WithBody) =>

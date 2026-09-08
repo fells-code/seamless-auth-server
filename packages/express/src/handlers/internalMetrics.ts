@@ -85,6 +85,7 @@ export async function getLoginStats(
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+    query: toQueryRecord(req.query),
   });
 
   return handle(res, result, opts);
