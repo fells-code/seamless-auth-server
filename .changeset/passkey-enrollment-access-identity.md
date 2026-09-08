@@ -21,6 +21,10 @@ verifying it issues a session, so the client holds an access cookie by the time 
 a passkey. An application that offered enrollment before verifying an address has to move
 that step after it.
 
+Upgrade this and the auth API together. There is no safe order between them: an older
+adapter sends the token the new API refuses, and this release sends one an older API
+refuses, so enrollment answers `401` until both sides land.
+
 `finishRegisterHandler` no longer issues session cookies. Enrolling a passkey is not a
 sign-in, and the caller now arrives holding a session, so minting a second one left the
 first live and unrevoked while counting against the API's concurrent session limit, which
