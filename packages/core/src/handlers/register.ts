@@ -14,6 +14,7 @@ export interface RegisterOptions {
   registrationCookieName: string;
   externalDelivery?: boolean;
   forwardedClientIp?: string;
+  forwardedUserAgent?: string;
   serviceAuthorization?: string;
 }
 
@@ -36,6 +37,7 @@ export async function registerHandler(
     method: "POST",
     body: input.body,
     forwardedClientIp: opts.forwardedClientIp,
+    forwardedUserAgent: opts.forwardedUserAgent,
     serviceAuthorization: opts.serviceAuthorization,
     ...(opts.externalDelivery
       ? {

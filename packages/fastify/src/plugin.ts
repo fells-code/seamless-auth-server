@@ -22,6 +22,7 @@ import {
   buildServiceAuthorization,
 } from "./internal/buildAuthorization";
 import { buildForwardedClientIp } from "./internal/buildForwardedClientIp";
+import { buildForwardedUserAgent } from "./internal/buildForwardedUserAgent";
 import { respond } from "./internal/respond";
 import type { ResolvedOptions, SeamlessAuthServerOptions } from "./options";
 import { PROXY_ROUTES, resolveUpstreamPath } from "./routes/proxyRoutes";
@@ -159,6 +160,7 @@ function registerProxyRoutes(
           authorization: buildServiceAuthorization(req),
           serviceAuthorization: buildProxyServiceAuthorization(opts),
           forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+          forwardedUserAgent: buildForwardedUserAgent(req),
           query: req.query as Record<string, unknown>,
           body: req.body,
         });

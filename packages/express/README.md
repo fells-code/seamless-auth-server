@@ -264,6 +264,15 @@ createSeamlessAuthServer({
 
 The returned value must be a valid IP address, or it is dropped.
 
+#### User agent forwarding
+
+The adapter also forwards the browser's `User-Agent` as `x-seamless-client-user-agent`, under the
+same service token. The auth server records it on every audit row and on the session, folds it into
+a device class for its sign-in telemetry, and uses it for the magic link device binding. Unlike the
+IP it needs no trust decision, since it is self-reported by the browser either way; it is trimmed
+and capped at 512 characters. Without it the auth server only ever sees this adapter's own user
+agent, and its breakdown by device class reads `unknown` for every sign-in.
+
 #### Cookie security
 
 Auth cookies are issued with `Secure` and `SameSite=None` by default, so a deployment that

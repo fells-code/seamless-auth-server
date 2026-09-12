@@ -52,6 +52,7 @@ export interface EnsureCookiesOptions {
   audience: string;
   keyId: string;
   forwardedClientIp?: string;
+  forwardedUserAgent?: string;
 }
 
 const COOKIE_REQUIREMENTS: Record<
@@ -141,6 +142,7 @@ const COOKIE_REQUIREMENTS: Record<
   "/totp/verify-mfa": { name: "accessCookieName", required: true },
   "/internal/metrics/dashboard": { name: "accessCookieName", required: true },
   "/internal/metrics/funnel": { name: "accessCookieName", required: true },
+  "/internal/metrics/sign-ins": { name: "accessCookieName", required: true },
   "/internal/auth-events/summary": {
     name: "accessCookieName",
     required: true,
@@ -213,6 +215,7 @@ async function refreshRequiredCookie(
     audience: opts.audience,
     keyId: opts.keyId,
     forwardedClientIp: opts.forwardedClientIp,
+    forwardedUserAgent: opts.forwardedUserAgent,
   });
 
   if (!refreshed?.token) {

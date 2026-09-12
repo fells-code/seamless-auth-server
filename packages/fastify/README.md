@@ -154,6 +154,11 @@ can set, so the adapter drops it and warns rather than forwarding a value the
 caller chose. Set `trustProxy` to an explicit hop count or subnet, or pass
 `resolveClientIp`.
 
+The browser's `User-Agent` is forwarded alongside it as
+`x-seamless-client-user-agent`, capped at 512 characters, so the auth API can
+record the device a person signed in from rather than this adapter. It needs no
+trust decision: it is self-reported by the browser either way.
+
 ## Relationship to `@seamless-auth/express`
 
 Both adapters serve the same routes and issue the same cookies. A parity suite

@@ -12,6 +12,7 @@ export interface FinishLoginInput {
   authorization?: string;
   serviceAuthorization?: string;
   forwardedClientIp?: string;
+  forwardedUserAgent?: string;
 }
 
 export interface FinishLoginOptions {
@@ -43,6 +44,7 @@ export async function finishLoginHandler(
     authorization: input.authorization,
     serviceAuthorization: input.serviceAuthorization,
     forwardedClientIp: input.forwardedClientIp,
+    forwardedUserAgent: input.forwardedUserAgent,
   });
 
   const data = await up.json();

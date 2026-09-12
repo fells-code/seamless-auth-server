@@ -26,6 +26,7 @@ export interface GetSeamlessUserOptions {
   cookieName?: string;
   serviceAuthorization?: string;
   forwardedClientIp?: string;
+  forwardedUserAgent?: string;
 }
 
 /**
@@ -57,6 +58,7 @@ export async function getSeamlessUser<T = SeamlessUser>(
     authorization: opts.authorization,
     serviceAuthorization: opts.serviceAuthorization,
     forwardedClientIp: opts.forwardedClientIp,
+    forwardedUserAgent: opts.forwardedUserAgent,
   });
 
   if (!response.ok) return null;

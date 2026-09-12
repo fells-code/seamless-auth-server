@@ -20,6 +20,7 @@ export interface OAuthRequestInput {
   body?: unknown;
   serviceAuthorization?: string;
   forwardedClientIp?: string;
+  forwardedUserAgent?: string;
 }
 
 export interface OAuthHandlerResult extends ResultFailure {
@@ -59,6 +60,7 @@ export async function startOAuthLoginHandler(
       body: input.body,
       serviceAuthorization: input.serviceAuthorization,
       forwardedClientIp: input.forwardedClientIp,
+      forwardedUserAgent: input.forwardedUserAgent,
     },
   );
 
@@ -81,6 +83,7 @@ export async function finishOAuthLoginHandler(
       body: input.body,
       serviceAuthorization: input.serviceAuthorization,
       forwardedClientIp: input.forwardedClientIp,
+      forwardedUserAgent: input.forwardedUserAgent,
     },
   );
 

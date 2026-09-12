@@ -12,6 +12,7 @@ export interface VerifyLoginOtpInput {
   authorization?: string;
   serviceAuthorization?: string;
   forwardedClientIp?: string;
+  forwardedUserAgent?: string;
   kind: "email" | "phone";
 }
 
@@ -50,6 +51,7 @@ async function verifyOtp(
     authorization: input.authorization,
     serviceAuthorization: input.serviceAuthorization,
     forwardedClientIp: input.forwardedClientIp,
+    forwardedUserAgent: input.forwardedUserAgent,
   });
 
   const data = await up.json();

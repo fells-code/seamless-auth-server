@@ -6,6 +6,7 @@ import {
   buildServiceAuthorization,
 } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
+import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
 import { SeamlessAuthServerOptions } from "../createServer";
 
 export async function finishRegister(
@@ -21,6 +22,7 @@ export async function finishRegister(
       authorization,
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+      forwardedUserAgent: buildForwardedUserAgent(req),
     },
     { authServerUrl: opts.authServerUrl },
   );

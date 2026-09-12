@@ -10,6 +10,7 @@ import type { CookiePayload } from "../ensureCookies.js";
 export interface PollMagicLinkConfirmationInput {
   authorization?: string;
   forwardedClientIp?: string;
+  forwardedUserAgent?: string;
 }
 
 export interface PollMagicLinkConfirmationOptions {
@@ -40,6 +41,7 @@ export async function pollMagicLinkConfirmationHandler(
     method: "GET",
     authorization: input.authorization,
     forwardedClientIp: input.forwardedClientIp,
+    forwardedUserAgent: input.forwardedUserAgent,
     serviceAuthorization: opts.serviceAuthorization,
   });
 

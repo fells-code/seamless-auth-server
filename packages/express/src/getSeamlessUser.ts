@@ -6,6 +6,7 @@ import {
 } from "./internal/buildAuthorization";
 import { SeamlessAuthServerOptions } from "./createServer";
 import { buildForwardedClientIp } from "./internal/buildForwardedClientIp";
+import { buildForwardedUserAgent } from "./internal/buildForwardedUserAgent";
 
 export async function getSeamlessUser(
   req: Request,
@@ -20,5 +21,6 @@ export async function getSeamlessUser(
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+    forwardedUserAgent: buildForwardedUserAgent(req),
   });
 }

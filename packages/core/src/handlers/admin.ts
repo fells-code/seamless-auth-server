@@ -8,6 +8,7 @@ type BaseOpts = {
   authorization?: string;
   serviceAuthorization?: string;
   forwardedClientIp?: string;
+  forwardedUserAgent?: string;
 };
 
 type WithQuery = BaseOpts & {
@@ -36,6 +37,7 @@ async function request(
       body: opts.body,
       serviceAuthorization: opts.serviceAuthorization,
       forwardedClientIp: opts.forwardedClientIp,
+      forwardedUserAgent: opts.forwardedUserAgent,
     },
   );
 

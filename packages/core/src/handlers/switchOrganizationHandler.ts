@@ -12,6 +12,7 @@ export interface SwitchOrganizationInput {
   authorization?: string;
   serviceAuthorization?: string;
   forwardedClientIp?: string;
+  forwardedUserAgent?: string;
 }
 
 export interface SwitchOrganizationOptions {
@@ -43,6 +44,7 @@ export async function switchOrganizationHandler(
       authorization: input.authorization,
       serviceAuthorization: input.serviceAuthorization,
       forwardedClientIp: input.forwardedClientIp,
+      forwardedUserAgent: input.forwardedUserAgent,
     },
   );
 

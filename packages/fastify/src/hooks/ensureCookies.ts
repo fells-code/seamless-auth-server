@@ -8,6 +8,7 @@ import {
 } from "@seamless-auth/core";
 
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
+import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
 import { fastifyResponseAdapter } from "../internal/respond";
 import type { ResolvedOptions } from "../options";
 
@@ -63,6 +64,7 @@ export function createEnsureCookiesHook(opts: ResolvedOptions, prefix: string) {
         audience: SERVICE_TOKEN_AUDIENCE,
         keyId: opts.jwksKid,
         forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+        forwardedUserAgent: buildForwardedUserAgent(req),
       },
     );
 

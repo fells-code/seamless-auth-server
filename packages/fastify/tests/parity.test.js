@@ -79,13 +79,20 @@ function parseBody(text) {
   }
 }
 
-async function viaFastify({ method, path, cookie, payload, options }) {
+async function viaFastify({
+  method,
+  path,
+  cookie,
+  headers,
+  payload,
+  options,
+}) {
   const app = await buildFastify(options);
   try {
     const res = await app.inject({
       method: method.toUpperCase(),
       url: `/auth${path}`,
-      headers: cookie ? { cookie } : {},
+      headers: { ...(headers ?? {}), ...(cookie ? { cookie } : {}) },
       ...(payload === undefined ? {} : { payload }),
     });
 
@@ -102,8 +109,16 @@ async function viaFastify({ method, path, cookie, payload, options }) {
   }
 }
 
-async function viaExpress({ method, path, cookie, payload, options }) {
+async function viaExpress({
+  method,
+  path,
+  cookie,
+  headers,
+  payload,
+  options,
+}) {
   let req = request(buildExpress(options))[method](`/auth${path}`);
+  if (headers) req = req.set(headers);
   if (cookie) req = req.set("Cookie", cookie);
   if (payload !== undefined) req = req.send(payload);
 
@@ -204,6 +219,20 @@ describe("fastify and express adapters agree", () => {
     [
       "metrics funnel without the required session",
       { method: "get", path: "/internal/metrics/funnel" },
+      upstream(200, {}),
+    ],
+    [
+      "metrics sign-ins success",
+      {
+        method: "get",
+        path: "/internal/metrics/sign-ins?from=2026-01-01&to=2026-02-01",
+        cookie: accessCookie(),
+      },
+      upstream(200, { signIns: { success: 371, failed: 21 }, breakdown: [] }),
+    ],
+    [
+      "metrics sign-ins without the required session",
+      { method: "get", path: "/internal/metrics/sign-ins" },
       upstream(200, {}),
     ],
     [
@@ -367,10 +396,14 @@ describe("fastify and express adapters agree", () => {
   // Asserted with a valid cookie present so a future refactor cannot quietly
   // start attaching one.
   it("sends no identity upstream for the public system config", async () => {
+    // One explicit user agent for both, since light-my-request sends a default
+    // and supertest sends none, and that difference would show up as a header
+    // one adapter forwards and the other does not.
     const scenario = {
       method: "get",
       path: "/system-config/public",
       cookie: accessCookie(),
+      headers: { "user-agent": "Mozilla/5.0 (parity)" },
     };
     const upstreamResponse = upstream(200, { loginMethods: ["passkey"] });
 
@@ -402,6 +435,38 @@ describe("fastify and express adapters agree", () => {
     expect(Object.keys(fastifyHeaders).sort()).toEqual(
       Object.keys(expressHeaders).sort(),
     );
+  });
+
+  // The auth API records the user agent on every audit row and folds it into a
+  // device class, so both adapters have to hand it the browser's rather than
+  // their own.
+  it("forwards the browser user agent to upstream from both adapters", async () => {
+    const browser =
+      "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36";
+    const scenario = {
+      method: "post",
+      path: "/login",
+      headers: { "user-agent": browser },
+      payload: { identifier: "user@example.com" },
+    };
+    const upstreamResponse = upstream(200, {
+      token: "ephemeral",
+      sub: "user-1",
+      ttl: 300,
+      loginMethods: ["passkey"],
+    });
+
+    const headerFor = async (runner) => {
+      global.fetch = jest.fn(async () => upstreamResponse);
+      await runner(scenario);
+
+      const [, init] = global.fetch.mock.calls[0];
+
+      return init?.headers?.["x-seamless-client-user-agent"];
+    };
+
+    expect(await headerFor(viaFastify)).toBe(browser);
+    expect(await headerFor(viaExpress)).toBe(browser);
   });
 
   // The auth API's registration response sends `ttl` as the string "300". Every

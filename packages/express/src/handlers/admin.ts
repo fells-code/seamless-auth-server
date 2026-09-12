@@ -20,6 +20,7 @@ import {
   buildServiceAuthorization,
 } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
+import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
 import { respond } from "../internal/respond";
 import { SeamlessAuthServerOptions } from "../createServer";
 
@@ -39,6 +40,7 @@ export const getUsers = async (
       authorization: buildServiceAuthorization(req, opts),
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+      forwardedUserAgent: buildForwardedUserAgent(req),
       query: req.query,
     }),
     opts,
@@ -56,6 +58,7 @@ export const createUser = async (
       authorization: buildServiceAuthorization(req, opts),
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+      forwardedUserAgent: buildForwardedUserAgent(req),
       body: req.body,
     }),
     opts,
@@ -73,6 +76,7 @@ export const deleteUser = async (
       authorization: buildServiceAuthorization(req, opts),
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+      forwardedUserAgent: buildForwardedUserAgent(req),
       body: req.body,
     }),
     opts,
@@ -90,6 +94,7 @@ export const updateUser = async (
       authorization: buildServiceAuthorization(req, opts),
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+      forwardedUserAgent: buildForwardedUserAgent(req),
       body: req.body,
     }),
     opts,
@@ -107,6 +112,7 @@ export const getUserDetail = async (
       authorization: buildServiceAuthorization(req, opts),
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+      forwardedUserAgent: buildForwardedUserAgent(req),
     }),
     opts,
   );
@@ -123,6 +129,7 @@ export const getUserAnomalies = async (
       authorization: buildServiceAuthorization(req, opts),
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+      forwardedUserAgent: buildForwardedUserAgent(req),
     }),
     opts,
   );
@@ -139,6 +146,7 @@ export const getAuthEvents = async (
       authorization: buildServiceAuthorization(req, opts),
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+      forwardedUserAgent: buildForwardedUserAgent(req),
       query: req.query,
     }),
     opts,
@@ -156,6 +164,7 @@ export const getCredentialCount = async (
       authorization: buildServiceAuthorization(req, opts),
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+      forwardedUserAgent: buildForwardedUserAgent(req),
     }),
     opts,
   );
@@ -172,6 +181,7 @@ export const listAllSessions = async (
       authorization: buildServiceAuthorization(req, opts),
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+      forwardedUserAgent: buildForwardedUserAgent(req),
       query: req.query,
     }),
     opts,
@@ -189,6 +199,7 @@ export const listUserSessions = async (
       authorization: buildServiceAuthorization(req, opts),
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+      forwardedUserAgent: buildForwardedUserAgent(req),
     }),
     opts,
   );
@@ -205,6 +216,7 @@ export const revokeUserSession = async (
       authorization: buildServiceAuthorization(req, opts),
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+      forwardedUserAgent: buildForwardedUserAgent(req),
     }),
     opts,
   );
@@ -221,6 +233,7 @@ export const revokeAllUserSessions = async (
       authorization: buildServiceAuthorization(req, opts),
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+      forwardedUserAgent: buildForwardedUserAgent(req),
     }),
     opts,
   );
@@ -237,6 +250,7 @@ export const recoverUserForDeviceReplacement = async (
       authorization: buildServiceAuthorization(req, opts),
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+      forwardedUserAgent: buildForwardedUserAgent(req),
       body: req.body,
     }),
     opts,

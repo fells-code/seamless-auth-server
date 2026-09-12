@@ -8,6 +8,7 @@ type BaseOpts = {
   authorization?: string;
   serviceAuthorization?: string;
   forwardedClientIp?: string;
+  forwardedUserAgent?: string;
 };
 
 type WithQuery = BaseOpts & {
@@ -27,6 +28,7 @@ async function get(path: string, opts: WithQuery): Promise<Result> {
       authorization: opts.authorization,
       serviceAuthorization: opts.serviceAuthorization,
       forwardedClientIp: opts.forwardedClientIp,
+      forwardedUserAgent: opts.forwardedUserAgent,
     },
   );
 
@@ -65,3 +67,6 @@ export const getGroupedEventSummaryHandler = (opts: WithQuery) =>
 
 export const getFunnelMetricsHandler = (opts: WithQuery) =>
   get("/internal/metrics/funnel", opts);
+
+export const getSignInMetricsHandler = (opts: WithQuery) =>
+  get("/internal/metrics/sign-ins", opts);

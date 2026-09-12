@@ -7,6 +7,7 @@ type BaseOpts = {
   authorization?: string;
   serviceAuthorization?: string;
   forwardedClientIp?: string;
+  forwardedUserAgent?: string;
 };
 
 type Result = ResultFailure & {
@@ -24,6 +25,7 @@ async function request(
     authorization: opts.authorization,
     serviceAuthorization: opts.serviceAuthorization,
     forwardedClientIp: opts.forwardedClientIp,
+    forwardedUserAgent: opts.forwardedUserAgent,
   });
 
   const data = await up.json();

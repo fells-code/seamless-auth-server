@@ -117,6 +117,7 @@ export interface ProxyRequestOptions {
   authorization?: string;
   serviceAuthorization?: string;
   forwardedClientIp?: string;
+  forwardedUserAgent?: string;
   query?: QueryInput;
   body?: unknown;
 }
@@ -139,6 +140,7 @@ export async function proxyRequest(
       authorization: opts.authorization,
       serviceAuthorization: opts.serviceAuthorization,
       forwardedClientIp: opts.forwardedClientIp,
+      forwardedUserAgent: opts.forwardedUserAgent,
       ...(method === "GET" ? {} : { body: opts.body }),
     },
   );

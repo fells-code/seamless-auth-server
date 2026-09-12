@@ -27,6 +27,7 @@ import {
   buildServiceAuthorization,
 } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
+import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
 import { respond } from "../internal/respond";
 import type { ResolvedOptions } from "../options";
 
@@ -47,6 +48,7 @@ export function registerAuthRoutes(
   const common = (req: FastifyRequest) => ({
     authServerUrl: opts.authServerUrl,
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+    forwardedUserAgent: buildForwardedUserAgent(req),
   });
 
   // A message-carrying flow asks the API for a delivery payload instead of
@@ -85,6 +87,7 @@ export function registerAuthRoutes(
         authorization: buildServiceAuthorization(req),
         serviceAuthorization: buildProxyServiceAuthorization(opts),
         forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+        forwardedUserAgent: buildForwardedUserAgent(req),
       },
       { authServerUrl: opts.authServerUrl, ...sessionCookies },
     );
@@ -119,6 +122,7 @@ export function registerAuthRoutes(
         authorization: buildServiceAuthorization(req),
         serviceAuthorization: buildProxyServiceAuthorization(opts),
         forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+        forwardedUserAgent: buildForwardedUserAgent(req),
       },
       { authServerUrl: opts.authServerUrl },
     );
@@ -176,6 +180,7 @@ export function registerAuthRoutes(
           authorization: buildServiceAuthorization(req),
           serviceAuthorization: buildProxyServiceAuthorization(opts),
           forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+          forwardedUserAgent: buildForwardedUserAgent(req),
           kind,
         },
         { authServerUrl: opts.authServerUrl, ...sessionCookies },
@@ -193,6 +198,7 @@ export function registerAuthRoutes(
       await getPublicSystemConfigHandler({
         authServerUrl: opts.authServerUrl,
         forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+        forwardedUserAgent: buildForwardedUserAgent(req),
       }),
       opts,
     );
@@ -213,6 +219,7 @@ export function registerAuthRoutes(
         body: req.body,
         serviceAuthorization: buildProxyServiceAuthorization(opts),
         forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+        forwardedUserAgent: buildForwardedUserAgent(req),
       },
       { authServerUrl: opts.authServerUrl },
     );
@@ -227,6 +234,7 @@ export function registerAuthRoutes(
         body: req.body,
         serviceAuthorization: buildProxyServiceAuthorization(opts),
         forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+        forwardedUserAgent: buildForwardedUserAgent(req),
       },
       { authServerUrl: opts.authServerUrl, ...sessionCookies },
     );
@@ -266,6 +274,7 @@ export function registerAuthRoutes(
       method: "GET",
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+      forwardedUserAgent: buildForwardedUserAgent(req),
     });
 
     respond(reply, result, opts);
@@ -276,6 +285,7 @@ export function registerAuthRoutes(
       {
         authorization: buildServiceAuthorization(req),
         forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+        forwardedUserAgent: buildForwardedUserAgent(req),
       },
       {
         authServerUrl: opts.authServerUrl,
@@ -294,6 +304,7 @@ export function registerAuthRoutes(
         authorization: buildServiceAuthorization(req),
         serviceAuthorization: buildProxyServiceAuthorization(opts),
         forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+        forwardedUserAgent: buildForwardedUserAgent(req),
       },
       {
         authServerUrl: opts.authServerUrl,
@@ -313,6 +324,7 @@ export function registerAuthRoutes(
       authorization: buildServiceAuthorization(req),
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+      forwardedUserAgent: buildForwardedUserAgent(req),
     });
 
     respond(reply, result, opts);
@@ -333,6 +345,7 @@ export function registerAuthRoutes(
         authorization: buildServiceAuthorization(req),
         serviceAuthorization: buildProxyServiceAuthorization(opts),
         forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+        forwardedUserAgent: buildForwardedUserAgent(req),
         scope,
       });
 

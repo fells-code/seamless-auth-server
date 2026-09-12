@@ -5,6 +5,7 @@ import {
   buildForwardedClientIp,
   ClientIpResolver,
 } from "../internal/buildForwardedClientIp";
+import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
 import { assertSecrets } from "../internal/validateSecrets";
 import { applyCookies, type CookieSameSite } from "@seamless-auth/core";
 import { expressResponseAdapter } from "../internal/respond";
@@ -55,6 +56,7 @@ export function createEnsureCookiesMiddleware(
         audience: opts.audience,
         keyId: opts.keyId,
         forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+        forwardedUserAgent: buildForwardedUserAgent(req),
       },
     );
 

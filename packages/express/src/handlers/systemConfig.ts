@@ -11,6 +11,7 @@ import {
   buildServiceAuthorization,
 } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
+import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
 import { respond } from "../internal/respond";
 import { SeamlessAuthServerOptions } from "../createServer";
 
@@ -25,6 +26,7 @@ export async function getPublicSystemConfig(
   const result = await getPublicSystemConfigHandler({
     authServerUrl: opts.authServerUrl,
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+    forwardedUserAgent: buildForwardedUserAgent(req),
   });
 
   respond(res, result, opts);
@@ -42,6 +44,7 @@ export async function getAvailableRoles(
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+    forwardedUserAgent: buildForwardedUserAgent(req),
   });
 
   respond(res, result, opts);
@@ -59,6 +62,7 @@ export async function getSystemConfigAdmin(
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+    forwardedUserAgent: buildForwardedUserAgent(req),
   });
 
   respond(res, result, opts);
@@ -77,6 +81,7 @@ export async function updateSystemConfig(
     payload: req.body,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+    forwardedUserAgent: buildForwardedUserAgent(req),
   });
 
   respond(res, result, opts);
