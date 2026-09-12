@@ -1,5 +1,49 @@
 # @seamless-auth/fastify
 
+## 0.6.0
+
+### Minor Changes
+
+- c961282: Forward the browser's user agent to the auth API, and pass `GET /internal/metrics/sign-ins`
+  through.
+
+  The auth API now records a device class on every audit row (fells-code/seamless-auth-api#306),
+  folded from the request user agent. The adapter is the only client it sees, so until now every
+  row carried the adapter's own user agent and the breakdown by device class read `unknown` for
+  every sign-in. Both adapters now send the browser's `User-Agent` as
+  `x-seamless-client-user-agent` alongside `x-seamless-client-ip`, on every proxied call. The API
+  honours it under the same service-token rule as the address. It is trimmed and capped at 512
+  characters; unlike the address it needs no trust decision, since it is self-reported by the
+  browser either way.
+
+  `authFetch` and every core handler take an optional `forwardedUserAgent`, and the adapters
+  derive it with `buildForwardedUserAgent(req)`. A caller-built request with no headers is
+  tolerated, as `getSeamlessUser` accepts one.
+
+  The API's new `GET /internal/metrics/sign-ins` (sign-in outcomes per method, device class, mail
+  provider and owner flag, with where attempts stop) is proxied on an access session the way the
+  funnel route is, with the `from` and `to` window forwarded and pinned by the query forwarding
+  tables. Core exports `getSignInMetricsHandler`.
+
+- 0cd7783: Pass `GET /internal/metrics/funnel` through to the auth API.
+
+  The auth API gained a funnel endpoint (time to registration, time to login, passkey
+  adoption and time to first passkey, each with the count it was computed over) and
+  the admin dashboard reads it through the adapter. Neither adapter forwarded it, so
+  the dashboard's new Overview section would have answered with the adapter's own 404.
+
+  Both adapters now proxy it on an access session the way the neighbouring
+  `/internal/metrics/dashboard` route is proxied, and forward the `from` and `to`
+  window, which is pinned by the query forwarding table so a route that drops its
+  query cannot ship again. Core exports `getFunnelMetricsHandler` alongside the other
+  internal metrics handlers.
+
+### Patch Changes
+
+- Updated dependencies [c961282]
+- Updated dependencies [0cd7783]
+  - @seamless-auth/core@0.15.0
+
 ## 0.5.0
 
 ### Minor Changes
