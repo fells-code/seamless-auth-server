@@ -8,6 +8,7 @@ import {
   getAvailableRolesHandler,
   getCredentialCountHandler,
   getDashboardMetricsHandler,
+  getFunnelMetricsHandler,
   getGroupedEventSummaryHandler,
   getLoginStatsHandler,
   getSecurityAnomaliesHandler,
@@ -185,6 +186,15 @@ const ROUTES: Array<["GET" | "POST" | "PATCH" | "DELETE", string, Call]> = [
     (c) => getSecurityAnomaliesHandler(c),
   ],
   ["GET", "/internal/metrics/dashboard", (c) => getDashboardMetricsHandler(c)],
+  [
+    "GET",
+    "/internal/metrics/funnel",
+    (c, r) =>
+      getFunnelMetricsHandler({
+        ...c,
+        query: r.query as Record<string, unknown>,
+      }),
+  ],
 
   // System config
   ["GET", "/system-config/roles", (c) => getAvailableRolesHandler(c)],

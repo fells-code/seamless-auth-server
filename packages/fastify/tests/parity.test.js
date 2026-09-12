@@ -193,6 +193,20 @@ describe("fastify and express adapters agree", () => {
       upstream(200, { totals: {} }),
     ],
     [
+      "metrics funnel success",
+      {
+        method: "get",
+        path: "/internal/metrics/funnel?from=2026-01-01&to=2026-02-01",
+        cookie: accessCookie(),
+      },
+      upstream(200, { passkeyAdoption: { users: 5, withPasskey: 3 } }),
+    ],
+    [
+      "metrics funnel without the required session",
+      { method: "get", path: "/internal/metrics/funnel" },
+      upstream(200, {}),
+    ],
+    [
       "system config roles success",
       { method: "get", path: "/system-config/roles", cookie: accessCookie() },
       upstream(200, { roles: ["admin"] }),

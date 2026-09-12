@@ -140,6 +140,7 @@ const COOKIE_REQUIREMENTS: Record<
   "/totp/disable": { name: "accessCookieName", required: true },
   "/totp/verify-mfa": { name: "accessCookieName", required: true },
   "/internal/metrics/dashboard": { name: "accessCookieName", required: true },
+  "/internal/metrics/funnel": { name: "accessCookieName", required: true },
   "/internal/auth-events/summary": {
     name: "accessCookieName",
     required: true,

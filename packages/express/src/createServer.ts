@@ -59,6 +59,7 @@ import {
   getAuthEventSummary,
   getAuthEventTimeseries,
   getDashboardMetrics,
+  getFunnelMetrics,
   getGroupedEventSummary,
   getLoginStats,
   getSecurityAnomalies,
@@ -535,6 +536,10 @@ export function createSeamlessAuthServer(
 
   r.get("/internal/metrics/dashboard", (req, res) =>
     getDashboardMetrics(req, res, resolvedOpts),
+  );
+
+  r.get("/internal/metrics/funnel", (req, res) =>
+    getFunnelMetrics(req, res, resolvedOpts),
   );
 
   r.get("/internal/auth-events/grouped", (req, res) =>
