@@ -10,6 +10,7 @@ export interface VerifyMagicLinkOptions {
   authServerUrl: string;
   serviceAuthorization?: string;
   forwardedClientIp?: string;
+  forwardedUserAgent?: string;
 }
 
 export interface VerifyMagicLinkResult extends ResultFailure {
@@ -27,6 +28,7 @@ export async function verifyMagicLinkHandler(
       method: "GET",
       serviceAuthorization: opts.serviceAuthorization,
       forwardedClientIp: opts.forwardedClientIp,
+      forwardedUserAgent: opts.forwardedUserAgent,
     },
   );
 

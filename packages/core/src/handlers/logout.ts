@@ -8,6 +8,7 @@ export interface LogoutOptions {
   authorization?: string;
   serviceAuthorization?: string;
   forwardedClientIp?: string;
+  forwardedUserAgent?: string;
   scope?: LogoutScope;
 }
 
@@ -33,6 +34,7 @@ export async function logoutHandler(
       authorization: opts.authorization,
       serviceAuthorization: opts.serviceAuthorization,
       forwardedClientIp: opts.forwardedClientIp,
+      forwardedUserAgent: opts.forwardedUserAgent,
     },
   );
 

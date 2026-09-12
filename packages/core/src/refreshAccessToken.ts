@@ -11,6 +11,7 @@ export interface RefreshAccessTokenOptions {
   audience: string;
   keyId: string;
   forwardedClientIp?: string;
+  forwardedUserAgent?: string;
 }
 
 type RefreshAccessTokenResult = {
@@ -95,6 +96,7 @@ export async function refreshAccessToken(
       authorization: `Bearer ${payload.refreshToken}`,
       serviceAuthorization: `Bearer ${serviceToken}`,
       forwardedClientIp: opts.forwardedClientIp,
+      forwardedUserAgent: opts.forwardedUserAgent,
     });
 
     if (!response.ok) return null;

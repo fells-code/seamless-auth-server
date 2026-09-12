@@ -12,6 +12,7 @@ import {
   getGroupedEventSummaryHandler,
   getLoginStatsHandler,
   getSecurityAnomaliesHandler,
+  getSignInMetricsHandler,
   getSystemConfigAdminHandler,
   getUserAnomaliesHandler,
   getUserDetailHandler,
@@ -34,6 +35,7 @@ import {
   buildServiceAuthorization,
 } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
+import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
 import { respond } from "../internal/respond";
 import type { ResolvedOptions } from "../options";
 
@@ -43,6 +45,7 @@ interface CallContext {
   authorization?: string;
   serviceAuthorization?: string;
   forwardedClientIp?: string;
+  forwardedUserAgent?: string;
 }
 
 type Call = (ctx: CallContext, req: FastifyRequest) => Promise<AppliableResult>;
@@ -195,6 +198,15 @@ const ROUTES: Array<["GET" | "POST" | "PATCH" | "DELETE", string, Call]> = [
         query: r.query as Record<string, unknown>,
       }),
   ],
+  [
+    "GET",
+    "/internal/metrics/sign-ins",
+    (c, r) =>
+      getSignInMetricsHandler({
+        ...c,
+        query: r.query as Record<string, unknown>,
+      }),
+  ],
 
   // System config
   ["GET", "/system-config/roles", (c) => getAvailableRolesHandler(c)],
@@ -224,6 +236,7 @@ export function registerAdminRoutes(
               req,
               opts.resolveClientIp,
             ),
+            forwardedUserAgent: buildForwardedUserAgent(req),
           },
           req,
         );

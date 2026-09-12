@@ -7,6 +7,7 @@ export interface SystemConfigOptions {
   authorization?: string;
   serviceAuthorization?: string;
   forwardedClientIp?: string;
+  forwardedUserAgent?: string;
 }
 
 export interface SystemConfigResult extends ResultFailure {
@@ -23,11 +24,15 @@ export interface SystemConfigResult extends ResultFailure {
  * unauthenticated for the same reason.
  */
 export async function getPublicSystemConfigHandler(
-  opts: Pick<SystemConfigOptions, "authServerUrl" | "forwardedClientIp">,
+  opts: Pick<
+    SystemConfigOptions,
+    "authServerUrl" | "forwardedClientIp" | "forwardedUserAgent"
+  >,
 ): Promise<SystemConfigResult> {
   const up = await authFetch(`${opts.authServerUrl}/system-config/public`, {
     method: "GET",
     forwardedClientIp: opts.forwardedClientIp,
+    forwardedUserAgent: opts.forwardedUserAgent,
   });
 
   const data = await up.json();
@@ -53,6 +58,7 @@ export async function getAvailableRolesHandler(
     authorization: opts.authorization,
     serviceAuthorization: opts.serviceAuthorization,
     forwardedClientIp: opts.forwardedClientIp,
+    forwardedUserAgent: opts.forwardedUserAgent,
   });
 
   const data = await up.json();
@@ -78,6 +84,7 @@ export async function getSystemConfigAdminHandler(
     authorization: opts.authorization,
     serviceAuthorization: opts.serviceAuthorization,
     forwardedClientIp: opts.forwardedClientIp,
+    forwardedUserAgent: opts.forwardedUserAgent,
   });
 
   const data = await up.json();
@@ -104,6 +111,7 @@ export async function updateSystemConfigHandler(
     body: opts.payload,
     serviceAuthorization: opts.serviceAuthorization,
     forwardedClientIp: opts.forwardedClientIp,
+    forwardedUserAgent: opts.forwardedUserAgent,
   });
 
   const data = await up.json();

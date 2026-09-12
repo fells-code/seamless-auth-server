@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { registerHandler } from "@seamless-auth/core/handlers/register";
 import { respond } from "../internal/respond";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
+import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
 import {
   buildInternalServiceAuthorization,
   buildProxyServiceAuthorization,
@@ -22,6 +23,7 @@ export async function register(
       registrationCookieName: opts.registrationCookieName!,
       externalDelivery: Boolean(opts.messaging),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+      forwardedUserAgent: buildForwardedUserAgent(req),
       serviceAuthorization: opts.messaging
         ? buildInternalServiceAuthorization(opts)
         : buildProxyServiceAuthorization(opts),

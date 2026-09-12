@@ -9,6 +9,7 @@ export interface AuthFetchOptions {
   authorization?: string;
   serviceAuthorization?: string;
   forwardedClientIp?: string;
+  forwardedUserAgent?: string;
 }
 
 export async function authFetch(
@@ -24,6 +25,9 @@ export async function authFetch(
       : {}),
     ...(options.forwardedClientIp
       ? { "x-seamless-client-ip": options.forwardedClientIp }
+      : {}),
+    ...(options.forwardedUserAgent
+      ? { "x-seamless-client-user-agent": options.forwardedUserAgent }
       : {}),
   };
 

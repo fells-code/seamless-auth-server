@@ -49,6 +49,7 @@ import {
   buildForwardedClientIp,
   ClientIpResolver,
 } from "./internal/buildForwardedClientIp";
+import { buildForwardedUserAgent } from "./internal/buildForwardedUserAgent";
 import {
   getAvailableRoles,
   getPublicSystemConfig,
@@ -63,6 +64,7 @@ import {
   getGroupedEventSummary,
   getLoginStats,
   getSecurityAnomalies,
+  getSignInMetrics,
 } from "./handlers/internalMetrics";
 import {
   listSessions,
@@ -259,6 +261,7 @@ export function createSeamlessAuthServer(
           req,
           resolvedOpts.resolveClientIp,
         ),
+        forwardedUserAgent: buildForwardedUserAgent(req),
         query: req.query,
         body: req.body,
       });
@@ -465,6 +468,7 @@ export function createSeamlessAuthServer(
           req,
           resolvedOpts.resolveClientIp,
         ),
+        forwardedUserAgent: buildForwardedUserAgent(req),
       },
     );
 
@@ -540,6 +544,10 @@ export function createSeamlessAuthServer(
 
   r.get("/internal/metrics/funnel", (req, res) =>
     getFunnelMetrics(req, res, resolvedOpts),
+  );
+
+  r.get("/internal/metrics/sign-ins", (req, res) =>
+    getSignInMetrics(req, res, resolvedOpts),
   );
 
   r.get("/internal/auth-events/grouped", (req, res) =>

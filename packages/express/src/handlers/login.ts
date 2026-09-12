@@ -3,6 +3,7 @@ import { loginHandler } from "@seamless-auth/core/handlers/login";
 import { respond } from "../internal/respond";
 import { buildProxyServiceAuthorization } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
+import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
 import { SeamlessAuthServerOptions } from "../createServer";
 
 export async function login(
@@ -19,6 +20,7 @@ export async function login(
       preAuthCookieName: opts.preAuthCookieName!,
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+      forwardedUserAgent: buildForwardedUserAgent(req),
     },
   );
 

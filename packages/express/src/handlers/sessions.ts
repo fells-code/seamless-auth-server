@@ -10,6 +10,7 @@ import {
   buildServiceAuthorization,
 } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
+import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
 import { respond } from "../internal/respond";
 import { SeamlessAuthServerOptions } from "../createServer";
 
@@ -29,6 +30,7 @@ export async function listSessions(
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+    forwardedUserAgent: buildForwardedUserAgent(req),
   });
 
   return handle(res, result, opts);
@@ -46,6 +48,7 @@ export async function revokeSession(
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+    forwardedUserAgent: buildForwardedUserAgent(req),
   });
 
   return handle(res, result, opts);
@@ -63,6 +66,7 @@ export async function revokeAllSessions(
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+    forwardedUserAgent: buildForwardedUserAgent(req),
   });
 
   return handle(res, result, opts);

@@ -7,6 +7,7 @@ import {
   getDashboardMetricsHandler,
   getFunnelMetricsHandler,
   getGroupedEventSummaryHandler,
+  getSignInMetricsHandler,
 } from "@seamless-auth/core/handlers/internalMetrics";
 
 import {
@@ -14,6 +15,7 @@ import {
   buildServiceAuthorization,
 } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
+import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
 import { respond } from "../internal/respond";
 import { SeamlessAuthServerOptions } from "../createServer";
 
@@ -50,6 +52,7 @@ export async function getAuthEventSummary(
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+    forwardedUserAgent: buildForwardedUserAgent(req),
     query: toQueryRecord(req.query),
   });
 
@@ -68,6 +71,7 @@ export async function getAuthEventTimeseries(
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+    forwardedUserAgent: buildForwardedUserAgent(req),
     query: toQueryRecord(req.query),
   });
 
@@ -86,6 +90,7 @@ export async function getLoginStats(
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+    forwardedUserAgent: buildForwardedUserAgent(req),
     query: toQueryRecord(req.query),
   });
 
@@ -104,6 +109,7 @@ export async function getSecurityAnomalies(
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+    forwardedUserAgent: buildForwardedUserAgent(req),
   });
 
   return handle(res, result, opts);
@@ -121,6 +127,7 @@ export async function getDashboardMetrics(
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+    forwardedUserAgent: buildForwardedUserAgent(req),
   });
 
   return handle(res, result, opts);
@@ -138,6 +145,7 @@ export async function getGroupedEventSummary(
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+    forwardedUserAgent: buildForwardedUserAgent(req),
     query: toQueryRecord(req.query),
   });
 
@@ -156,6 +164,26 @@ export async function getFunnelMetrics(
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+    forwardedUserAgent: buildForwardedUserAgent(req),
+    query: toQueryRecord(req.query),
+  });
+
+  return handle(res, result, opts);
+}
+
+export async function getSignInMetrics(
+  req: Request,
+  res: Response,
+  opts: SeamlessAuthServerOptions,
+) {
+  const authorization = buildServiceAuthorization(req, opts);
+
+  const result = await getSignInMetricsHandler({
+    authServerUrl: opts.authServerUrl,
+    authorization,
+    serviceAuthorization: buildProxyServiceAuthorization(opts),
+    forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+    forwardedUserAgent: buildForwardedUserAgent(req),
     query: toQueryRecord(req.query),
   });
 

@@ -27,6 +27,27 @@ describe("authFetch", () => {
     expect(init.headers).not.toHaveProperty("x-seamless-service-token");
   });
 
+  it("forwards the browser user agent under its own header, and only when given", async () => {
+    const { authFetch } = await import("../dist/authFetch.js");
+
+    await authFetch("https://auth.example.com/login", {
+      method: "POST",
+      forwardedUserAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+    });
+
+    const [, withAgent] = global.fetch.mock.calls[0];
+
+    expect(withAgent.headers["x-seamless-client-user-agent"]).toBe(
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+    );
+
+    await authFetch("https://auth.example.com/login", { method: "POST" });
+
+    const [, without] = global.fetch.mock.calls[1];
+
+    expect(without.headers).not.toHaveProperty("x-seamless-client-user-agent");
+  });
+
   it("uses an explicit serviceAuthorization override when provided", async () => {
     const { authFetch } = await import("../dist/authFetch.js");
 

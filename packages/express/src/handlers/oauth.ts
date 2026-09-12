@@ -7,6 +7,7 @@ import {
 import { SeamlessAuthServerOptions } from "../createServer";
 import { buildProxyServiceAuthorization } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
+import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
 import { respond } from "../internal/respond";
 
 function routeParam(req: Request, name: string): string {
@@ -37,6 +38,7 @@ export async function startOAuthLogin(
       body: req.body,
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+      forwardedUserAgent: buildForwardedUserAgent(req),
     },
     {
       authServerUrl: opts.authServerUrl,
@@ -57,6 +59,7 @@ export async function finishOAuthLogin(
       body: req.body,
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+      forwardedUserAgent: buildForwardedUserAgent(req),
     },
     {
       authServerUrl: opts.authServerUrl,

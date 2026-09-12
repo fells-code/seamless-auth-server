@@ -3,6 +3,7 @@ import { logoutHandler } from "@seamless-auth/core/handlers/logout";
 import type { LogoutScope } from "@seamless-auth/core/handlers/logout";
 import { respond } from "../internal/respond";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
+import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
 import { SeamlessAuthServerOptions } from "../createServer";
 import {
   buildProxyServiceAuthorization,
@@ -23,6 +24,7 @@ export async function logout(
     authorization: buildServiceAuthorization(req, opts),
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+    forwardedUserAgent: buildForwardedUserAgent(req),
     scope,
   });
 

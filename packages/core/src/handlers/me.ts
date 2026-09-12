@@ -7,6 +7,7 @@ export interface MeOptions {
   authorization?: string;
   serviceAuthorization?: string;
   forwardedClientIp?: string;
+  forwardedUserAgent?: string;
 }
 
 export interface MeResult extends ResultFailure {
@@ -24,6 +25,7 @@ export async function meHandler(opts: MeOptions): Promise<MeResult> {
     authorization: opts.authorization,
     serviceAuthorization: opts.serviceAuthorization,
     forwardedClientIp: opts.forwardedClientIp,
+    forwardedUserAgent: opts.forwardedUserAgent,
   });
 
   const data = await up.json();

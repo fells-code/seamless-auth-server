@@ -145,6 +145,42 @@ describe("proxied service token", () => {
     warn.mockRestore();
   });
 
+  // The auth API records the user agent on every audit row and folds it into a
+  // device class. Without this header it only ever sees this adapter's own.
+  it("forwards the browser user agent", async () => {
+    const browser =
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
+
+    await request(createApp())
+      .delete("/auth/admin/users")
+      .set("Cookie", createAccessCookie())
+      .set("User-Agent", browser)
+      .send({ userId: "user-1" });
+
+    expect(lastHeaders()["x-seamless-client-user-agent"]).toBe(browser);
+  });
+
+  it("forwards the user agent on the sign-in path too, where no session exists yet", async () => {
+    await request(createApp())
+      .post("/auth/login")
+      .set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+      .send({ identifier: "user@example.com" });
+
+    expect(lastHeaders()["x-seamless-client-user-agent"]).toBe(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+    );
+  });
+
+  it("caps an oversized user agent at what the auth API records", async () => {
+    await request(createApp())
+      .delete("/auth/admin/users")
+      .set("Cookie", createAccessCookie())
+      .set("User-Agent", "x".repeat(700))
+      .send({ userId: "user-1" });
+
+    expect(lastHeaders()["x-seamless-client-user-agent"]).toHaveLength(512);
+  });
+
   it("uses a caller supplied resolver when one is configured", async () => {
     const app = express();
     app.use(

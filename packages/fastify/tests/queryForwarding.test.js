@@ -43,6 +43,7 @@ const QUERY_ROUTES = [
   ["/internal/auth-events/grouped", "from=2026-01-01&interval=day"],
   ["/internal/auth-events/login-stats", "from=2026-01-01&to=2026-02-01"],
   ["/internal/metrics/funnel", "from=2026-01-01&to=2026-02-01"],
+  ["/internal/metrics/sign-ins", "from=2026-01-01&to=2026-02-01"],
 ];
 
 describe("query forwarding", () => {

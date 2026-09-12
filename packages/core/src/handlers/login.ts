@@ -15,6 +15,7 @@ export interface LoginOptions {
   preAuthCookieName: string;
   serviceAuthorization?: string;
   forwardedClientIp?: string;
+  forwardedUserAgent?: string;
 }
 
 export interface LoginResult extends ResultFailure {
@@ -41,6 +42,7 @@ export async function loginHandler(
     body: input.body,
     serviceAuthorization: opts.serviceAuthorization,
     forwardedClientIp: opts.forwardedClientIp,
+    forwardedUserAgent: opts.forwardedUserAgent,
   });
 
   const data = await up.json();
