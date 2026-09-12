@@ -62,3 +62,6 @@ export const getDashboardMetricsHandler = (opts: BaseOpts) =>
 
 export const getGroupedEventSummaryHandler = (opts: WithQuery) =>
   get("/internal/auth-events/grouped", opts);
+
+export const getFunnelMetricsHandler = (opts: WithQuery) =>
+  get("/internal/metrics/funnel", opts);

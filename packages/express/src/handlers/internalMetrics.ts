@@ -5,6 +5,7 @@ import {
   getLoginStatsHandler,
   getSecurityAnomaliesHandler,
   getDashboardMetricsHandler,
+  getFunnelMetricsHandler,
   getGroupedEventSummaryHandler,
 } from "@seamless-auth/core/handlers/internalMetrics";
 
@@ -133,6 +134,24 @@ export async function getGroupedEventSummary(
   const authorization = buildServiceAuthorization(req, opts);
 
   const result = await getGroupedEventSummaryHandler({
+    authServerUrl: opts.authServerUrl,
+    authorization,
+    serviceAuthorization: buildProxyServiceAuthorization(opts),
+    forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+    query: toQueryRecord(req.query),
+  });
+
+  return handle(res, result, opts);
+}
+
+export async function getFunnelMetrics(
+  req: Request,
+  res: Response,
+  opts: SeamlessAuthServerOptions,
+) {
+  const authorization = buildServiceAuthorization(req, opts);
+
+  const result = await getFunnelMetricsHandler({
     authServerUrl: opts.authServerUrl,
     authorization,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
