@@ -21,5 +21,8 @@ export async function getSeamlessUser(
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
     forwardedUserAgent: buildForwardedUserAgent(req),
+    // The plugin options always carry the audience, so a request with no cookie
+    // but a bearer access token resolves too. Core verifies it before forwarding.
+    bearer: { authorization: req.headers?.authorization, audience: opts.audience },
   });
 }
