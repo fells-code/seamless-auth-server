@@ -92,8 +92,18 @@ remain for direct imports.
 - `verifyCookieJwt(...)` – verifies signed cookie payloads
 - `verifyRefreshCookie(...)` – verifies a refresh cookie, returning `null` on failure
 - `verifySignedAuthResponse(...)` – verifies an auth API response signature against its JWKS
-- `getSeamlessUser(...)` – resolves the hydrated user, typed as `SeamlessUser | null`
+- `verifyAccessToken(...)` – verifies an auth API access token against its JWKS, requiring `typ: "access"`
+- `extractBearerToken(...)` – reads the token out of an `Authorization: Bearer` header
+- `getSeamlessUser(...)` – resolves the hydrated user, typed as `SeamlessUser | null`, from a cookie or a bearer token
 - `hasScopedRole(...)` – checks scoped role grants such as `admin:read`
+
+**Guards**
+
+- `authenticateCookie(...)` – verifies an access cookie into a session
+- `authenticateBearer(...)` – verifies a bearer access token into a session
+- `authenticateRequest(...)` – the cookie when present, otherwise the bearer token when enabled
+- `authorizeRoles(...)` – role check against an authenticated session
+- `checkOrigin(...)` – cross-site request check for `SameSite=None` deployments
 
 **Building an adapter**
 
