@@ -46,6 +46,12 @@ export async function verifyAccessToken(
   authServerUrl: string,
   audience: string,
 ): Promise<AccessTokenClaims | null> {
+  // jose skips the claim check for an empty expected value, which would turn a
+  // blank audience into "any audience". Refuse rather than verify loosely.
+  if (!authServerUrl || !audience) {
+    return null;
+  }
+
   try {
     const { payload } = await jwtVerify(
       token,

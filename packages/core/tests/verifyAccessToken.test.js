@@ -141,6 +141,15 @@ describe("verifyAccessToken", () => {
     expect(claims).toBeNull();
   });
 
+  it("rejects an empty issuer or audience instead of verifying loosely", async () => {
+    const server = nextServer();
+    mockJwks(server);
+    const token = await sign(server, ACCESS_CLAIMS);
+
+    await expect(verifyAccessToken(token, server, "")).resolves.toBeNull();
+    await expect(verifyAccessToken(token, "", server)).resolves.toBeNull();
+  });
+
   it("rejects garbage without touching the network", async () => {
     const server = nextServer();
     global.fetch = jest.fn();
