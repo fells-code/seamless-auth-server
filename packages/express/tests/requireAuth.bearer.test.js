@@ -158,6 +158,9 @@ describe("requireAuth with bearer tokens (express)", () => {
     expect(() =>
       requireAuth({ cookieSecret: COOKIE_SECRET, audience: "https://a.example.com" }),
     ).toThrow(/authServerUrl and audience/);
+    expect(() =>
+      requireAuth({ cookieSecret: COOKIE_SECRET, authServerUrl: "https://a.example.com", audience: "" }),
+    ).toThrow(/non-empty/);
   });
 });
 

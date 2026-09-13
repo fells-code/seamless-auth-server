@@ -59,6 +59,12 @@ export function requireAuth(opts: RequireAuthOptions) {
     );
   }
 
+  if (authServerUrl === "" || audience === "") {
+    throw new Error(
+      "requireAuth: authServerUrl and audience must be non-empty to accept bearer tokens",
+    );
+  }
+
   const bearer =
     authServerUrl !== undefined && audience !== undefined
       ? { authServerUrl, audience }
