@@ -19,6 +19,7 @@ import { switchOrganization } from "./handlers/switchOrganization";
 import { finishRegister } from "./handlers/finishRegister";
 import { me } from "./handlers/me";
 import { logout } from "./handlers/logout";
+import { refresh } from "./handlers/refresh";
 import { pollMagicLinkConfirmation } from "./handlers/pollMagicLinkConfirmation";
 import { requestMagicLink } from "./handlers/requestMagicLink";
 import {
@@ -50,6 +51,7 @@ import {
   ClientIpResolver,
 } from "./internal/buildForwardedClientIp";
 import { buildForwardedUserAgent } from "./internal/buildForwardedUserAgent";
+import { transportOf } from "./internal/transport";
 import {
   getAvailableRoles,
   getPublicSystemConfig,
@@ -238,6 +240,8 @@ export function createSeamlessAuthServer(
         accessCookieName: resolvedOpts.accessCookieName,
         preAuthCookieName: resolvedOpts.preAuthCookieName,
         registrationCookieName: resolvedOpts.registrationCookieName,
+        transport: transportOf(req),
+        authorization: req.headers.authorization,
       });
 
       if (rejection) {
@@ -358,6 +362,7 @@ export function createSeamlessAuthServer(
   );
 
   r.get("/users/me", (req, res) => me(req, res, resolvedOpts));
+  r.post("/refresh", (req, res) => refresh(req, res, resolvedOpts));
   r.delete("/logout", (req, res) =>
     logout(req, res, resolvedOpts, "current_session"),
   );

@@ -4,6 +4,7 @@ import {
   verifyRegistrationOtpHandler,
 } from "@seamless-auth/core/handlers/verifyLoginOtpHandler";
 import { respond } from "../internal/respond";
+import { transportOf } from "../internal/transport";
 import {
   buildProxyServiceAuthorization,
   buildServiceAuthorization,
@@ -37,6 +38,7 @@ async function verifyOtp(
       cookieDomain: opts.cookieDomain,
       accessCookieName: opts.accessCookieName!,
       refreshCookieName: opts.refreshCookieName!,
+      transport: transportOf(req),
     },
   );
 

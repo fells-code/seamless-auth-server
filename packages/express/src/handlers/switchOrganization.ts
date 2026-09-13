@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { switchOrganizationHandler } from "@seamless-auth/core/handlers/switchOrganizationHandler";
 import { respond } from "../internal/respond";
+import { transportOf } from "../internal/transport";
 import {
   buildProxyServiceAuthorization,
   buildServiceAuthorization,
@@ -32,6 +33,7 @@ export async function switchOrganization(
       audience: opts.audience,
       cookieDomain: opts.cookieDomain,
       accessCookieName: opts.accessCookieName!,
+      transport: transportOf(req),
     },
   );
 

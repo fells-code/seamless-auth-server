@@ -5,6 +5,7 @@ import {
   type CookieSecurityOptions,
   type ResponseAdapter,
 } from "@seamless-auth/core";
+import { transportOf } from "./transport";
 
 /**
  * Express half of core's response contract: emit a cookie, clear a cookie, send
@@ -54,5 +55,8 @@ export function respond(
   result: AppliableResult,
   opts: CookieSecurityOptions,
 ): void {
-  applyResult(result, expressResponseAdapter(res), opts);
+  applyResult(result, expressResponseAdapter(res), {
+    ...opts,
+    transport: transportOf(res.req),
+  });
 }

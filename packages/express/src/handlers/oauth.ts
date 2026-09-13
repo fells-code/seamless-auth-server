@@ -9,6 +9,7 @@ import { buildProxyServiceAuthorization } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
 import { respond } from "../internal/respond";
+import { transportOf } from "../internal/transport";
 
 function routeParam(req: Request, name: string): string {
   const value = req.params[name];
@@ -67,6 +68,7 @@ export async function finishOAuthLogin(
       cookieDomain: opts.cookieDomain,
       accessCookieName: opts.accessCookieName!,
       refreshCookieName: opts.refreshCookieName!,
+      transport: transportOf(req),
     },
   );
 

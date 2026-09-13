@@ -21,6 +21,7 @@ export {
   roleGrantsAccess,
 } from "@seamless-auth/types/role/matching";
 export * from "./apiContract.js";
+export * from "./transport.js";
 export * from "./applyResult.js";
 export * from "./proxyRequest.js";
 export * from "./result.js";
@@ -32,6 +33,7 @@ export * from "./handlers/finishLogin.js";
 export * from "./handlers/register.js";
 export * from "./handlers/finishRegister.js";
 export * from "./handlers/logout.js";
+export * from "./handlers/refresh.js";
 export * from "./handlers/me.js";
 export * from "./handlers/requestOtpHandler.js";
 export * from "./handlers/verifyLoginOtpHandler.js";

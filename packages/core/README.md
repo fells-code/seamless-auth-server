@@ -88,7 +88,11 @@ remain for direct imports.
 **Sessions and cookies**
 
 - `ensureCookies(...)` – validates and refreshes session cookies
-- `refreshAccessToken(...)` – rotates expired access sessions
+- `refreshAccessToken(...)` – rotates expired access sessions from a refresh cookie
+- `refreshBearerSession(...)` – rotates a session from a raw refresh token, for bearer transport
+- `refreshHandler(...)` – the `POST /refresh` route, in either transport
+- `sessionResult(...)` – an upstream session as a handler result: cookies for cookie transport, the body whole for bearer
+- `resolveAuthTransport(...)` / `AUTH_TRANSPORT_HEADER` – selects cookie or bearer transport for a request
 - `verifyCookieJwt(...)` – verifies signed cookie payloads
 - `verifyRefreshCookie(...)` – verifies a refresh cookie, returning `null` on failure
 - `verifySignedAuthResponse(...)` – verifies an auth API response signature against its JWKS

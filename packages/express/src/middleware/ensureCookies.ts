@@ -9,6 +9,7 @@ import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
 import { assertSecrets } from "../internal/validateSecrets";
 import { applyCookies, type CookieSameSite } from "@seamless-auth/core";
 import { expressResponseAdapter } from "../internal/respond";
+import { transportOf } from "../internal/transport";
 
 export interface EnsureCookiesMiddlewareOptions {
   authServerUrl: string;
@@ -38,6 +39,13 @@ export function createEnsureCookiesMiddleware(
     res: Response,
     next: NextFunction,
   ) {
+    // A bearer client holds its own tokens and refreshes through /refresh, so
+    // there is no cookie here to load or rotate.
+    if (transportOf(req) === "bearer") {
+      next();
+      return;
+    }
+
     const result = await ensureCookies(
       {
         path: req.path,
