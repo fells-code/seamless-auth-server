@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { loginHandler } from "@seamless-auth/core/handlers/login";
 import { respond } from "../internal/respond";
+import { transportOf } from "../internal/transport";
 import { buildProxyServiceAuthorization } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
@@ -18,6 +19,7 @@ export async function login(
       audience: opts.audience,
       cookieDomain: opts.cookieDomain,
       preAuthCookieName: opts.preAuthCookieName!,
+      transport: transportOf(req),
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
       forwardedUserAgent: buildForwardedUserAgent(req),

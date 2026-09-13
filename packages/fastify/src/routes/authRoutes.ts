@@ -11,6 +11,7 @@ import {
   meHandler,
   pollMagicLinkConfirmationHandler,
   proxyRequest,
+  refreshHandler,
   registerHandler,
   requestMagicLinkHandler,
   requestOtpHandler,
@@ -29,6 +30,7 @@ import {
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
 import { respond } from "../internal/respond";
+import { transportOf } from "../internal/transport";
 import type { ResolvedOptions } from "../options";
 
 function routeParam(req: FastifyRequest, name: string): string {
@@ -58,12 +60,13 @@ export function registerAuthRoutes(
       ? buildInternalServiceAuthorization(opts)
       : buildProxyServiceAuthorization(opts);
 
-  const sessionCookies = {
+  const sessionCookies = (req: FastifyRequest) => ({
     audience: opts.audience,
     cookieDomain: opts.cookieDomain,
     accessCookieName: opts.accessCookieName,
     refreshCookieName: opts.refreshCookieName,
-  };
+    transport: transportOf(req),
+  });
 
   fastify.post("/login", async (req, reply) => {
     const result = await loginHandler(
@@ -73,6 +76,7 @@ export function registerAuthRoutes(
         audience: opts.audience,
         cookieDomain: opts.cookieDomain,
         preAuthCookieName: opts.preAuthCookieName,
+        transport: transportOf(req),
         serviceAuthorization: buildProxyServiceAuthorization(opts),
       },
     );
@@ -89,7 +93,7 @@ export function registerAuthRoutes(
         forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
         forwardedUserAgent: buildForwardedUserAgent(req),
       },
-      { authServerUrl: opts.authServerUrl, ...sessionCookies },
+      { authServerUrl: opts.authServerUrl, ...sessionCookies(req) },
     );
 
     respond(reply, result, opts);
@@ -102,6 +106,7 @@ export function registerAuthRoutes(
         ...common(req),
         cookieDomain: opts.cookieDomain,
         registrationCookieName: opts.registrationCookieName,
+        transport: transportOf(req),
         externalDelivery: Boolean(opts.messaging),
         serviceAuthorization: deliveryServiceAuthorization(),
       },
@@ -183,7 +188,7 @@ export function registerAuthRoutes(
           forwardedUserAgent: buildForwardedUserAgent(req),
           kind,
         },
-        { authServerUrl: opts.authServerUrl, ...sessionCookies },
+        { authServerUrl: opts.authServerUrl, ...sessionCookies(req) },
       );
 
       respond(reply, result, opts);
@@ -236,7 +241,7 @@ export function registerAuthRoutes(
         forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
         forwardedUserAgent: buildForwardedUserAgent(req),
       },
-      { authServerUrl: opts.authServerUrl, ...sessionCookies },
+      { authServerUrl: opts.authServerUrl, ...sessionCookies(req) },
     );
 
     respond(reply, result, opts);
@@ -289,7 +294,7 @@ export function registerAuthRoutes(
       },
       {
         authServerUrl: opts.authServerUrl,
-        ...sessionCookies,
+        ...sessionCookies(req),
         serviceAuthorization: deliveryServiceAuthorization(),
       },
     );
@@ -311,6 +316,32 @@ export function registerAuthRoutes(
         audience: opts.audience,
         cookieDomain: opts.cookieDomain,
         accessCookieName: opts.accessCookieName,
+        transport: transportOf(req),
+      },
+    );
+
+    respond(reply, result, opts);
+  });
+
+  fastify.post("/refresh", async (req, reply) => {
+    const result = await refreshHandler(
+      {
+        transport: transportOf(req),
+        authorization: req.headers.authorization,
+        refreshCookie: req.cookies?.[opts.refreshCookieName],
+        serviceAuthorization: buildProxyServiceAuthorization(opts),
+        forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+        forwardedUserAgent: buildForwardedUserAgent(req),
+      },
+      {
+        authServerUrl: opts.authServerUrl,
+        audience: opts.audience,
+        cookieSecret: opts.cookieSecret,
+        serviceSecret: opts.serviceSecret,
+        keyId: opts.jwksKid,
+        cookieDomain: opts.cookieDomain,
+        accessCookieName: opts.accessCookieName,
+        refreshCookieName: opts.refreshCookieName,
       },
     );
 

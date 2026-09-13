@@ -1,8 +1,6 @@
 import { authFetch } from "../authFetch.js";
-import {
-  issueSessionCookies,
-  withoutSessionMaterial,
-} from "../upstreamSession.js";
+import { sessionResult } from "../upstreamSession.js";
+import type { AuthTransport } from "../transport.js";
 import { readPassthroughFailure } from "../upstreamError.js";
 import type { ResultFailure } from "../result.js";
 import type { CookiePayload } from "../ensureCookies.js";
@@ -22,6 +20,7 @@ export interface VerifyLoginOtpOptions {
   cookieDomain?: string;
   accessCookieName: string;
   refreshCookieName: string;
+  transport?: AuthTransport;
 }
 
 export interface VerifyLoginOtpResult extends ResultFailure {
@@ -72,14 +71,14 @@ async function verifyOtp(
 
   return {
     status: up.status,
-    body: withoutSessionMaterial(data),
-    setCookies: await issueSessionCookies(data, {
+    ...(await sessionResult(data, {
       authServerUrl: opts.authServerUrl,
       audience: opts.audience,
       accessCookieName: opts.accessCookieName,
       refreshCookieName: opts.refreshCookieName,
       cookieDomain: opts.cookieDomain,
-    }),
+      transport: opts.transport,
+    })),
   };
 }
 

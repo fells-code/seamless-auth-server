@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 
 import type { CookiePayload } from "./ensureCookies.js";
 import type { ResultFailure } from "./result.js";
+import type { AuthTransport } from "./transport.js";
 
 export type CookieSameSite = "lax" | "none" | "strict";
 
@@ -10,6 +11,16 @@ export interface CookieSecurityOptions {
   cookieDomain?: string;
   cookieSecure?: boolean;
   cookieSameSite?: CookieSameSite;
+}
+
+export interface ApplyResultOptions extends CookieSecurityOptions {
+  /**
+   * Bearer transport writes no cookies at all: the client holds its own tokens,
+   * and a `Set-Cookie` on a response it cannot store would be dead weight at
+   * best and, for a clear, a misleading signal that a session ended. Defaults
+   * to cookie transport.
+   */
+  transport?: AuthTransport;
 }
 
 /**
@@ -207,9 +218,11 @@ export function applyCookies(
 export function applyResult(
   result: AppliableResult,
   adapter: ResponseAdapter,
-  opts: CookieSecurityOptions,
+  opts: ApplyResultOptions,
 ): void {
-  applyCookies(result, adapter, opts);
+  if (opts.transport !== "bearer") {
+    applyCookies(result, adapter, opts);
+  }
 
   if (result.errorBody !== undefined) {
     adapter.send(result.status, result.errorBody);
