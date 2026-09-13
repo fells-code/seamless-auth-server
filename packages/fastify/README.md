@@ -85,6 +85,18 @@ fetches it from the auth API and returns `SeamlessUser | null`. It resolves a co
 session or a bearer access token, and returns `null` without calling the auth API when
 the request carries neither or the token fails verification.
 
+## Bearer transport for native clients
+
+A native app has no cookie jar. When a request carries `x-seamless-auth-transport: bearer`
+the same routes serve a bearer contract: the client presents the token a route needs in
+`Authorization: Bearer` (the ephemeral token from `/login` on pre-auth routes, the access
+token on access routes), session-issuing responses come back whole with `token` and
+`refreshToken`, no `Set-Cookie` is written, and `POST /auth/refresh` rotates the session
+from `Authorization: Bearer <refreshToken>`. Message delivery, client IP forwarding and the
+service token behave as in cookie transport. Requests without the header are served exactly
+as before. The Express README's "Bearer Transport for Native Clients" section walks through
+a flow; the two adapters agree on every step, pinned by the parity suite.
+
 ## Adopter-supplied message delivery
 
 Pass `messaging` to have the adapter deliver OTPs and magic links through your

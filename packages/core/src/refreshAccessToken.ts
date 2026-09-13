@@ -59,27 +59,56 @@ function pruneRecentRefreshResults(now: number): void {
   }
 }
 
+/**
+ * Runs one refresh per key at a time and replays a recent success to callers
+ * arriving just after it. The auth API rotates refresh tokens and treats a
+ * replay as theft, revoking the whole chain, so two requests that race the same
+ * token must be collapsed here rather than both reach it.
+ */
+async function dedupeRefresh<T extends RefreshAccessTokenResult>(
+  key: string,
+  run: () => Promise<T | null>,
+): Promise<T | null> {
+  const now = Date.now();
+  const recentRefresh = recentRefreshResults.get(key);
+  if (recentRefresh && recentRefresh.expiresAt > now) {
+    return recentRefresh.result as T;
+  }
+  if (recentRefresh) {
+    recentRefreshResults.delete(key);
+  }
+
+  const existingRefresh = inFlightRefreshes.get(key);
+  if (existingRefresh) {
+    return existingRefresh as Promise<T | null>;
+  }
+
+  const refreshPromise = run();
+  inFlightRefreshes.set(key, refreshPromise);
+
+  try {
+    const result = await refreshPromise;
+    if (result) {
+      const insertedAt = Date.now();
+      pruneRecentRefreshResults(insertedAt);
+      recentRefreshResults.set(key, {
+        result,
+        expiresAt: insertedAt + RECENT_REFRESH_RESULT_TTL_MS,
+      });
+    }
+    return result;
+  } finally {
+    inFlightRefreshes.delete(key);
+  }
+}
+
 export async function refreshAccessToken(
   refreshCookie: string,
   opts: RefreshAccessTokenOptions,
 ): Promise<RefreshAccessTokenResult | null> {
   assertSecrets(opts);
 
-  const now = Date.now();
-  const recentRefresh = recentRefreshResults.get(refreshCookie);
-  if (recentRefresh && recentRefresh.expiresAt > now) {
-    return recentRefresh.result;
-  }
-  if (recentRefresh) {
-    recentRefreshResults.delete(refreshCookie);
-  }
-
-  const existingRefresh = inFlightRefreshes.get(refreshCookie);
-  if (existingRefresh) {
-    return existingRefresh;
-  }
-
-  const refreshPromise = (async () => {
+  return dedupeRefresh(`cookie:${refreshCookie}`, async () => {
     const payload = verifyRefreshCookie(refreshCookie, opts.cookieSecret);
     if (!payload) return null;
     const serviceToken = createServiceToken({
@@ -102,22 +131,69 @@ export async function refreshAccessToken(
     if (!response.ok) return null;
 
     return response.json();
-  })();
+  });
+}
 
-  inFlightRefreshes.set(refreshCookie, refreshPromise);
-
-  try {
-    const result = await refreshPromise;
-    if (result) {
-      const insertedAt = Date.now();
-      pruneRecentRefreshResults(insertedAt);
-      recentRefreshResults.set(refreshCookie, {
-        result,
-        expiresAt: insertedAt + RECENT_REFRESH_RESULT_TTL_MS,
-      });
-    }
-    return result;
-  } finally {
-    inFlightRefreshes.delete(refreshCookie);
+class UpstreamRefreshFailure extends Error {
+  constructor(
+    readonly status: number,
+    readonly body: unknown,
+  ) {
+    super(`Upstream refresh failed with ${status}`);
   }
+}
+
+export interface RefreshBearerSessionOptions {
+  authServerUrl: string;
+  serviceAuthorization?: string;
+  forwardedClientIp?: string;
+  forwardedUserAgent?: string;
+}
+
+export interface RefreshBearerSessionResult {
+  status: number;
+  /** The auth API's body: the rotated session on success, its error otherwise. */
+  body: unknown;
+}
+
+/**
+ * Rotates a session for a bearer client, which holds the raw refresh token.
+ *
+ * Unlike the cookie path this returns the auth API's failure as-is, because the
+ * client reads it: `refresh_token_reused` means the chain is gone and the user
+ * must sign in again, which is a different outcome from a transient failure.
+ */
+export async function refreshBearerSession(
+  refreshToken: string,
+  opts: RefreshBearerSessionOptions,
+): Promise<RefreshBearerSessionResult> {
+  const rotated = await dedupeRefresh(
+    `bearer:${refreshToken}`,
+    async () => {
+      const response = await authFetch(`${opts.authServerUrl}/refresh`, {
+        method: "POST",
+        authorization: `Bearer ${refreshToken}`,
+        serviceAuthorization: opts.serviceAuthorization,
+        forwardedClientIp: opts.forwardedClientIp,
+        forwardedUserAgent: opts.forwardedUserAgent,
+      });
+
+      if (!response.ok) {
+        // Not cached, so a failed rotation is reported to every caller that
+        // asked for it rather than replayed as a success.
+        throw new UpstreamRefreshFailure(response.status, await response.json());
+      }
+
+      return response.json();
+    },
+  ).catch((error: unknown) => {
+    if (error instanceof UpstreamRefreshFailure) return error;
+    throw error;
+  });
+
+  if (rotated instanceof UpstreamRefreshFailure) {
+    return { status: rotated.status, body: rotated.body };
+  }
+
+  return { status: 200, body: rotated };
 }

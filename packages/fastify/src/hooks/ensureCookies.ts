@@ -10,6 +10,7 @@ import {
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
 import { fastifyResponseAdapter } from "../internal/respond";
+import { transportOf } from "../internal/transport";
 import type { ResolvedOptions } from "../options";
 
 /**
@@ -43,6 +44,12 @@ export function createEnsureCookiesHook(opts: ResolvedOptions, prefix: string) {
     req: FastifyRequest,
     reply: FastifyReply,
   ) {
+    // A bearer client holds its own tokens and refreshes through /refresh, so
+    // there is no cookie here to load or rotate.
+    if (transportOf(req) === "bearer") {
+      return;
+    }
+
     const result = await ensureCookies(
       {
         path: mountRelativePath(req.url, prefix),

@@ -24,6 +24,7 @@ import {
 import { buildForwardedClientIp } from "./internal/buildForwardedClientIp";
 import { buildForwardedUserAgent } from "./internal/buildForwardedUserAgent";
 import { respond } from "./internal/respond";
+import { transportOf } from "./internal/transport";
 import type { ResolvedOptions, SeamlessAuthServerOptions } from "./options";
 import { PROXY_ROUTES, resolveUpstreamPath } from "./routes/proxyRoutes";
 import { registerAuthRoutes } from "./routes/authRoutes";
@@ -136,6 +137,8 @@ function registerProxyRoutes(
           accessCookieName: opts.accessCookieName,
           preAuthCookieName: opts.preAuthCookieName,
           registrationCookieName: opts.registrationCookieName,
+          transport: transportOf(req),
+          authorization: req.headers.authorization,
         });
 
         if (rejection) {

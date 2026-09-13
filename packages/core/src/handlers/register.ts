@@ -3,6 +3,7 @@ import { readPassthroughFailure } from "../upstreamError.js";
 import { EXTERNAL_DELIVERY_HEADERS } from "../apiContract.js";
 import type { ResultFailure } from "../result.js";
 import type { CookiePayload } from "../ensureCookies.js";
+import type { AuthTransport } from "../transport.js";
 
 export interface RegisterInput {
   body: unknown;
@@ -16,6 +17,7 @@ export interface RegisterOptions {
   forwardedClientIp?: string;
   forwardedUserAgent?: string;
   serviceAuthorization?: string;
+  transport?: AuthTransport;
 }
 
 export interface RegisterResult extends ResultFailure {
@@ -53,6 +55,10 @@ export async function registerHandler(
       status: up.status,
       ...readPassthroughFailure(data),
     };
+  }
+
+  if (opts.transport === "bearer") {
+    return { status: 200, body: data };
   }
 
   return {

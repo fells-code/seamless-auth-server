@@ -454,6 +454,63 @@ Provider access tokens are never stored in adapter cookies or returned to the fr
 
 ---
 
+### Bearer Transport for Native Clients
+
+Browsers get the cookie contract above: the adapter holds the auth API's tokens in signed
+`httpOnly` cookies and the page never sees them. A native app has no cookie jar, so the same
+routes serve a second contract when the request carries the header
+`x-seamless-auth-transport: bearer`:
+
+- The client presents the token a route needs in `Authorization: Bearer`. Pre-auth routes (OTP,
+  passkey login, magic link) take the ephemeral token that `/login` or `/registration/register`
+  returned; access routes take the access token. The adapter forwards it to the auth API as-is.
+- Session-issuing responses come back whole, `token` and `refreshToken` included, and no
+  `Set-Cookie` is written. The adapter still verifies the auth API's signature on the access token
+  before handing the body back.
+- `POST /auth/refresh` rotates the session: send `Authorization: Bearer <refreshToken>` and store
+  the pair in the response. The auth API rotates refresh tokens and treats a replayed one as theft
+  (revoking the whole chain, `401 { "error": "refresh_token_reused" }`), so refresh once at a time.
+  Concurrent rotations of the same token that reach the adapter together are collapsed into one
+  upstream call.
+- Message delivery, client IP and user agent forwarding, and the service token behave exactly as
+  in cookie transport, since the adapter attaches them regardless of how the client carries its
+  session.
+
+The header rather than the presence of `Authorization` selects the transport, because the first
+request of a flow carries no token in either. Cookie transport is unchanged for requests without
+the header.
+
+```ts
+const headers = { "x-seamless-auth-transport": "bearer", "Content-Type": "application/json" };
+
+const started = await fetch("/auth/login", {
+  method: "POST",
+  headers,
+  body: JSON.stringify({ identifier: "user@example.com" }),
+}).then((r) => r.json());
+// started.token is the ephemeral token for the rest of the flow
+
+const session = await fetch("/auth/otp/verify-login-email-otp", {
+  method: "POST",
+  headers: { ...headers, Authorization: `Bearer ${started.token}` },
+  body: JSON.stringify({ token: code }),
+}).then((r) => r.json());
+// session.token (access) and session.refreshToken: keep them in the platform keystore
+
+const rotated = await fetch("/auth/refresh", {
+  method: "POST",
+  headers: { ...headers, Authorization: `Bearer ${session.refreshToken}` },
+}).then((r) => r.json());
+```
+
+To accept the same access token on your own routes, configure
+[`requireAuth`](#requireauthoptions) with `authServerUrl` and `audience`.
+
+`POST /auth/refresh` also works in cookie transport, rotating the refresh cookie into fresh
+session cookies, for a browser client that wants an explicit refresh rather than the silent one.
+
+---
+
 ### Admin Hardening Routes
 
 When mounted under `/auth`, the adapter proxies the admin hardening endpoints used by the

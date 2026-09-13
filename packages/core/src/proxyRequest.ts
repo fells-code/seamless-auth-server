@@ -1,5 +1,7 @@
 import type { AppliableResult } from "./applyResult.js";
 import { authFetch, type AuthFetchOptions } from "./authFetch.js";
+import type { AuthTransport } from "./transport.js";
+import { extractBearerToken } from "./verifyAccessToken.js";
 
 /**
  * Query parameters to forward upstream.
@@ -66,6 +68,9 @@ export interface ProxyIdentityInput {
   accessCookieName: string;
   preAuthCookieName: string;
   registrationCookieName: string;
+  transport?: AuthTransport;
+  /** The raw `Authorization` header, read in bearer transport. */
+  authorization?: string;
 }
 
 export interface ProxyIdentityRejection {
@@ -75,16 +80,33 @@ export interface ProxyIdentityRejection {
   warn?: string;
 }
 
+const IDENTITY_REQUIRED: Record<ProxyIdentity, string> = {
+  access: "access session required",
+  preAuth: "pre-auth session required",
+  register: "registration session required",
+};
+
 /**
  * Checks that a request carries the session a proxied route requires.
  *
  * Returns the rejection to send, or `undefined` when the request may proceed.
- * The cookie payload alone is not enough: it survives a refresh, so the route
- * also has to see the specific cookie for the identity it needs.
+ * In cookie transport the cookie payload alone is not enough: it survives a
+ * refresh, so the route also has to see the specific cookie for the identity it
+ * needs. In bearer transport the client presents the token for the identity
+ * itself, and the auth API is the one that checks which kind it is, so the
+ * adapter only insists that one was sent.
  */
 export function checkProxyIdentity(
   input: ProxyIdentityInput,
 ): ProxyIdentityRejection | undefined {
+  const error = IDENTITY_REQUIRED[input.identity];
+
+  if (input.transport === "bearer") {
+    return extractBearerToken(input.authorization)
+      ? undefined
+      : { status: 401, errorCode: error };
+  }
+
   if (!input.subject) {
     return {
       status: 401,
@@ -93,21 +115,15 @@ export function checkProxyIdentity(
     };
   }
 
-  const required: Record<ProxyIdentity, { name: string; error: string }> = {
-    access: { name: input.accessCookieName, error: "access session required" },
-    preAuth: {
-      name: input.preAuthCookieName,
-      error: "pre-auth session required",
-    },
-    register: {
-      name: input.registrationCookieName,
-      error: "registration session required",
-    },
+  const cookieName: Record<ProxyIdentity, string> = {
+    access: input.accessCookieName,
+    preAuth: input.preAuthCookieName,
+    register: input.registrationCookieName,
   };
 
-  const { name, error } = required[input.identity];
-
-  return input.cookies[name] ? undefined : { status: 401, errorCode: error };
+  return input.cookies[cookieName[input.identity]]
+    ? undefined
+    : { status: 401, errorCode: error };
 }
 
 export interface ProxyRequestOptions {

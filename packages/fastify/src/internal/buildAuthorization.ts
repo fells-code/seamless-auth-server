@@ -3,13 +3,27 @@ import {
   buildExternalDeliveryAuthorization,
   createServiceToken,
   DEV_JWKS_KID,
+  extractBearerToken,
   SERVICE_TOKEN_AUDIENCE,
   SERVICE_TOKEN_ISSUER,
 } from "@seamless-auth/core";
 
 import type { SeamlessAuthServerOptions } from "../options";
+import { transportOf } from "./transport";
 
+/**
+ * The `Authorization` a proxied call presents upstream on the user's behalf.
+ *
+ * Cookie transport takes the token out of the verified cookie payload. Bearer
+ * transport forwards the token the client sent, as-is: the auth API is the one
+ * that decides whether it is the right kind for the route.
+ */
 export function buildServiceAuthorization(req: FastifyRequest) {
+  if (transportOf(req) === "bearer") {
+    const token = extractBearerToken(req.headers?.authorization);
+    return token ? `Bearer ${token}` : undefined;
+  }
+
   const token = req.cookiePayload?.token || req.user?.token;
 
   return typeof token === "string" ? `Bearer ${token}` : undefined;

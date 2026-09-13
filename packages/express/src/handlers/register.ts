@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { registerHandler } from "@seamless-auth/core/handlers/register";
 import { respond } from "../internal/respond";
+import { transportOf } from "../internal/transport";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
 import {
@@ -21,6 +22,7 @@ export async function register(
       authServerUrl: opts.authServerUrl,
       cookieDomain: opts.cookieDomain,
       registrationCookieName: opts.registrationCookieName!,
+      transport: transportOf(req),
       externalDelivery: Boolean(opts.messaging),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
       forwardedUserAgent: buildForwardedUserAgent(req),

@@ -2,7 +2,11 @@ import { authFetch } from "../authFetch.js";
 import { readPassthroughFailure } from "../upstreamError.js";
 import type { ResultFailure } from "../result.js";
 import type { CookiePayload } from "../ensureCookies.js";
-import { verifyUpstreamSession } from "../upstreamSession.js";
+import {
+  type UpstreamSessionResponse,
+  verifyUpstreamSession,
+} from "../upstreamSession.js";
+import type { AuthTransport } from "../transport.js";
 
 export interface LoginInput {
   body: unknown;
@@ -16,15 +20,22 @@ export interface LoginOptions {
   serviceAuthorization?: string;
   forwardedClientIp?: string;
   forwardedUserAgent?: string;
+  transport?: AuthTransport;
+}
+
+export interface LoginStartBody {
+  message?: string;
+  identifierType?: string;
+  loginMethods?: string[];
 }
 
 export interface LoginResult extends ResultFailure {
   status: number;
-  body?: {
-    message?: string;
-    identifierType?: string;
-    loginMethods?: string[];
-  };
+  /**
+   * Cookie transport narrows the body to what the browser needs. Bearer
+   * transport returns the upstream body whole, ephemeral token included.
+   */
+  body?: LoginStartBody | UpstreamSessionResponse;
   setCookies?: {
     name: string;
     value: CookiePayload;
@@ -57,6 +68,12 @@ export async function loginHandler(
   // Login issues only the pre-auth cookie, so it verifies the response without
   // building session cookies from it.
   await verifyUpstreamSession(data, opts.authServerUrl, opts.audience);
+
+  // The ephemeral token is what carries the flow forward, and a bearer client
+  // has nowhere to get it from but the body.
+  if (opts.transport === "bearer") {
+    return { status: up.status, body: data };
+  }
 
   const body = {
     ...(typeof data.message === "string" ? { message: data.message } : {}),

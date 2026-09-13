@@ -1,4 +1,5 @@
 import type { SessionCookie } from "./applyResult.js";
+import type { AuthTransport } from "./transport.js";
 import { verifySignedAuthResponse } from "./verifySignedAuthResponse.js";
 
 /**
@@ -134,4 +135,38 @@ export async function issueSessionCookies(
   }
 
   return cookies;
+}
+
+export interface SessionResultOptions extends IssueSessionCookiesOptions {
+  transport?: AuthTransport;
+}
+
+export interface SessionResult {
+  body: unknown;
+  setCookies?: SessionCookie[];
+}
+
+/**
+ * Turns an upstream session response into what a handler returns for it, in
+ * whichever transport the request arrived on.
+ *
+ * Cookie transport strips the tokens out of the body and carries them in
+ * cookies. Bearer transport hands the body back whole, tokens included, because
+ * the client is the one holding them. The upstream token is verified either
+ * way: a body this package is about to vouch for is checked before it goes out,
+ * whether or not a cookie is minted from it.
+ */
+export async function sessionResult(
+  data: UpstreamSessionResponse,
+  opts: SessionResultOptions,
+): Promise<SessionResult> {
+  if (opts.transport === "bearer") {
+    await verifyUpstreamSession(data, opts.authServerUrl, opts.audience);
+    return { body: data };
+  }
+
+  return {
+    body: withoutSessionMaterial(data),
+    setCookies: await issueSessionCookies(data, opts),
+  };
 }

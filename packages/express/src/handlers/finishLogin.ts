@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { finishLoginHandler } from "@seamless-auth/core/handlers/finishLogin";
 import { respond } from "../internal/respond";
+import { transportOf } from "../internal/transport";
 import {
   buildProxyServiceAuthorization,
   buildServiceAuthorization,
@@ -30,6 +31,7 @@ export async function finishLogin(
       cookieDomain: opts.cookieDomain,
       accessCookieName: opts.accessCookieName!,
       refreshCookieName: opts.refreshCookieName!,
+      transport: transportOf(req),
     },
   );
 
