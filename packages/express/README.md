@@ -470,14 +470,26 @@ authentication in the Seamless Auth API.
 
 ### `requireAuth(options)`
 
-Express middleware that verifies a signed access cookie and attaches the decoded user payload to `req.user`.
+Express middleware that verifies the request's Seamless Auth session and attaches the decoded user
+payload to `req.user`. Two credentials are understood:
 
-`cookieSecret` is required and must match the secret given to `createSeamlessAuthServer`. This guard
-does not attempt token refresh; silent refresh is handled by the `/auth` router's `ensureCookies`
-middleware.
+- the signed access cookie the `/auth` router issues to browsers, always;
+- the auth API's own access token in `Authorization: Bearer`, when `authServerUrl` and `audience`
+  are configured. This is how a native client with no cookie jar authenticates. The token is
+  verified against the auth API's JWKS (issuer, audience, expiry, and `typ: "access"`, so a
+  sign-in flow's ephemeral token is refused).
+
+A cookie takes precedence when both are present. `cookieSecret` is required and must match the
+secret given to `createSeamlessAuthServer`. This guard does not attempt token refresh; silent
+refresh is handled by the `/auth` router's `ensureCookies` middleware for cookies, and a bearer
+client refreshes through `POST /auth/refresh` itself.
 
 ```ts
-const guard = requireAuth({ cookieSecret: process.env.COOKIE_SECRET! });
+const guard = requireAuth({
+  cookieSecret: process.env.COOKIE_SECRET!,
+  authServerUrl: process.env.AUTH_SERVER_URL!,
+  audience: process.env.AUTH_SERVER_URL!,
+});
 
 app.get("/api/profile", guard, (req, res) => {
   res.json({ user: req.user });
@@ -488,10 +500,15 @@ app.get("/api/profile", guard, (req, res) => {
 
 ```ts
 {
-  cookieSecret: string;   // required, must match createSeamlessAuthServer
-  cookieName?: string;    // optional (defaults to "seamless-access")
+  cookieSecret: string;    // required, must match createSeamlessAuthServer
+  cookieName?: string;     // optional (defaults to "seamless-access")
+  authServerUrl?: string;  // with audience, enables bearer access tokens
+  audience?: string;       // expected `aud` on a bearer token, usually the auth server URL
 }
 ```
+
+`authServerUrl` and `audience` must be given together. Leave both out and the guard accepts
+cookies only, which is what every earlier version did.
 
 **`req.user` shape (`SeamlessAuthUser`)**
 
@@ -510,6 +527,9 @@ app.get("/api/profile", guard, (req, res) => {
 `id` is the user identifier, read from the access token's `sub` claim. Earlier versions also
 exposed a duplicate `sub` field on `req.user`, which was removed in `@seamless-auth/express`
 0.9.0. See [Migration](#migration-usersub-to-userid).
+
+On the bearer path `email` and `phone` are not set, because the access token does not carry
+them. Use [`getSeamlessUser`](#getseamlessuserreq-options) when a route needs the profile.
 
 ---
 
@@ -563,6 +583,11 @@ const user = await getSeamlessUser(req, authOptions);
 
 `cookieSecret` is required and must be at least 32 characters, otherwise the call throws. The
 access cookie name is read from `accessCookieName` and defaults to `seamless-access`.
+
+A request with no access cookie but an `Authorization: Bearer` access token from the auth API
+resolves too: the token is verified against the auth API's JWKS using `authServerUrl` and
+`audience` from the options, then forwarded as the caller's identity. A request that carries
+neither, or a token that fails verification, returns `null` without calling the auth server.
 
 Returns `SeamlessUser | null`:
 

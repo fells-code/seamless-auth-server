@@ -5,6 +5,7 @@ export * from "./ensureCookies.js";
 export * from "./verifyCookieJwt.js";
 export * from "./verifyRefreshCookie.js";
 export * from "./verifySignedAuthResponse.js";
+export * from "./verifyAccessToken.js";
 export * from "./refreshAccessToken.js";
 export * from "./getSeamlessUser.js";
 export * from "./logger.js";

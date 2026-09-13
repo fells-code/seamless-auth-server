@@ -50,7 +50,11 @@ the plugin:
 ```ts
 import { requireAuth, requireRole } from "@seamless-auth/fastify";
 
-const authenticated = requireAuth({ cookieSecret: process.env.COOKIE_SECRET! });
+const authenticated = requireAuth({
+  cookieSecret: process.env.COOKIE_SECRET!,
+  authServerUrl: process.env.AUTH_SERVER_URL!,
+  audience: process.env.AUTH_SERVER_URL!,
+});
 
 app.get("/api/me", { preHandler: authenticated }, async (req) => ({
   user: req.user,
@@ -63,13 +67,23 @@ app.get(
 );
 ```
 
-`requireAuth` verifies the access cookie and puts the session on `request.user`.
-It does not refresh: silent refresh belongs to the plugin's own hook on the auth
-routes. Role checks understand scoped names, so `admin` grants everything under
-it and `admin:write` grants `admin:read`.
+`requireAuth` verifies the request's session and puts it on `request.user`. It
+understands the signed access cookie the plugin issues to browsers, and, when
+`authServerUrl` and `audience` are configured together, the auth API's own access
+token in `Authorization: Bearer`, which is how a native client with no cookie jar
+authenticates. A bearer token is verified against the auth API's JWKS, including
+`typ: "access"`, so a sign-in flow's ephemeral token is refused. The cookie wins
+when both are present. Leave the pair out and the guard accepts cookies only.
 
-For the hydrated profile rather than the cookie payload, `getSeamlessUser(request, options)`
-fetches it from the auth API and returns `SeamlessUser | null`.
+It does not refresh: silent refresh belongs to the plugin's own hook on the auth
+routes, and a bearer client refreshes through `POST /auth/refresh` itself. Role
+checks understand scoped names, so `admin` grants everything under it and
+`admin:write` grants `admin:read`.
+
+For the hydrated profile rather than the token payload, `getSeamlessUser(request, options)`
+fetches it from the auth API and returns `SeamlessUser | null`. It resolves a cookie
+session or a bearer access token, and returns `null` without calling the auth API when
+the request carries neither or the token fails verification.
 
 ## Adopter-supplied message delivery
 
