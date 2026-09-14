@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import {
   applyExternalDelivery,
+  deleteAccountHandler,
   finishLoginHandler,
   finishOAuthLoginHandler,
   finishRegisterHandler,
@@ -383,4 +384,22 @@ export function registerAuthRoutes(
       respond(reply, result, opts);
     });
   }
+
+  fastify.delete(
+    "/users/delete",
+    async (req: FastifyRequest, reply: FastifyReply) => {
+      const result = await deleteAccountHandler({
+        authServerUrl: opts.authServerUrl,
+        accessCookieName: opts.accessCookieName,
+        registrationCookieName: opts.registrationCookieName,
+        refreshCookieName: opts.refreshCookieName,
+        authorization: buildServiceAuthorization(req),
+        serviceAuthorization: buildProxyServiceAuthorization(opts),
+        forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+        forwardedUserAgent: buildForwardedUserAgent(req),
+      });
+
+      respond(reply, result, opts);
+    },
+  );
 }

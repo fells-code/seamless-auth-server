@@ -108,6 +108,11 @@ function mockUpstream() {
       return json(401, { error: "refresh_token_reused" });
     }
     if (path === "/logout") return json(200, { message: "Success" });
+    if (path === "/users/delete") {
+      return init.headers?.Authorization === `Bearer ${ACCESS}`
+        ? json(200, { message: "User deleted" })
+        : json(401, { error: "missing bearer token" });
+    }
     if (path === "/organizations") return json(200, { organizations: [] });
     throw new Error(`Unexpected upstream call: ${path}`);
   });
@@ -313,6 +318,26 @@ describe("bearer transport through the auth proxy", () => {
       expect(res.status).toBe(200);
       expect(res.setCookie).toBeUndefined();
       expect(calls.filter((c) => c.path === "/refresh")).toHaveLength(0);
+    });
+
+    // The client holds the tokens, so the answer to deleting the account is
+    // the auth API's body and nothing else: the SDK clears its own storage on
+    // the way out, and there is no cookie for the adapter to clear.
+    it("deletes the account with the bearer token and sets no cookie", async () => {
+      const calls = mockUpstream();
+
+      const res = await run({
+        method: "delete",
+        path: "/users/delete",
+        headers: { authorization: `Bearer ${ACCESS}` },
+      });
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ message: "User deleted" });
+      expect(res.setCookie).toBeUndefined();
+      const upstream = calls.find((c) => c.path === "/users/delete");
+      expect(upstream.init.method).toBe("DELETE");
+      expect(upstream.init.headers.Authorization).toBe(`Bearer ${ACCESS}`);
     });
   });
 
