@@ -129,6 +129,7 @@ const COOKIE_REQUIREMENTS: Record<
   "/logout": { name: "accessCookieName", required: true },
   "/users/me": { name: "accessCookieName", required: true },
   "/users/update": { name: "accessCookieName", required: true },
+  "/users/delete": { name: "accessCookieName", required: true },
   "/users/credentials": { name: "accessCookieName", required: true },
   "/sessions": { name: "accessCookieName", required: true },
   "/organizations": { name: "accessCookieName", required: true },

@@ -19,6 +19,7 @@ import { switchOrganization } from "./handlers/switchOrganization";
 import { finishRegister } from "./handlers/finishRegister";
 import { me } from "./handlers/me";
 import { logout } from "./handlers/logout";
+import { deleteAccount } from "./handlers/deleteAccount";
 import { refresh } from "./handlers/refresh";
 import { pollMagicLinkConfirmation } from "./handlers/pollMagicLinkConfirmation";
 import { requestMagicLink } from "./handlers/requestMagicLink";
@@ -368,6 +369,9 @@ export function createSeamlessAuthServer(
   );
   r.delete("/logout/all", (req, res) =>
     logout(req, res, resolvedOpts, "all_sessions"),
+  );
+  r.delete("/users/delete", (req, res) =>
+    deleteAccount(req, res, resolvedOpts),
   );
 
   r.get("/organizations", proxyWithIdentity("organizations", "access", "GET"));

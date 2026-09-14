@@ -174,6 +174,8 @@ Routes include:
 - `/auth/users/me`
 - `DELETE /auth/logout` for the current session
 - `DELETE /auth/logout/all` for every session owned by the current user
+- `DELETE /auth/users/delete` to delete the signed-in user's own account. It answers with the auth
+  API's body and clears the session cookies the way `/logout` does; the SDK's `deleteUser()` calls it
 - `POST /auth/magic-link` to request a magic-link email
 - `POST /auth/otp/generate-phone-otp`, `-email-otp`, and their `-login-` variants to send an OTP
 

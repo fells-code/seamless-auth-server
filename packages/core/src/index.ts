@@ -33,6 +33,7 @@ export * from "./handlers/finishLogin.js";
 export * from "./handlers/register.js";
 export * from "./handlers/finishRegister.js";
 export * from "./handlers/logout.js";
+export * from "./handlers/deleteAccount.js";
 export * from "./handlers/refresh.js";
 export * from "./handlers/me.js";
 export * from "./handlers/requestOtpHandler.js";

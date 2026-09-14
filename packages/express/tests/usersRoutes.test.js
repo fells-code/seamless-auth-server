@@ -102,4 +102,61 @@ describe("users proxy routes", () => {
       }),
     );
   });
+
+  // The SDK's deleteUser() sends this; it answered the adapter's own 404 until
+  // the route existed (#166). Deleting the account ends the session the way
+  // logout does, so the cookies that named it are cleared with the answer.
+  it("deletes the account as DELETE /users/delete and clears every session cookie", async () => {
+    global.fetch.mockResolvedValue(
+      createJsonResponse(200, { message: "User deleted" }),
+    );
+
+    const res = await request(createApp())
+      .delete("/auth/users/delete")
+      .set("Cookie", createAccessCookie());
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ message: "User deleted" });
+    expect(global.fetch).toHaveBeenCalledWith(
+      "https://auth.example.com/users/delete",
+      expect.objectContaining({
+        method: "DELETE",
+        headers: expect.objectContaining({
+          Authorization: "Bearer access-token",
+        }),
+      }),
+    );
+
+    const cleared = res.headers["set-cookie"].map((c) => c.split(";")[0]);
+    expect(cleared).toEqual(
+      expect.arrayContaining([
+        "seamless-access=",
+        "seamless-ephemeral=",
+        "seamless-refresh=",
+      ]),
+    );
+  });
+
+  it("keeps the cookies when the auth API refuses the deletion", async () => {
+    global.fetch.mockResolvedValue(
+      createJsonResponse(404, { error: "User not found." }),
+    );
+
+    const res = await request(createApp())
+      .delete("/auth/users/delete")
+      .set("Cookie", createAccessCookie());
+
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual(
+      expect.objectContaining({ error: "User not found." }),
+    );
+    expect(res.headers["set-cookie"] ?? []).toEqual([]);
+  });
+
+  it("does not reach the auth API for a deletion without a session", async () => {
+    const res = await request(createApp()).delete("/auth/users/delete");
+
+    expect([400, 401]).toContain(res.status);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
 });

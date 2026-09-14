@@ -299,6 +299,11 @@ describe("fastify and express adapters agree", () => {
       upstream(200, {}),
     ],
     [
+      "deleting the account clears every session cookie",
+      { method: "delete", path: "/users/delete", cookie: accessCookie() },
+      upstream(200, { message: "User deleted" }),
+    ],
+    [
       "oauth providers list",
       { method: "get", path: "/oauth/providers" },
       upstream(200, { providers: [] }),
