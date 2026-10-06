@@ -157,6 +157,33 @@ describe("ensureCookies", () => {
     expect(refreshCookie.name).toBe("refresh");
   });
 
+  // fells-code/seamless-auth-server#154: a refresh only mints an access token, so
+  // using it here spent the refresh token and stored an access token under the
+  // pre-auth cookie, which the auth API then refused as the wrong token type.
+  it.each([
+    ["/webAuthn/login/start", "preauth"],
+    ["/webAuthn/login/finish", "preauth"],
+    ["/otp/verify-login-email-otp", "preauth"],
+    ["/otp/verify-email-otp", "registration"],
+  ])(
+    "answers 401 without refreshing when %s is missing its %s cookie",
+    async (path, cookieName) => {
+      const { ensureCookies } = await import("../dist/ensureCookies.js");
+
+      const result = await ensureCookies(
+        { path, cookies: { refresh: "refresh.jwt" } },
+        BASE_OPTS,
+      );
+
+      expect(result.type).toBe("error");
+      expect(result.status).toBe(401);
+      expect(result.errorCode).toBe(`Missing required cookie "${cookieName}"`);
+      expect(result.setCookies).toBeUndefined();
+      expect(result.clearCookies).toBeUndefined();
+      expect(refreshAccessTokenMock).not.toHaveBeenCalled();
+    },
+  );
+
   it("refreshes old access cookies that do not contain a stored auth token", async () => {
     const { ensureCookies } = await import("../dist/ensureCookies.js");
 

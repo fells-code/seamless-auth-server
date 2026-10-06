@@ -314,11 +314,15 @@ export async function ensureCookies(
   const refreshCookie = input.cookies[opts.refreshCookieName];
 
   if (required && !cookieValue) {
-    const refreshed = await refreshRequiredCookie(
-      cookieName,
-      refreshCookie,
-      opts,
-    );
+    // A refresh only ever yields an access token, so only the access cookie can be
+    // restored from it. For a pre-auth or registration route it would spend the
+    // refresh token and store an access token under that route's cookie, which the
+    // auth API then refuses as the wrong token type. Nothing the adapter holds can
+    // produce the token those routes need, so the answer is 401.
+    const refreshed =
+      cookieName === opts.accessCookieName
+        ? await refreshRequiredCookie(cookieName, refreshCookie, opts)
+        : undefined;
 
     // 401, not 400: the request is well formed, there is simply nobody signed
     // in. Answering 400 made every signed-out page view look like a malformed
