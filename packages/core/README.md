@@ -1,7 +1,7 @@
 # @seamless-auth/core
 
 [![npm version](https://img.shields.io/npm/v/@seamless-auth/core.svg)](https://www.npmjs.com/package/@seamless-auth/core)
-[![license](https://img.shields.io/badge/license-AGPL--3.0-blue)](#license "License")
+[![license](https://img.shields.io/badge/license-Apache--2.0-blue)](#license "License")
 
 ### Seamless Auth – Core
 
@@ -273,7 +273,7 @@ ensuring behavior matches production runtime exactly.
 
 ## License
 
-**AGPL-3.0-only** © 2026 Fells Code LLC
+**Apache-2.0** © 2026 Fells Code LLC
 
 This license ensures:
 

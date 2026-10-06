@@ -301,7 +301,7 @@ The documentation covers:
 
 ## License
 
-This repository is licensed under the AGPL-3.0 license.
+This repository is licensed under the Apache-2.0 license.
 
 Individual packages may include additional notices or licenses where appropriate.
 Refer to each package directory for details.

@@ -2,7 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/@seamless-auth/express.svg)](https://www.npmjs.com/package/@seamless-auth/express)
 [![test coverage](https://img.shields.io/badge/coverage-coming%20soon-lightgrey)](#testing)
-[![license](https://img.shields.io/badge/license-AGPL--3.0-blue)](#license)
+[![license](https://img.shields.io/badge/license-Apache--2.0-blue)](#license)
 
 ### Seamless Auth – Express Adapter
 
@@ -740,7 +740,7 @@ Core authentication logic is tested separately in `@seamless-auth/core`.
 
 ## License
 
-**AGPL-3.0-only** © 2026 Fells Code LLC
+**Apache-2.0** © 2026 Fells Code LLC
 
 This license ensures:
 

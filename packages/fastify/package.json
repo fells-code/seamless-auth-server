@@ -12,7 +12,7 @@
     "cookies",
     "seamless-auth"
   ],
-  "license": "AGPL-3.0-only",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "dist/index.js",
   "types": "./dist/index.d.ts",
@@ -21,7 +21,6 @@
   "files": [
     "dist",
     "LICENSE",
-    "LICENSE.md",
     "README.md"
   ],
   "exports": {

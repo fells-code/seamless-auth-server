@@ -117,7 +117,7 @@ Instead, see `SECURITY.md` for responsible disclosure instructions.
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the same license as the project (AGPL-3.0-only unless otherwise stated).
+By contributing, you agree that your contributions will be licensed under the same license as the project (Apache-2.0 unless otherwise stated).
 
 ---
 

@@ -199,4 +199,4 @@ from the options.
 
 ## License
 
-AGPL-3.0-only. Copyright © Fells Code, LLC.
+Apache-2.0. Copyright © Fells Code, LLC.
