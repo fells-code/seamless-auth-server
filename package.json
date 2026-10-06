@@ -10,6 +10,7 @@
     "build": "pnpm -r --sort build",
     "clean": "pnpm -r --sort clean",
     "test": "pnpm -r --sort test",
+    "check:types-current": "node scripts/check-types-current.mjs",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release:stable": "pnpm build && changeset publish",

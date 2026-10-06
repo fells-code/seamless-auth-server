@@ -26,5 +26,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Check @seamless-auth/types is current
+        run: pnpm check:types-current
+
       - name: Test workspace
         run: pnpm test
