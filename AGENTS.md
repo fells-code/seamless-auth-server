@@ -106,8 +106,9 @@ packages/
 | Build   | `pnpm build`   |
 | Test    | `pnpm test`    |
 
-- Node version is pinned by `.nvmrc` (Node 24); CI reads it via
-  `node-version-file`. Run `nvm use` and `corepack enable` locally to match.
+- Supported Node is `>=22`. CI tests 22, 24, and the latest release;
+  `.nvmrc` pins Node 24 for development and releases. Run `nvm use` and
+  `corepack enable` locally.
 - Releases use Changesets; a user-facing change needs a changeset. Do not
   hand-edit versions or `CHANGELOG.md`.
 
