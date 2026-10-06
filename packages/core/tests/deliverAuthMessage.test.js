@@ -108,6 +108,111 @@ describe("deliverAuthMessage", () => {
     );
   });
 
+  it("sends an enrollment invite with the sign-in link", async () => {
+    const email = emailTransport();
+
+    await deliverAuthMessage(
+      { email, defaults: { appName: "Acme", emailFrom: "no-reply@acme.test" } },
+      {
+        kind: "enrollment_invite_email",
+        to: "user@acme.test",
+        signInUrl: "https://acme.test/login",
+      },
+    );
+
+    const [message] = email.send.mock.calls[0];
+    expect(message.to).toBe("user@acme.test");
+    expect(message.from).toBe("no-reply@acme.test");
+    expect(message.subject).toBe("Acme - Set up a passkey");
+    expect(message.text).toContain("https://acme.test/login");
+    expect(message.html).toContain('href="https://acme.test/login"');
+  });
+
+  it("prefers an enrollment invite handler over the transport", async () => {
+    const email = emailTransport();
+    const sendEnrollmentInviteEmail = jest.fn(async () => ({
+      accepted: true,
+      provider: "handler",
+      channel: "email",
+    }));
+
+    await deliverAuthMessage(
+      {
+        email,
+        handlers: { sendEnrollmentInviteEmail },
+        defaults: { emailFrom: "no-reply@acme.test" },
+      },
+      {
+        kind: "enrollment_invite_email",
+        to: "user@acme.test",
+        signInUrl: "https://acme.test/login",
+      },
+    );
+
+    expect(sendEnrollmentInviteEmail).toHaveBeenCalledWith({
+      to: "user@acme.test",
+      signInUrl: "https://acme.test/login",
+      from: "no-reply@acme.test",
+    });
+    expect(email.send).not.toHaveBeenCalled();
+  });
+
+  it("lets an override reshape the enrollment invite", async () => {
+    const email = emailTransport();
+
+    await deliverAuthMessage(
+      {
+        email,
+        overrides: {
+          enrollmentInviteEmail: (input, defaults) => ({
+            ...defaults,
+            subject: `Invite for ${input.to} to ${input.signInUrl}`,
+          }),
+        },
+      },
+      {
+        kind: "enrollment_invite_email",
+        to: "user@acme.test",
+        signInUrl: "https://acme.test/login",
+      },
+    );
+
+    expect(email.send.mock.calls[0][0].subject).toBe(
+      "Invite for user@acme.test to https://acme.test/login",
+    );
+  });
+
+  it("throws when an enrollment invite has no email transport", async () => {
+    await expect(
+      deliverAuthMessage(
+        {},
+        {
+          kind: "enrollment_invite_email",
+          to: "user@acme.test",
+          signInUrl: "https://acme.test/login",
+        },
+      ),
+    ).rejects.toThrow(
+      "Missing email transport for enrollment invite delivery.",
+    );
+  });
+
+  it("warns and sends nothing for a delivery kind it does not know", async () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const email = emailTransport();
+
+    await deliverAuthMessage(
+      { email },
+      { kind: "carrier_pigeon", to: "user@acme.test" },
+    );
+
+    expect(email.send).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('Unsupported delivery kind "carrier_pigeon"'),
+    );
+    warn.mockRestore();
+  });
+
   it("throws when the instruction has no transport to deliver it", async () => {
     await expect(
       deliverAuthMessage(

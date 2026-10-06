@@ -30,6 +30,13 @@ import type {
   SmsMessage,
 } from "@seamless-auth/types";
 
+export interface SendEnrollmentInviteEmailInput {
+  to: string;
+  signInUrl: string;
+  from?: string;
+  subject?: string;
+}
+
 export interface EmailTransport {
   readonly name: string;
   send(message: EmailMessage): Promise<DeliveryResult>;
@@ -60,12 +67,20 @@ export interface AuthMessageOverrides {
     defaults: EmailMessage,
     context: AuthMessageOverrideContext,
   ) => EmailMessage;
+  enrollmentInviteEmail?: (
+    input: SendEnrollmentInviteEmailInput,
+    defaults: EmailMessage,
+    context: AuthMessageOverrideContext,
+  ) => EmailMessage;
 }
 
 export interface AuthMessagingHandlers {
   sendOtpEmail(input: SendOtpEmailInput): Promise<DeliveryResult>;
   sendOtpSms(input: SendOtpSmsInput): Promise<DeliveryResult>;
   sendMagicLinkEmail(input: SendMagicLinkEmailInput): Promise<DeliveryResult>;
+  sendEnrollmentInviteEmail?(
+    input: SendEnrollmentInviteEmailInput,
+  ): Promise<DeliveryResult>;
 }
 
 export interface SeamlessAuthMessagingOptions {
