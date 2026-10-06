@@ -1,5 +1,16 @@
 # @seamless-auth/core
 
+## 0.18.0
+
+### Minor Changes
+
+- daaffbc: Depend on `@seamless-auth/types` `^0.26.0` (core was on `^0.4.0`, the Next.js adapter on `^0.25.0`). `deliverAuthMessage` now delivers the `enrollment_invite_email` kind: a default email linking to the sign-in page, an optional `handlers.sendEnrollmentInviteEmail`, and an optional `overrides.enrollmentInviteEmail`. A delivery kind the adapter does not recognize is now logged as a warning instead of being dropped silently.
+- b7d40bb: Pass `GET /admin/enrollment` (with its query) and `POST /admin/enrollment/invites` through to the auth API with the caller's access identity. They report passkey enrollment progress and send enrollment invites (fells-code/seamless-auth-api#338).
+
+### Patch Changes
+
+- 2c626a9: Stop silently refreshing a route that needs a pre-auth or registration cookie. When `/webAuthn/login/start`, `/webAuthn/login/finish` or another pre-auth or registration route was called without its cookie, `ensureCookies` spent the refresh token and wrote the resulting access token under that route's cookie name. The next attempt then forwarded an access token to a route the auth API gates on an ephemeral token, and passkey login answered 401 (`JWT typ mismatch`). Such a route now answers 401 without touching the refresh cookie, since a refresh can only produce an access token. Fixes #154.
+
 ## 0.17.0
 
 ### Minor Changes
