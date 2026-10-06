@@ -660,6 +660,24 @@ export function createSeamlessAuthServer(
       "DELETE",
     ),
   );
+  r.put(
+    "/admin/organizations/:organizationId/oauth-providers/:providerId/retirement",
+    proxyWithIdentity(
+      (req) =>
+        `admin/organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/oauth-providers/${encodeURIComponent(routeParam(req, "providerId"))}/retirement`,
+      "access",
+      "PUT",
+    ),
+  );
+  r.delete(
+    "/admin/organizations/:organizationId/oauth-providers/:providerId/retirement",
+    proxyWithIdentity(
+      (req) =>
+        `admin/organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/oauth-providers/${encodeURIComponent(routeParam(req, "providerId"))}/retirement`,
+      "access",
+      "DELETE",
+    ),
+  );
 
   r.get("/admin/sessions", (req, res) =>
     admin.listAllSessions(req, res, resolvedOpts),

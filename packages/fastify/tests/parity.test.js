@@ -269,6 +269,24 @@ describe("fastify and express adapters agree", () => {
       upstream(404, { error: "Organization not found" }),
     ],
     [
+      "admin OAuth provider retirement success",
+      {
+        method: "put",
+        path: "/admin/organizations/org-1/oauth-providers/legacy-idp/retirement",
+        cookie: accessCookie(),
+      },
+      upstream(200, { organization: { id: "org-1" } }),
+    ],
+    [
+      "admin OAuth provider restore success",
+      {
+        method: "delete",
+        path: "/admin/organizations/org-1/oauth-providers/legacy-idp/retirement",
+        cookie: accessCookie(),
+      },
+      upstream(200, { organization: { id: "org-1" } }),
+    ],
+    [
       "proxy without the required session",
       { method: "get", path: "/organizations" },
       upstream(200, {}),

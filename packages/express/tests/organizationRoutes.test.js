@@ -171,4 +171,43 @@ describe("organization proxy routes", () => {
       }),
     );
   });
+
+  it.each([
+    ["put", "PUT"],
+    ["delete", "DELETE"],
+  ])(
+    "proxies OAuth provider retirement (%s) with access identity",
+    async (verb, method) => {
+      global.fetch.mockResolvedValue(
+        createJsonResponse(200, {
+          organization: { id: "org-1", retiredOAuthProviders: ["legacy-idp"] },
+        }),
+      );
+
+      const res = await request(createApp())
+        [verb]("/auth/admin/organizations/org-1/oauth-providers/legacy-idp/retirement")
+        .set("Cookie", createAccessCookie());
+
+      expect(res.status).toBe(200);
+      expect(res.body.organization.retiredOAuthProviders).toEqual(["legacy-idp"]);
+      expect(global.fetch).toHaveBeenCalledWith(
+        "https://auth.example.com/admin/organizations/org-1/oauth-providers/legacy-idp/retirement",
+        expect.objectContaining({
+          method,
+          headers: expect.objectContaining({
+            Authorization: "Bearer access-token",
+          }),
+        }),
+      );
+    },
+  );
+
+  it("refuses OAuth provider retirement without an access session", async () => {
+    const res = await request(createApp()).put(
+      "/auth/admin/organizations/org-1/oauth-providers/legacy-idp/retirement",
+    );
+
+    expect(res.status).toBe(401);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
 });
