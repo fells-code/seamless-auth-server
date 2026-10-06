@@ -1,5 +1,17 @@
 # @seamless-auth/express
 
+## 0.17.0
+
+### Minor Changes
+
+- 0e78e53: Pass `PUT` and `DELETE /admin/organizations/:organizationId/oauth-providers/:providerId/retirement` through to the auth API with the caller's access identity. They retire an OAuth provider for one organization during a migration cutover and restore it for a rollback (fells-code/seamless-auth-api#337). The Fastify proxy route table now accepts `PUT`.
+- e0cab5c: Relicense from AGPL-3.0-only to the Apache License, Version 2.0 (fells-code/seamless-auth-api#335). The `LICENSE` file, the `license` field and the license header in source files now say Apache-2.0, and the AGPL summary in `LICENSE.md` is removed.
+
+### Patch Changes
+
+- Updated dependencies [e0cab5c]
+  - @seamless-auth/core@0.17.0
+
 ## 0.16.1
 
 ### Patch Changes
