@@ -31,7 +31,7 @@
     }
   },
   "engines": {
-    "node": ">=24 <25"
+    "node": ">=22"
   },
   "scripts": {
     "build": "pnpm run build:js && pnpm run build:types",
