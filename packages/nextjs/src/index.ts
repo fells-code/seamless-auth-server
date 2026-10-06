@@ -1,5 +1,10 @@
 export { createSeamlessAuthHandler } from "./handler";
 export type { RouteHandler, SeamlessAuthRouteHandlers } from "./handler";
+export { createSeamlessConsoleProxy } from "./consoleProxy";
+export type {
+  SeamlessConsoleProxyHandlers,
+  SeamlessConsoleProxyOptions,
+} from "./consoleProxy";
 export {
   getSeamlessClaims,
   getSeamlessSession,
