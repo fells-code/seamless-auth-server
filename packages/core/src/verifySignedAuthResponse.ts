@@ -1,5 +1,5 @@
-import { jwtVerify } from "jose";
-import { getAuthServerJwks } from "./jwks.js";
+import { errors } from "jose";
+import { verifyWithAuthServerJwks } from "./jwks.js";
 import { getSeamlessLogger } from "./logger.js";
 
 export async function verifySignedAuthResponse<T = any>(
@@ -8,20 +8,17 @@ export async function verifySignedAuthResponse<T = any>(
   audience: string,
 ): Promise<T | null> {
   try {
-    const { payload } = await jwtVerify(
-      token,
-      getAuthServerJwks(authServerUrl),
-      {
-        algorithms: ["RS256"],
-        issuer: authServerUrl,
-        audience,
-      },
-    );
+    const payload = await verifyWithAuthServerJwks(token, authServerUrl, {
+      algorithms: ["RS256"],
+      issuer: authServerUrl,
+      audience,
+    });
 
     return payload as T;
-  } catch {
+  } catch (err) {
+    const reason = err instanceof errors.JOSEError ? ` (${err.code})` : "";
     getSeamlessLogger().error(
-      "[SeamlessAuth] Failed to verify signed auth response.",
+      `[SeamlessAuth] Failed to verify signed auth response${reason}.`,
     );
     return null;
   }

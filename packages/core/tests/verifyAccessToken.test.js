@@ -159,4 +159,43 @@ describe("verifyAccessToken", () => {
     expect(claims).toBeNull();
     expect(global.fetch).not.toHaveBeenCalled();
   });
+
+  it("picks up a new key served under the same kid", async () => {
+    const server = nextServer();
+    mockJwks(server);
+    await verifyAccessToken(await sign(server, ACCESS_CLAIMS), server, server);
+
+    const rotated = await generateKeyPair("RS256");
+    const rotatedJwk = {
+      ...(await exportJWK(rotated.publicKey)),
+      alg: "RS256",
+      kid: "k1",
+      use: "sig",
+    };
+    global.fetch = jest.fn(
+      async () =>
+        new Response(JSON.stringify({ keys: [rotatedJwk] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+    );
+    const now = Date.now();
+    jest.spyOn(Date, "now").mockReturnValue(now + 31_000);
+
+    try {
+      const token = await new SignJWT(ACCESS_CLAIMS)
+        .setProtectedHeader({ alg: "RS256", kid: "k1" })
+        .setIssuer(server)
+        .setAudience(server)
+        .setExpirationTime("5m")
+        .sign(rotated.privateKey);
+
+      const claims = await verifyAccessToken(token, server, server);
+
+      expect(claims).toMatchObject(ACCESS_CLAIMS);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.restoreAllMocks();
+    }
+  });
 });
