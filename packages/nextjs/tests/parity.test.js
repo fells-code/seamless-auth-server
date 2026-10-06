@@ -324,6 +324,18 @@ describe("next.js and express adapters agree", () => {
       },
       upstream(200, { challenge: "challenge" }),
     ],
+    // The auth API answers a successful enrollment with 204. Each adapter
+    // attaches a body to it, which Express drops and a Response would refuse.
+    [
+      "passkey enrollment finish when upstream answers 204",
+      {
+        method: "post",
+        path: "/webAuthn/register/finish",
+        cookie: accessCookie(),
+        payload: { attestation: {} },
+      },
+      upstream(204, null),
+    ],
     // Enrollment moved off the pre-auth cookie because the auth API mints
     // one for an account that already exists from an email address alone.
     // Both adapters have to refuse it, or the one that does not hands the
