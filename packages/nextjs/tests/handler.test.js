@@ -206,6 +206,19 @@ describe("createSeamlessAuthHandler", () => {
     });
   });
 
+  it("sends no body on a 204, where a Response would refuse one", async () => {
+    global.fetch = jest.fn(async () => upstream(204, null));
+
+    const res = await call("/auth/webAuthn/register/finish", {
+      method: "POST",
+      headers: { cookie: accessCookie(), "content-type": "application/json" },
+      body: JSON.stringify({ attestation: {} }),
+    });
+
+    expect(res.status).toBe(204);
+    expect(await res.text()).toBe("");
+  });
+
   describe("errors", () => {
     it("answers 500 without leaking the failure", async () => {
       const spy = jest.spyOn(console, "error").mockImplementation(() => {});

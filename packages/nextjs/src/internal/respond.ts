@@ -8,6 +8,11 @@ import {
 
 import type { AuthContext } from "./context";
 
+// Statuses that cannot carry a body. Express and Fastify drop one silently; the
+// `Response` constructor throws instead, which turned the auth API's 204 from
+// /webAuthn/register/finish into a 500 here.
+const NULL_BODY_STATUSES = new Set([101, 204, 205, 304]);
+
 /**
  * Collects what core decides to emit, then renders it as a `Response`. A route
  * handler returns its response rather than writing to one, so cookies written by
@@ -67,7 +72,7 @@ export class ResponseCollector {
       headers.append("set-cookie", cookie);
     }
 
-    if (this.body === undefined) {
+    if (this.body === undefined || NULL_BODY_STATUSES.has(this.status)) {
       return new Response(null, { status: this.status, headers });
     }
 
