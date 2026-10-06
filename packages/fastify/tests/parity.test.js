@@ -251,6 +251,16 @@ describe("fastify and express adapters agree", () => {
       upstream(403, { error: "forbidden" }),
     ],
     [
+      "admin enrollment invite forwards the body",
+      {
+        method: "post",
+        path: "/admin/enrollment/invites",
+        cookie: accessCookie(),
+        payload: { organizationId: "org-1" },
+      },
+      upstream(200, { sent: 1, skipped: 0, results: [] }),
+    ],
+    [
       "admin organization delete success",
       {
         method: "delete",

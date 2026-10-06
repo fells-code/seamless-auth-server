@@ -38,6 +38,7 @@ const QUERY_ROUTES = [
   ["/admin/sessions", "limit=10&offset=20"],
   ["/admin/auth-events", "type=login_success&limit=10"],
   ["/admin/organizations", "search=acme&limit=10&offset=20"],
+  ["/admin/enrollment", "organizationId=org-1&status=none&imported=true&limit=10"],
   ["/internal/auth-events/summary", "from=2026-01-01&interval=day"],
   ["/internal/auth-events/timeseries", "from=2026-01-01&interval=day"],
   ["/internal/auth-events/grouped", "from=2026-01-01&interval=day"],

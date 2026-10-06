@@ -230,6 +230,18 @@ export const PROXY_ROUTES: ProxyRouteDefinition[] = [
     upstream: "admin/organizations/:organizationId/members/:userId",
     identity: "access",
   },
+  {
+    method: "GET",
+    path: "/admin/enrollment",
+    upstream: "admin/enrollment",
+    identity: "access",
+  },
+  {
+    method: "POST",
+    path: "/admin/enrollment/invites",
+    upstream: "admin/enrollment/invites",
+    identity: "access",
+  },
 ];
 
 /**

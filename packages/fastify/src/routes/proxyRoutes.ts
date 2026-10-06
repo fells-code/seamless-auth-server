@@ -244,6 +244,18 @@ export const PROXY_ROUTES: ProxyRouteDefinition[] = [
       "admin/organizations/:organizationId/oauth-providers/:providerId/retirement",
     identity: "access",
   },
+  {
+    method: "GET",
+    path: "/admin/enrollment",
+    upstream: "admin/enrollment",
+    identity: "access",
+  },
+  {
+    method: "POST",
+    path: "/admin/enrollment/invites",
+    upstream: "admin/enrollment/invites",
+    identity: "access",
+  },
 ];
 
 /**

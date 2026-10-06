@@ -181,6 +181,10 @@ const COOKIE_REQUIREMENTS: Record<
     name: "accessCookieName",
     required: true,
   },
+  "/admin/enrollment": {
+    name: "accessCookieName",
+    required: true,
+  },
 
   "/system-config/admin": {
     name: "accessCookieName",
