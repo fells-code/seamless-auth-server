@@ -132,6 +132,36 @@ The claims leave out the upstream access token, so they are safe to pass to a
 client component. Treat them as a routing hint: the auth API stays the
 authority on every call that matters.
 
+## Serve the admin console
+
+The Seamless admin dashboard is built to load from `/console` on the same
+origin as `/auth`, so it calls the cookie-based admin routes without CORS.
+Mount a proxy for it at `app/console/[[...path]]/route.ts`:
+
+```ts
+import { createSeamlessConsoleProxy } from "@seamless-auth/nextjs";
+
+export const { GET, HEAD } = createSeamlessConsoleProxy({
+  authServerUrl: process.env.AUTH_SERVER_URL!,
+});
+```
+
+It requests the same path under `/console` on the auth server and forwards only
+the method and the path: no cookies, no `Authorization`. The response carries
+the body and the `content-type`, `cache-control`, `etag`, and `last-modified`
+headers. Any other method answers 405, and a path that leaves the console
+subtree (including an encoded `%2f` or `%5c`) answers 400 without a request
+upstream.
+
+| Option | Default | Purpose |
+| --- | --- | --- |
+| `authServerUrl` | required | Base URL of the auth server serving the console |
+| `basePath` | `/console` | Subtree requested upstream |
+| `mountPath` | `/console` | Where the route is mounted, including any Next.js `basePath` |
+
+Only the same-origin shape is supported. A dashboard on another origin cannot
+call the route handler, which sends no CORS headers.
+
 ## Bearer transport for native clients
 
 A request carrying `x-seamless-auth-transport: bearer` is served without
@@ -195,7 +225,9 @@ Two differences follow from having no framework underneath:
   `application/json`, strict, 100kb maximum
 - an unknown route answers `404 { "error": "not_found" }` as JSON
 
-The admin console proxy is not included yet.
+The console proxy runs the Fastify parity scenarios against
+`createSeamlessConsoleProxy` from `@seamless-auth/express`. A write is refused
+by Next.js itself, since the route exports only `GET` and `HEAD`.
 
 ## License
 

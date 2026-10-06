@@ -7,8 +7,13 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import request from "supertest";
 
-const { createSeamlessAuthHandler } = await import("../dist/index.js");
-const { default: createSeamlessAuthServer } = await import(
+const { createSeamlessAuthHandler, createSeamlessConsoleProxy } = await import(
+  "../dist/index.js"
+);
+const {
+  default: createSeamlessAuthServer,
+  createSeamlessConsoleProxy: createExpressConsoleProxy,
+} = await import(
   "../../express/dist/index.js"
 );
 
@@ -647,5 +652,160 @@ describe("both adapters forward a magic link destination", () => {
 
     expect(viaN).toBe(viaE);
     expect(viaN).toBe("https://auth.example.com/magic-link");
+  });
+});
+
+function consoleUpstream(status, body, headers = {}) {
+  return new Response(body, { status, headers });
+}
+
+function fetchedUrls() {
+  return global.fetch.mock.calls.map(([url]) => url.toString());
+}
+
+// Next.js answers 405 itself for a method the route does not export, before
+// the handler runs, so only GET and HEAD are dispatched to one.
+async function viaNextConsole({ method, path }) {
+  const handlers = createSeamlessConsoleProxy({
+    authServerUrl: OPTIONS.authServerUrl,
+  });
+  const handler = handlers[method.toUpperCase()];
+  const res = await handler(
+    new Request(`http://localhost${path}`, { method: method.toUpperCase() }),
+  );
+
+  return {
+    status: res.status,
+    body: parseBody(await res.text()),
+    contentType: res.headers.get("content-type") ?? undefined,
+    cacheControl: res.headers.get("cache-control") ?? undefined,
+  };
+}
+
+async function viaExpressConsole({ method, path }) {
+  const app = express();
+  app.use(
+    "/console",
+    createExpressConsoleProxy({ authServerUrl: OPTIONS.authServerUrl }),
+  );
+
+  const res = await request(app)[method](path);
+
+  return {
+    status: res.status,
+    body: parseBody(res.text),
+    contentType: res.headers["content-type"],
+    cacheControl: res.headers["cache-control"],
+  };
+}
+
+async function bothConsoleAdapters(scenario, respondUpstream) {
+  global.fetch = jest.fn(respondUpstream);
+  const next = { ...(await viaNextConsole(scenario)), urls: fetchedUrls() };
+
+  global.fetch = jest.fn(respondUpstream);
+  const expressResult = {
+    ...(await viaExpressConsole(scenario)),
+    urls: fetchedUrls(),
+  };
+
+  return { next, express: expressResult };
+}
+
+describe("next.js and express console proxies agree", () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  const ASSET = () =>
+    consoleUpstream(200, "console.js()", {
+      "content-type": "application/javascript",
+      "cache-control": "public, max-age=31536000, immutable",
+    });
+  const SHELL = () =>
+    consoleUpstream(200, "<!doctype html><div id=root>", {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+    });
+  const NOT_FOUND = () =>
+    consoleUpstream(404, "Not found", { "content-type": "text/plain" });
+  const UNREACHABLE = () => {
+    throw new Error("network down");
+  };
+
+  it.each([
+    [
+      "asset request forwards the body and the caching headers",
+      { method: "get", path: "/console/assets/x.js" },
+      ASSET,
+    ],
+    [
+      "deep client route gets the SPA shell",
+      { method: "get", path: "/console/settings" },
+      SHELL,
+    ],
+    [
+      "the console root gets the SPA shell",
+      { method: "get", path: "/console" },
+      SHELL,
+    ],
+    [
+      "query string is forwarded upstream",
+      { method: "get", path: "/console/settings?tab=keys&tab=orgs" },
+      SHELL,
+    ],
+    [
+      "upstream 404 stays a 404",
+      { method: "get", path: "/console/missing.js" },
+      NOT_FOUND,
+    ],
+    [
+      "encoded-slash traversal is refused",
+      { method: "get", path: "/console/..%2fadmin/users" },
+      ASSET,
+    ],
+    [
+      "encoded-backslash traversal is refused",
+      { method: "get", path: "/console/..%5cadmin" },
+      ASSET,
+    ],
+    [
+      "an unreachable upstream is a 502",
+      { method: "get", path: "/console/assets/x.js" },
+      UNREACHABLE,
+    ],
+  ])("%s", async (_label, scenario, respondUpstream) => {
+    const { next, express: expressResult } = await bothConsoleAdapters(
+      scenario,
+      async () => respondUpstream(),
+    );
+
+    expect(next.status).toBe(expressResult.status);
+    expect(next.body).toEqual(expressResult.body);
+    expect(next.contentType).toBe(expressResult.contentType);
+    expect(next.cacheControl).toBe(expressResult.cacheControl);
+    expect(next.urls).toEqual(expressResult.urls);
+  });
+
+  // Express and the URL parser normalize dot-segments at different points, so
+  // the status each answers with differs. What has to hold on both is that
+  // nothing outside the console subtree is ever requested upstream.
+  it.each([
+    ["/console/../auth/admin/users"],
+    ["/console/%2e%2e/auth/admin/users"],
+    ["/console/assets/../../auth/admin/users"],
+  ])("never proxies outside the console subtree (%s)", async (path) => {
+    const { next, express: expressResult } = await bothConsoleAdapters(
+      { method: "get", path },
+      async () => NOT_FOUND(),
+    );
+
+    for (const url of [...next.urls, ...expressResult.urls]) {
+      expect(url.startsWith("https://auth.example.com/console")).toBe(true);
+    }
+
+    expect(next.status).toBeGreaterThanOrEqual(400);
+    expect(expressResult.status).toBeGreaterThanOrEqual(400);
   });
 });
