@@ -109,6 +109,31 @@ function buildMagicLinkMessage(
   );
 }
 
+function buildEnrollmentInviteMessage(
+  input: Extract<AuthDeliveryInstruction, { kind: "enrollment_invite_email" }>,
+  messaging: SeamlessAuthMessagingOptions,
+): EmailMessage {
+  const appName = messaging.defaults?.appName ?? "Seamless Auth";
+
+  return applyEmailOverride(
+    messaging.overrides?.enrollmentInviteEmail,
+    {
+      to: input.to,
+      signInUrl: input.signInUrl,
+      from: messaging.defaults?.emailFrom,
+      subject: `${appName} - Set up a passkey`,
+    },
+    {
+      to: input.to,
+      from: messaging.defaults?.emailFrom,
+      subject: `${appName} - Set up a passkey`,
+      text: `You have been invited to set up a passkey for ${appName}. Sign in at the link below and follow the prompt:\n\n${input.signInUrl}\n\nIf you were not expecting this email, you can safely ignore it.`,
+      html: `<div><h1>Set up a passkey for ${appName}</h1><p>Sign in at the link below and follow the prompt to add a passkey:</p><p><a href="${input.signInUrl}">${input.signInUrl}</a></p><p>If you were not expecting this email, you can safely ignore it.</p></div>`,
+    },
+    appName,
+  );
+}
+
 export async function deliverAuthMessage(
   messaging: SeamlessAuthMessagingOptions | undefined,
   delivery: AuthDeliveryInstruction | undefined,
@@ -169,6 +194,36 @@ export async function deliverAuthMessage(
 
       await messaging.email.send(buildMagicLinkMessage(delivery, messaging));
       return;
+
+    case "enrollment_invite_email":
+      if (messaging.handlers?.sendEnrollmentInviteEmail) {
+        await messaging.handlers.sendEnrollmentInviteEmail({
+          to: delivery.to,
+          signInUrl: delivery.signInUrl,
+          from: messaging.defaults?.emailFrom,
+        });
+        return;
+      }
+
+      if (!messaging.email) {
+        throw new Error(
+          "Missing email transport for enrollment invite delivery.",
+        );
+      }
+
+      await messaging.email.send(
+        buildEnrollmentInviteMessage(delivery, messaging),
+      );
+      return;
+
+    default: {
+      // A new kind in @seamless-auth/types fails the build here. At runtime an
+      // API newer than this adapter can still send one, so it is logged, not thrown.
+      const unhandled: never = delivery;
+      getSeamlessLogger().warn(
+        `[SeamlessAuth] Unsupported delivery kind "${(unhandled as { kind: string }).kind}", so no message was sent.`,
+      );
+    }
   }
 }
 
