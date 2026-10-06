@@ -418,6 +418,28 @@ describe("fastify and express adapters agree", () => {
   // stale cookie in the path of the one call a signed-out client has to make.
   // Asserted with a valid cookie present so a future refactor cannot quietly
   // start attaching one.
+  it("refuses a pre-auth route that has only a refresh cookie, without asking upstream", async () => {
+    const scenario = {
+      method: "post",
+      path: "/webAuthn/login/start",
+      cookie: `seamless-refresh=${signed({ sub: "user-123", refreshToken: "opaque" }, "3600s")}`,
+      payload: {},
+    };
+    const { fastify, express: expressResult } = await bothAdapters(
+      scenario,
+      upstream(200, REFRESH_OK),
+    );
+
+    for (const result of [fastify, expressResult]) {
+      expect(result.status).toBe(401);
+      expect(
+        result.cookies.some((cookie) => cookie.startsWith("seamless-ephemeral=<signed>")),
+      ).toBe(false);
+    }
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(fastify).toEqual(expressResult);
+  });
+
   it("sends no identity upstream for the public system config", async () => {
     // One explicit user agent for both, since light-my-request sends a default
     // and supertest sends none, and that difference would show up as a header
