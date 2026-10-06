@@ -111,6 +111,33 @@ app.get(
 grants `admin:read` and `admin:write`; `admin:write` grants `admin:read`; `admin:read` does not
 grant write access or satisfy a plain `admin` check.
 
+### @seamless-auth/fastify
+
+The Fastify adapter serves the same routes and issues the same cookies as the Express adapter, as a
+plugin registered under a prefix. A parity suite holds the two to identical responses.
+
+Location:
+
+```
+packages/fastify
+```
+
+### @seamless-auth/nextjs
+
+The Next.js adapter serves the same routes from an App Router catch-all route handler, so a Next.js
+application needs no separate server for `/auth`. It also reads the session where Next.js renders:
+
+- `createSeamlessAuthHandler` returns the `GET`, `POST`, `PATCH`, and `DELETE` route handlers
+- `getSeamlessSession` resolves the signed-in user for a server component, in the shape the React
+  SDK's `AuthProvider` takes as `initialSession`, and never refreshes from the server
+- `hasSeamlessSession` and `getSeamlessClaims` check the cookies locally for `proxy.ts`
+
+Location:
+
+```
+packages/nextjs
+```
+
 ---
 
 ## OAuth Login
@@ -193,7 +220,6 @@ Future adapters are expected to follow the same pattern:
 
 Planned and likely future integrations include:
 
-- Fastify
 - NestJS
 - Python (ASGI / FastAPI)
 - Other server runtimes where cookie-based sessions are appropriate
@@ -262,7 +288,9 @@ The documentation covers:
 ├─ RELEASES.md
 ├─ packages/
 │  ├─ core/        # Framework-agnostic authentication logic
-│  └─ express/     # Express middleware adapter
+│  ├─ express/     # Express middleware adapter
+│  ├─ fastify/     # Fastify plugin adapter
+│  └─ nextjs/      # Next.js App Router route handler adapter
 ├─ .changeset/     # Release intent and Changesets config
 ├─ .github/
 │  └─ workflows/   # CI and release pipelines
