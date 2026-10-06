@@ -679,6 +679,15 @@ export function createSeamlessAuthServer(
     ),
   );
 
+  r.get(
+    "/admin/enrollment",
+    proxyWithIdentity("admin/enrollment", "access", "GET"),
+  );
+  r.post(
+    "/admin/enrollment/invites",
+    proxyWithIdentity("admin/enrollment/invites", "access"),
+  );
+
   r.get("/admin/sessions", (req, res) =>
     admin.listAllSessions(req, res, resolvedOpts),
   );
