@@ -10,7 +10,7 @@
         "jwt",
         "seamless-auth"
     ],
-    "license": "AGPL-3.0-only",
+    "license": "Apache-2.0",
     "author": "Fells Code, LLC",
     "sideEffects": false,
     "homepage": "https://seamlessauth.com",
@@ -38,7 +38,6 @@
     "files": [
         "dist",
         "LICENSE",
-        "LICENSE.md",
         "README.md"
     ],
     "engines": {
