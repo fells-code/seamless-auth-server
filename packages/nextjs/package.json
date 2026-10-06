@@ -53,6 +53,7 @@
   },
   "dependencies": {
     "@seamless-auth/core": "workspace:^",
+    "@seamless-auth/types": "^0.25.0",
     "cookie": "^1.1.1"
   },
   "devDependencies": {
