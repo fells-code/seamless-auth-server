@@ -1,5 +1,5 @@
-import { jwtVerify, type JWTPayload } from "jose";
-import { getAuthServerJwks } from "./jwks.js";
+import type { JWTPayload } from "jose";
+import { verifyWithAuthServerJwks } from "./jwks.js";
 
 /**
  * The claims the auth API signs into an access token.
@@ -53,15 +53,11 @@ export async function verifyAccessToken(
   }
 
   try {
-    const { payload } = await jwtVerify(
-      token,
-      getAuthServerJwks(authServerUrl),
-      {
-        algorithms: ["RS256"],
-        issuer: authServerUrl,
-        audience,
-      },
-    );
+    const payload = await verifyWithAuthServerJwks(token, authServerUrl, {
+      algorithms: ["RS256"],
+      issuer: authServerUrl,
+      audience,
+    });
 
     if (payload.typ !== "access" || typeof payload.sub !== "string") {
       return null;
