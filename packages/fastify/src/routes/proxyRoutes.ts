@@ -1,7 +1,7 @@
 import type { ProxyIdentity } from "@seamless-auth/core";
 
 export interface ProxyRouteDefinition {
-  method: "GET" | "POST" | "PATCH" | "DELETE";
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   /** Route path, with the `:params` Fastify binds. */
   path: string;
   /**
@@ -228,6 +228,20 @@ export const PROXY_ROUTES: ProxyRouteDefinition[] = [
     method: "DELETE",
     path: "/admin/organizations/:organizationId/members/:userId",
     upstream: "admin/organizations/:organizationId/members/:userId",
+    identity: "access",
+  },
+  {
+    method: "PUT",
+    path: "/admin/organizations/:organizationId/oauth-providers/:providerId/retirement",
+    upstream:
+      "admin/organizations/:organizationId/oauth-providers/:providerId/retirement",
+    identity: "access",
+  },
+  {
+    method: "DELETE",
+    path: "/admin/organizations/:organizationId/oauth-providers/:providerId/retirement",
+    upstream:
+      "admin/organizations/:organizationId/oauth-providers/:providerId/retirement",
     identity: "access",
   },
 ];
