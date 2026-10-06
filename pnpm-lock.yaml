@@ -143,6 +143,9 @@ importers:
       '@seamless-auth/core':
         specifier: workspace:^
         version: link:../core
+      '@seamless-auth/types':
+        specifier: ^0.25.0
+        version: 0.25.0
       cookie:
         specifier: ^1.1.1
         version: 1.1.1
@@ -878,6 +881,10 @@ packages:
     resolution: {integrity: sha512-QVTUovf40zgTqlFVrKA1uXMVvU2QWEFWfAH8Wdc48IxLvrJMQVMBRjuQyUpzZCDkakImib9eVazbWlC6ksWtJw==}
     cpu: [x64]
     os: [win32]
+
+  '@seamless-auth/types@0.25.0':
+    resolution: {integrity: sha512-/E1AtmTRiEKv1qN/XGxwu6PpDTI4vOv/uTKkkFc4tmsxOVTAYJLJhd23GbofunZmTth8pSfhrW05aUSAXwUMmA==}
+    engines: {node: '>=24 <25'}
 
   '@seamless-auth/types@0.4.0':
     resolution: {integrity: sha512-1WhLjgyCN9UdX6TEzKbbASROeLMxZmo2LiAYOlYE2sGIPojnbAE/yFbp5Ydt13GibiZ6MwYlHMLcsBVQMeelWA==}
@@ -3429,6 +3436,10 @@ snapshots:
 
   '@rollup/rollup-win32-x64-msvc@4.60.4':
     optional: true
+
+  '@seamless-auth/types@0.25.0':
+    dependencies:
+      zod: 4.4.3
 
   '@seamless-auth/types@0.4.0':
     dependencies:

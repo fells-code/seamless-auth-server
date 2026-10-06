@@ -4,8 +4,8 @@ import {
   authFetch,
   verifyRefreshCookie,
   type SeamlessAuthUser,
-  type SeamlessUser,
 } from "@seamless-auth/core";
+import type { MeResponse } from "@seamless-auth/types";
 
 import { buildProxyServiceAuthorization } from "./internal/buildAuthorization";
 
@@ -30,15 +30,10 @@ export interface SeamlessSessionOptions {
 }
 
 /**
- * The signed-in user's `/users/me` response. Shaped to pass straight to the
- * React SDK's `AuthProvider initialSession`.
+ * The signed-in user's `/users/me` response: the same wire type the React SDK's
+ * `AuthProvider` takes as `initialSession`, so it passes straight through.
  */
-export interface SeamlessSession {
-  user: SeamlessUser;
-  credentials?: unknown[];
-  organizations?: unknown[];
-  activeOrganization?: unknown;
-}
+export type SeamlessSession = MeResponse;
 
 /** What the access cookie says about the user, minus the upstream token. */
 export type SeamlessClaims = Omit<SeamlessAuthUser, "token">;
@@ -133,7 +128,7 @@ export async function getSeamlessSession(
     return null;
   }
 
-  const data = (await response.json()) as Partial<SeamlessSession> | null;
+  const data = (await response.json()) as Partial<MeResponse> | null;
 
   if (!data?.user) {
     return null;
