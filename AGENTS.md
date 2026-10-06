@@ -14,6 +14,7 @@ Published packages:
 - `@seamless-auth/core` (`packages/core`): framework-agnostic core.
 - `@seamless-auth/express` (`packages/express`): the Express adapter.
 - `@seamless-auth/fastify` (`packages/fastify`): the Fastify adapter.
+- `@seamless-auth/nextjs` (`packages/nextjs`): the Next.js App Router adapter.
 
 These are public, adopter-facing packages. Their public API is a contract, and
 they bridge cookie sessions to the Bearer/JWKS contract of the
@@ -67,8 +68,9 @@ guidance may extend them but must not contradict them.
 
 - pnpm workspace (`pnpm-workspace.yaml`) with packages under `packages/*`.
 - TypeScript libraries built and published via Changesets.
-- `@seamless-auth/express` and `@seamless-auth/fastify` depend on
-  `@seamless-auth/core`; keep the core free of framework-specific code.
+- `@seamless-auth/express`, `@seamless-auth/fastify`, and
+  `@seamless-auth/nextjs` depend on `@seamless-auth/core`; keep the core free of
+  framework-specific code.
 
 ## Architecture Map
 
@@ -77,9 +79,22 @@ packages/
   core/       framework-agnostic auth core and shared logic
   express/    Express adapter built on top of core
   fastify/    Fastify adapter built on top of core
+  nextjs/     Next.js route handler adapter built on top of core
 ```
 
 - Keep framework specifics in the adapter package, not in `core`.
+- The Next.js adapter has no framework underneath, so it builds its own
+  request context (`src/internal/context.ts`): cookie and JSON body parsing
+  that mirror Express's `cookie-parser` and strict `json()`, and a router that
+  matches case-insensitively in table order as Express does. Its parity tests
+  reuse the Fastify scenarios against Express; when a scenario is added to
+  `packages/fastify/tests/parity.test.js`, add it to the Next.js copy too.
+- `getSeamlessSession` in the Next.js adapter must never refresh. A refresh from
+  a server component rotates the refresh token in a response the browser never
+  receives, and the browser's next refresh is then revoked as a replay.
+- The Next.js handler keeps cookies that `ensureCookies` queued even when the
+  route then fails, for the same reason. Do not build a fresh response on the
+  error path.
 - The adapters bridge to `seamless-auth-api`; when behavior looks off, check the
   API's route/token/JWKS contract before changing code here.
 

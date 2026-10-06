@@ -1,0 +1,629 @@
+// Runs the same requests through the Next.js route handler and the Express
+// adapter against the same mocked auth API and compares what comes back. The
+// scenarios are the Fastify parity suite's, so all three adapters are held to
+// one contract.
+import { jest } from "@jest/globals";
+import express from "express";
+import jwt from "jsonwebtoken";
+import request from "supertest";
+
+const { createSeamlessAuthHandler } = await import("../dist/index.js");
+const { default: createSeamlessAuthServer } = await import(
+  "../../express/dist/index.js"
+);
+
+const COOKIE_SECRET = "cookie-secret-cookie-secret-cookie-secret";
+const SERVICE_SECRET = "service-secret-service-secret-service-secret";
+
+const OPTIONS = {
+  authServerUrl: "https://auth.example.com",
+  cookieSecret: COOKIE_SECRET,
+  serviceSecret: SERVICE_SECRET,
+  audience: "https://auth.example.com",
+  jwksKid: "test-main",
+};
+
+function upstream(status, body) {
+  return { ok: status >= 200 && status < 300, status, json: async () => body };
+}
+
+function signed(payload, ttl = "300s") {
+  return jwt.sign(payload, COOKIE_SECRET, {
+    algorithm: "HS256",
+    expiresIn: ttl,
+  });
+}
+
+const accessCookie = () =>
+  `seamless-access=${signed({ sub: "user-123", roles: ["admin"], sessionId: "s-1", token: "access-token" })}`;
+const preAuthCookie = () =>
+  `seamless-ephemeral=${signed({ sub: "user-123", token: "pre-auth" })}`;
+
+function buildExpress(options = {}) {
+  const app = express();
+  app.use("/auth", createSeamlessAuthServer({ ...OPTIONS, ...options }));
+  return app;
+}
+
+// Cookie values are signed JWTs carrying iat/exp, so they differ per run. Keep
+// the name and the attributes, which are what policy depends on.
+function normalizeCookies(raw) {
+  return (raw ?? [])
+    .map((value) => {
+      const [pair, ...attrs] = value.split("; ");
+      const name = pair.slice(0, pair.indexOf("="));
+      const body = pair.slice(pair.indexOf("=") + 1);
+      return [
+        `${name}=${body === "" ? "<cleared>" : "<signed>"}`,
+        ...attrs
+          .map((a) => (a.startsWith("Expires=") ? "Expires=<t>" : a))
+          .sort(),
+      ].join("; ");
+    })
+    .sort();
+}
+
+function parseBody(text) {
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+async function viaNext({ method, path, cookie, headers, payload, options }) {
+  const handlers = createSeamlessAuthHandler({ ...OPTIONS, ...options });
+  const verb = method.toUpperCase();
+  const requestHeaders = {
+    ...(headers ?? {}),
+    ...(cookie ? { cookie } : {}),
+    ...(payload === undefined ? {} : { "content-type": "application/json" }),
+  };
+
+  const res = await handlers[verb](
+    new Request(`http://localhost/auth${path}`, {
+      method: verb,
+      headers: requestHeaders,
+      ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
+    }),
+  );
+
+  return {
+    status: res.status,
+    body: parseBody(await res.text()),
+    cookies: normalizeCookies(res.headers.getSetCookie()),
+  };
+}
+
+async function viaExpress({
+  method,
+  path,
+  cookie,
+  headers,
+  payload,
+  options,
+}) {
+  let req = request(buildExpress(options))[method](`/auth${path}`);
+  if (headers) req = req.set(headers);
+  if (cookie) req = req.set("Cookie", cookie);
+  if (payload !== undefined) req = req.send(payload);
+
+  const res = await req;
+
+  return {
+    status: res.status,
+    body: parseBody(res.text),
+    cookies: normalizeCookies(res.headers["set-cookie"]),
+  };
+}
+
+async function bothAdapters(scenario, upstreamResponse) {
+  global.fetch = jest.fn(async () => upstreamResponse);
+  const next = await viaNext(scenario);
+
+  global.fetch = jest.fn(async () => upstreamResponse);
+  const expressResult = await viaExpress(scenario);
+
+  return { next, express: expressResult };
+}
+
+describe("next.js and express adapters agree", () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  const REFRESH_OK = {
+    sub: "user-123",
+    token: "new-access",
+    refreshToken: "new-refresh",
+    roles: ["admin"],
+    email: "user@example.com",
+    phone: null,
+    ttl: 300,
+    refreshTtl: 3600,
+  };
+
+  it.each([
+    [
+      "login failure forwards the upstream body",
+      { method: "post", path: "/login", payload: { identifier: "a@b.c" } },
+      upstream(400, { error: "account_locked" }),
+    ],
+    [
+      "login failure keeps an OAuth sibling code",
+      { method: "post", path: "/login", payload: { identifier: "a@b.c" } },
+      upstream(400, {
+        error: "oauth_profile_error",
+        message: "Email not verified",
+        code: "oauth_email_not_verified",
+      }),
+    ],
+    [
+      "login failure with a validation body",
+      { method: "post", path: "/login", payload: { identifier: "a@b.c" } },
+      upstream(400, { name: "ZodError", message: "bad" }),
+    ],
+    [
+      "admin proxy normalizes a coded failure",
+      {
+        method: "patch",
+        path: "/admin/users/user-1",
+        cookie: accessCookie(),
+        payload: { phone: "" },
+      },
+      upstream(400, { name: "ZodError", message: "bad" }),
+    ],
+    [
+      "admin list success",
+      { method: "get", path: "/admin/users", cookie: accessCookie() },
+      upstream(200, { users: [] }),
+    ],
+    [
+      "sessions list success",
+      { method: "get", path: "/sessions", cookie: accessCookie() },
+      upstream(200, { sessions: [] }),
+    ],
+    [
+      "metrics dashboard success",
+      {
+        method: "get",
+        path: "/internal/metrics/dashboard",
+        cookie: accessCookie(),
+      },
+      upstream(200, { totals: {} }),
+    ],
+    [
+      "metrics funnel success",
+      {
+        method: "get",
+        path: "/internal/metrics/funnel?from=2026-01-01&to=2026-02-01",
+        cookie: accessCookie(),
+      },
+      upstream(200, { passkeyAdoption: { users: 5, withPasskey: 3 } }),
+    ],
+    [
+      "metrics funnel without the required session",
+      { method: "get", path: "/internal/metrics/funnel" },
+      upstream(200, {}),
+    ],
+    [
+      "metrics sign-ins success",
+      {
+        method: "get",
+        path: "/internal/metrics/sign-ins?from=2026-01-01&to=2026-02-01",
+        cookie: accessCookie(),
+      },
+      upstream(200, { signIns: { success: 371, failed: 21 }, breakdown: [] }),
+    ],
+    [
+      "metrics sign-ins without the required session",
+      { method: "get", path: "/internal/metrics/sign-ins" },
+      upstream(200, {}),
+    ],
+    [
+      "system config roles success",
+      { method: "get", path: "/system-config/roles", cookie: accessCookie() },
+      upstream(200, { roles: ["admin"] }),
+    ],
+    [
+      "passthrough proxy success",
+      { method: "get", path: "/organizations", cookie: accessCookie() },
+      upstream(200, { organizations: [] }),
+    ],
+    [
+      "passthrough proxy forwards a 4xx",
+      { method: "get", path: "/organizations", cookie: accessCookie() },
+      upstream(403, { error: "forbidden" }),
+    ],
+    [
+      "admin organization delete success",
+      {
+        method: "delete",
+        path: "/admin/organizations/org-1",
+        cookie: accessCookie(),
+      },
+      upstream(200, { message: "Success" }),
+    ],
+    [
+      "admin organization delete forwards a 404",
+      {
+        method: "delete",
+        path: "/admin/organizations/org-1",
+        cookie: accessCookie(),
+      },
+      upstream(404, { error: "Organization not found" }),
+    ],
+    [
+      "proxy without the required session",
+      { method: "get", path: "/organizations" },
+      upstream(200, {}),
+    ],
+    [
+      "proxy with the wrong session kind",
+      {
+        method: "post",
+        path: "/webAuthn/login/start",
+        cookie: accessCookie(),
+        payload: {},
+      },
+      upstream(200, {}),
+    ],
+    [
+      "me with no user clears the preauth cookie",
+      { method: "get", path: "/users/me", cookie: accessCookie() },
+      upstream(200, {}),
+    ],
+    [
+      "logout clears every session cookie",
+      { method: "delete", path: "/logout", cookie: accessCookie() },
+      upstream(200, {}),
+    ],
+    [
+      "logout all clears every session cookie",
+      { method: "delete", path: "/logout/all", cookie: accessCookie() },
+      upstream(200, {}),
+    ],
+    [
+      "deleting the account clears every session cookie",
+      { method: "delete", path: "/users/delete", cookie: accessCookie() },
+      upstream(200, { message: "User deleted" }),
+    ],
+    [
+      "oauth providers list",
+      { method: "get", path: "/oauth/providers" },
+      upstream(200, { providers: [] }),
+    ],
+    [
+      "public system config with no cookie",
+      { method: "get", path: "/system-config/public" },
+      upstream(200, { loginMethods: ["passkey", "magic_link"] }),
+    ],
+    [
+      "public system config passes an upstream failure through",
+      { method: "get", path: "/system-config/public" },
+      upstream(503, { error: "upstream_unavailable" }),
+    ],
+    [
+      "passkey enrollment start on an access session",
+      {
+        method: "get",
+        path: "/webAuthn/register/start",
+        cookie: accessCookie(),
+      },
+      upstream(200, { challenge: "challenge" }),
+    ],
+    // Enrollment moved off the pre-auth cookie because the auth API mints
+    // one for an account that already exists from an email address alone.
+    // Both adapters have to refuse it, or the one that does not hands the
+    // account over.
+    [
+      "passkey enrollment start refuses a pre-auth session",
+      {
+        method: "get",
+        path: "/webAuthn/register/start",
+        cookie: preAuthCookie(),
+      },
+      upstream(200, { challenge: "challenge" }),
+    ],
+  ])("%s", async (_label, scenario, upstreamResponse) => {
+    const { next, express: expressResult } = await bothAdapters(
+      scenario,
+      upstreamResponse,
+    );
+
+    expect(next.status).toBe(expressResult.status);
+    expect(next.body).toEqual(expressResult.body);
+    expect(next.cookies).toEqual(expressResult.cookies);
+  });
+
+  // The parity case above proves the two adapters agree on this, not what they
+  // agree on, so it passed just as happily when both answered 400. The status
+  // itself is the contract a consumer reads to tell "sign in again" from "that
+  // request was not understood", so it is pinned here by value.
+  it.each([
+    [
+      "an access-gated route with no session",
+      { method: "get", path: "/organizations" },
+    ],
+    [
+      "a pre-auth gated route with no session",
+      { method: "post", path: "/webAuthn/login/start", payload: {} },
+    ],
+    [
+      "an enrollment route with no session",
+      { method: "get", path: "/webAuthn/register/start" },
+    ],
+    [
+      "an enrollment route holding only a pre-auth session",
+      {
+        method: "get",
+        path: "/webAuthn/register/start",
+        cookie: preAuthCookie(),
+      },
+    ],
+  ])("answers 401 on %s, and asks upstream nothing", async (
+    _label,
+    scenario,
+  ) => {
+    const upstreamResponse = upstream(200, {});
+
+    global.fetch = jest.fn(async () => upstreamResponse);
+    const nextResult = await viaNext(scenario);
+    const nextCalls = global.fetch.mock.calls.length;
+
+    global.fetch = jest.fn(async () => upstreamResponse);
+    const expressResult = await viaExpress(scenario);
+
+    expect(nextResult.status).toBe(401);
+    expect(expressResult.status).toBe(401);
+    expect(nextCalls).toBe(0);
+    expect(global.fetch.mock.calls.length).toBe(0);
+  });
+
+  // The sign-in screens call this with no session at all. Forwarding an identity
+  // would be pointless on a route upstream serves publicly, and it would put a
+  // stale cookie in the path of the one call a signed-out client has to make.
+  // Asserted with a valid cookie present so a future refactor cannot quietly
+  // start attaching one.
+  it("sends no identity upstream for the public system config", async () => {
+    // One explicit user agent for both, so a default one side sends and the
+    // other does not cannot show up as a header only one adapter forwards.
+    const scenario = {
+      method: "get",
+      path: "/system-config/public",
+      cookie: accessCookie(),
+      headers: { "user-agent": "Mozilla/5.0 (parity)" },
+    };
+    const upstreamResponse = upstream(200, { loginMethods: ["passkey"] });
+
+    const headersFor = async (runner) => {
+      global.fetch = jest.fn(async () => upstreamResponse);
+      await runner(scenario);
+
+      const [, init] = global.fetch.mock.calls[0];
+
+      return Object.fromEntries(
+        Object.entries(init?.headers ?? {}).map(([key, value]) => [
+          key.toLowerCase(),
+          value,
+        ]),
+      );
+    };
+
+    const nextHeaders = await headersFor(viaNext);
+    const expressHeaders = await headersFor(viaExpress);
+
+    for (const headers of [nextHeaders, expressHeaders]) {
+      expect(headers.authorization).toBeUndefined();
+      expect(headers["x-seamless-service-token"]).toBeUndefined();
+    }
+
+    // Not a full header comparison: Express forwards the test socket's
+    // loopback address, and a route handler forwards no address unless
+    // resolveClientIp is configured.
+    const withoutClientIp = (headers) =>
+      Object.keys(headers)
+        .filter((key) => key !== "x-seamless-client-ip")
+        .sort();
+    expect(withoutClientIp(nextHeaders)).toEqual(withoutClientIp(expressHeaders));
+  });
+
+  // The auth API records the user agent on every audit row and folds it into a
+  // device class, so both adapters have to hand it the browser's rather than
+  // their own.
+  it("forwards the browser user agent to upstream from both adapters", async () => {
+    const browser =
+      "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36";
+    const scenario = {
+      method: "post",
+      path: "/login",
+      headers: { "user-agent": browser },
+      payload: { identifier: "user@example.com" },
+    };
+    const upstreamResponse = upstream(200, {
+      token: "ephemeral",
+      sub: "user-1",
+      ttl: 300,
+      loginMethods: ["passkey"],
+    });
+
+    const headerFor = async (runner) => {
+      global.fetch = jest.fn(async () => upstreamResponse);
+      await runner(scenario);
+
+      const [, init] = global.fetch.mock.calls[0];
+
+      return init?.headers?.["x-seamless-client-user-agent"];
+    };
+
+    expect(await headerFor(viaNext)).toBe(browser);
+    expect(await headerFor(viaExpress)).toBe(browser);
+  });
+
+  // The auth API's registration response sends `ttl` as the string "300". Every
+  // scenario in this file hand-writes a number, so the suite agreed on input the
+  // real upstream does not send: Express coerced the string by multiplying into
+  // milliseconds, Fastify handed it to `cookie` and got a TypeError, and
+  // registration failed on Fastify only.
+  it("issues identical session cookies when upstream sends ttl as a string", async () => {
+    const scenario = {
+      method: "post",
+      path: "/registration/register",
+      payload: { email: "user@example.com" },
+    };
+    const upstreamResponse = upstream(200, {
+      message: "Registration started",
+      sub: "user-123",
+      token: "registration-token",
+      ttl: "300",
+    });
+
+    const { next, express: expressResult } = await bothAdapters(
+      scenario,
+      upstreamResponse,
+    );
+
+    expect(next.status).toBe(200);
+    expect(next.status).toBe(expressResult.status);
+    expect(next.cookies).toEqual(expressResult.cookies);
+    expect(next.cookies.length).toBeGreaterThan(0);
+  });
+
+  it.each([
+    ["default policy", {}],
+    ["insecure dev", { cookieSecure: false }],
+    ["custom domain", { cookieDomain: "acme.test" }],
+    ["strict same-site", { cookieSameSite: "strict" }],
+  ])("issues identical session cookies (%s)", async (_label, options) => {
+    const scenario = {
+      method: "get",
+      path: "/users/me",
+      cookie: `seamless-refresh=${signed({ sub: "user-123", refreshToken: "opaque" }, "3600s")}`,
+      options,
+    };
+
+    global.fetch = jest.fn(async (url) =>
+      String(url).endsWith("/refresh")
+        ? upstream(200, REFRESH_OK)
+        : upstream(200, { user: { id: "u1" } }),
+    );
+    const next = await viaNext(scenario);
+
+    global.fetch = jest.fn(async (url) =>
+      String(url).endsWith("/refresh")
+        ? upstream(200, REFRESH_OK)
+        : upstream(200, { user: { id: "u1" } }),
+    );
+    const expressResult = await viaExpress(scenario);
+
+    expect(next.cookies).toEqual(expressResult.cookies);
+    expect(next.cookies.length).toBeGreaterThan(0);
+    expect(next.status).toBe(expressResult.status);
+  });
+
+  it("sends the same upstream URL for a repeated query parameter", async () => {
+    const urls = [];
+    global.fetch = jest.fn(async (url) => {
+      urls.push(String(url));
+      return upstream(200, { events: [] });
+    });
+
+    const scenario = {
+      method: "get",
+      path: "/admin/auth-events?type=login&type=logout&limit=5",
+      cookie: accessCookie(),
+    };
+
+    await viaNext(scenario);
+    await viaExpress(scenario);
+
+    expect(urls[0]).toBe(urls[1]);
+    expect(urls[0]).toContain("type=login&type=logout");
+  });
+
+  it("keeps an injected route param in one upstream path segment", async () => {
+    const urls = [];
+    global.fetch = jest.fn(async (url) => {
+      urls.push(String(url));
+      return upstream(200, {});
+    });
+
+    const scenario = {
+      method: "patch",
+      path: `/system-config/oauth-providers/${encodeURIComponent("abc?admin=1")}`,
+      cookie: accessCookie(),
+      payload: {},
+    };
+
+    await viaNext(scenario);
+
+    expect(urls[0]).toBe(
+      "https://auth.example.com/system-config/oauth-providers/abc%3Fadmin%3D1",
+    );
+  });
+
+  it("blocks a cross-site state change the same way", async () => {
+    global.fetch = jest.fn(async () => upstream(200, {}));
+
+    const res = await viaNext({
+      method: "post",
+      path: "/login",
+      headers: { "sec-fetch-site": "cross-site" },
+      payload: { identifier: "a@b.c" },
+    });
+
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ error: "cross_site_request_blocked" });
+  });
+});
+
+// A browser sends the magic link destination in the body; the auth API wants it as a
+// query parameter on a GET. Asserted on both adapters because each reads its own
+// request body, so only the forwarding underneath them is shared.
+describe("both adapters forward a magic link destination", () => {
+  const originalFetch = global.fetch;
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  async function upstreamUrl(run, payload) {
+    let requested;
+
+    global.fetch = jest.fn(async (url) => {
+      requested = String(url);
+      return upstream(200, { message: "sent" });
+    });
+
+    await run({
+      method: "post",
+      path: "/magic-link",
+      cookie: preAuthCookie(),
+      payload,
+    });
+
+    return requested;
+  }
+
+  it("sends a requested target as a query parameter", async () => {
+    const payload = { redirectUri: "https://app.example.com/magic" };
+
+    const viaN = await upstreamUrl(viaNext, payload);
+    const viaE = await upstreamUrl(viaExpress, payload);
+
+    expect(viaN).toBe(viaE);
+    expect(new URL(viaN).searchParams.get("redirectUri")).toBe(
+      "https://app.example.com/magic",
+    );
+  });
+
+  it("asks for the tenant default when no target is given", async () => {
+    const viaN = await upstreamUrl(viaNext, {});
+    const viaE = await upstreamUrl(viaExpress, {});
+
+    expect(viaN).toBe(viaE);
+    expect(viaN).toBe("https://auth.example.com/magic-link");
+  });
+});
