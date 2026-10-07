@@ -3,6 +3,7 @@
 // rendering. Behavior shared with the other adapters is in the parity suites.
 import { jest } from "@jest/globals";
 import jwt from "jsonwebtoken";
+import { exportJWK, generateKeyPair, SignJWT } from "jose";
 
 const { createSeamlessAuthHandler } = await import("../dist/index.js");
 
@@ -17,9 +18,18 @@ const OPTIONS = {
   jwksKid: "test-main",
 };
 
+const { privateKey, publicKey } = await generateKeyPair("RS256");
+const jwk = { ...(await exportJWK(publicKey)), alg: "RS256", kid: "k1", use: "sig" };
+
 const REFRESH_OK = {
   sub: "user-123",
-  token: "new-access",
+  token: await new SignJWT({ sub: "user-123", typ: "access" })
+    .setProtectedHeader({ alg: "RS256", kid: "k1" })
+    .setIssuer(OPTIONS.authServerUrl)
+    .setAudience(OPTIONS.audience)
+    .setIssuedAt()
+    .setExpirationTime("5m")
+    .sign(privateKey),
   refreshToken: "new-refresh",
   roles: [],
   ttl: 300,
@@ -240,6 +250,9 @@ describe("createSeamlessAuthHandler", () => {
       const spy = jest.spyOn(console, "error").mockImplementation(() => {});
       global.fetch = jest.fn(async (url) => {
         if (String(url).endsWith("/refresh")) return upstream(200, REFRESH_OK);
+        if (String(url).endsWith("/.well-known/jwks.json")) {
+          return upstream(200, { keys: [jwk] });
+        }
         throw new Error("upstream down");
       });
 
