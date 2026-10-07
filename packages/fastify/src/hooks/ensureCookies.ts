@@ -70,6 +70,7 @@ export function createEnsureCookiesHook(opts: ResolvedOptions, prefix: string) {
         issuer: SERVICE_TOKEN_ISSUER,
         audience: SERVICE_TOKEN_AUDIENCE,
         accessTokenAudience: opts.audience,
+        authServerIssuer: opts.authServerIssuer,
         keyId: opts.jwksKid,
         forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
         forwardedUserAgent: buildForwardedUserAgent(req),

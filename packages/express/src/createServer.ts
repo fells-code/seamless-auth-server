@@ -326,6 +326,7 @@ export function createSeamlessAuthServer(
       issuer: SERVICE_TOKEN_ISSUER,
       audience: SERVICE_TOKEN_AUDIENCE,
       accessTokenAudience: resolvedOpts.audience,
+      authServerIssuer: resolvedOpts.authServerIssuer,
       keyId: resolvedOpts.jwksKid,
       resolveClientIp: resolvedOpts.resolveClientIp,
     }),

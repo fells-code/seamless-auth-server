@@ -231,6 +231,7 @@ async function dispatch(
         issuer: SERVICE_TOKEN_ISSUER,
         audience: SERVICE_TOKEN_AUDIENCE,
         accessTokenAudience: opts.audience,
+        authServerIssuer: opts.authServerIssuer,
         keyId: opts.jwksKid,
         forwardedClientIp: forwardedClientIp(request, opts.resolveClientIp),
         forwardedUserAgent: forwardedUserAgent(request),

@@ -30,6 +30,12 @@ export interface EnsureCookiesMiddlewareOptions {
    * refreshed token is verified against. Defaults to `authServerUrl`.
    */
   accessTokenAudience?: string;
+  /**
+   * Expected `iss` on a silently refreshed access token, when the auth server
+   * signs under a different issuer from `authServerUrl`. Defaults to
+   * `authServerUrl`.
+   */
+  authServerIssuer?: string;
   keyId: string;
   resolveClientIp?: ClientIpResolver;
 }
@@ -68,6 +74,7 @@ export function createEnsureCookiesMiddleware(
         issuer: opts.issuer,
         audience: opts.audience,
         accessTokenAudience: opts.accessTokenAudience,
+        authServerIssuer: opts.authServerIssuer,
         keyId: opts.keyId,
         forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
         forwardedUserAgent: buildForwardedUserAgent(req),

@@ -2,6 +2,7 @@ import { verifyCookieJwt } from "./verifyCookieJwt.js";
 import type { ResultFailure } from "./result.js";
 import { refreshAccessToken } from "./refreshAccessToken.js";
 import { assertSecrets } from "./validateSecrets.js";
+import type { AuthServerIssuerOption } from "./authServerIssuer.js";
 import {
   issueSessionCookies,
   type UpstreamSessionResponse,
@@ -43,7 +44,7 @@ export interface EnsureCookiesResult extends ResultFailure {
   clearCookies?: string[];
 }
 
-export interface EnsureCookiesOptions {
+export interface EnsureCookiesOptions extends AuthServerIssuerOption {
   authServerUrl: string;
   cookieDomain?: string;
   accessCookieName: string;
@@ -271,6 +272,7 @@ async function refreshRequiredCookie(
       {
         authServerUrl: opts.authServerUrl,
         audience: opts.accessTokenAudience || opts.authServerUrl,
+        authServerIssuer: opts.authServerIssuer,
         accessCookieName: cookieName,
         refreshCookieName: opts.refreshCookieName,
         cookieDomain: opts.cookieDomain,

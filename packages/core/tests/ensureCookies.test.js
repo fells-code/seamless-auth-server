@@ -294,6 +294,7 @@ describe("ensureCookies", () => {
         "new-access",
         "https://auth.example.com",
         "https://app.example.com",
+        undefined,
       );
     });
 
@@ -306,6 +307,25 @@ describe("ensureCookies", () => {
         "new-access",
         "https://auth.example.com",
         "https://auth.example.com",
+        undefined,
+      );
+    });
+
+    it("verifies against the configured auth server issuer", async () => {
+      verifySignedAuthResponseMock.mockResolvedValue({ sub: "user-123" });
+
+      await silentRefresh({
+        ...BASE_OPTS,
+        authServerUrl: "http://localhost:5312",
+        authServerIssuer: "http://auth:5312",
+        accessTokenAudience: "http://auth:5312",
+      });
+
+      expect(verifySignedAuthResponseMock).toHaveBeenCalledWith(
+        "new-access",
+        "http://localhost:5312",
+        "http://auth:5312",
+        "http://auth:5312",
       );
     });
 
