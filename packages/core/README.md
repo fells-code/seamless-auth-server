@@ -16,6 +16,10 @@ It is designed to be:
 
 If you are building a custom adapter (Express, Fastify, Next.js, Hono, etc.), this is the package you integrate with.
 
+## Start here
+
+New to Seamless Auth? The [self-hosted quickstart](https://docs.seamlessauth.com/start/quickstart/) runs the full stack locally with Docker. If Seamless hosts your auth instance, follow the [managed quickstart](https://docs.seamlessauth.com/start/managed-quickstart/) instead. The [compatibility matrix](https://docs.seamlessauth.com/build/ecosystem/#compatibility-matrix) lists which package versions work together.
+
 ---
 
 ## What This Package Is
