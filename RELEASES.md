@@ -32,21 +32,23 @@ changeset summaries.
 
 ## Pre-1.0 Policy
 
-The core and official JavaScript adapters are linked in `.changeset/config.json`
-so they move as a known-good set while the API is still settling.
+`@seamless-auth/core` and `@seamless-auth/express` are linked in
+`.changeset/config.json` so they move as a known-good set while the API is still
+settling. `@seamless-auth/fastify` and `@seamless-auth/nextjs` are not in the
+linked group and version independently.
 
 Recommended pre-1.0 behavior:
 
-- core behavior changes: bump core and publish linked adapters.
-- adapter-only fixes: bump the adapter; linked packages keep the release train
-  visible.
+- core behavior changes: bump core and publish express with it.
+- adapter-only fixes: bump the adapter. For express, the link keeps the release
+  train with core visible; fastify and nextjs move on their own versions.
 - breaking API changes before v1: use a minor bump and clear release notes.
 
 ## After v1
 
 Once `@seamless-auth/core` and `@seamless-auth/express` are stable:
 
-- remove adapters from the linked Changesets group when independent versioning
+- remove express from the linked Changesets group when independent versioning
   becomes valuable.
 - keep adapters compatible with `@seamless-auth/core@^1` unless a core major
   requires a coordinated adapter major.
