@@ -8,13 +8,14 @@ const { applyCookies, applyResult, resolveCookieSameSite, signSessionCookie } =
 const SECRET = "cookie-secret-cookie-secret-cookie-secret";
 
 function recorder() {
-  const calls = { set: [], cleared: [], sent: [] };
+  const calls = { set: [], cleared: [], sent: [], raw: [] };
 
   return {
     calls,
     setCookie: (c) => calls.set.push(c),
     clearCookie: (c) => calls.cleared.push(c),
     send: (status, body) => calls.sent.push({ status, body }),
+    sendRaw: (status, raw) => calls.raw.push({ status, raw }),
   };
 }
 
@@ -282,7 +283,9 @@ describe("cookie ttl arriving from an untyped upstream body", () => {
     const adapter = recorder();
 
     applyCookies(
-      { setCookies: [{ name: "seamless-ephemeral", value: { sub: "u1" }, ttl }] },
+      {
+        setCookies: [{ name: "seamless-ephemeral", value: { sub: "u1" }, ttl }],
+      },
       adapter,
       { cookieSecret: SECRET },
     );
@@ -324,7 +327,39 @@ describe("cookie ttl arriving from an untyped upstream body", () => {
     ["a negative", -300],
     ["null", null],
     ["undefined", undefined],
-  ])("refuses %s rather than issuing a cookie nobody can vouch for", (_l, ttl) => {
-    expect(() => setCookie(ttl)).toThrow(/unusable cookie ttl/);
+  ])(
+    "refuses %s rather than issuing a cookie nobody can vouch for",
+    (_l, ttl) => {
+      expect(() => setCookie(ttl)).toThrow(/unusable cookie ttl/);
+    },
+  );
+});
+
+describe("applyResult raw bodies", () => {
+  it("hands a raw upstream response to the adapter untouched", () => {
+    const adapter = recorder();
+    const raw = { headers: { "content-type": "text/csv" }, body: null };
+
+    applyResult({ status: 200, raw }, adapter, { cookieSecret: "s" });
+
+    expect(adapter.calls.raw).toEqual([{ status: 200, raw }]);
+    expect(adapter.calls.sent).toEqual([]);
+  });
+
+  it("still answers its own rejection as JSON on a raw route", () => {
+    const adapter = recorder();
+
+    applyResult(
+      { status: 401, errorCode: "access session required" },
+      adapter,
+      {
+        cookieSecret: "s",
+      },
+    );
+
+    expect(adapter.calls.sent).toEqual([
+      { status: 401, body: { error: "access session required" } },
+    ]);
+    expect(adapter.calls.raw).toEqual([]);
   });
 });

@@ -92,13 +92,18 @@ const PASSTHROUGH_ROUTES: Route[] = PROXY_ROUTES.map((definition) => ({
       forwardedUserAgent: forwardedUserAgent(ctx.request),
       query: ctx.query,
       body: ctx.body,
+      raw: definition.raw,
     });
   },
 }));
 
 // Mount order of the other adapters: handler-backed routes first, so a
 // passthrough can never shadow one.
-const ROUTES: Route[] = [...AUTH_ROUTES, ...ADMIN_ROUTES, ...PASSTHROUGH_ROUTES];
+const ROUTES: Route[] = [
+  ...AUTH_ROUTES,
+  ...ADMIN_ROUTES,
+  ...PASSTHROUGH_ROUTES,
+];
 
 function warnOnDevJwksKid(jwksKid: string | undefined): void {
   if (!jwksKid || jwksKid === DEV_JWKS_KID) {
@@ -147,7 +152,9 @@ export function createSeamlessAuthHandler(
       console.error(
         "[SEAMLESS-AUTH-NEXTJS] - Unhandled route error.",
         redactSensitiveText(
-          error instanceof Error ? (error.stack ?? error.message) : String(error),
+          error instanceof Error
+            ? (error.stack ?? error.message)
+            : String(error),
         ),
       );
       // The same collector, so a refresh that ensureCookies already rotated

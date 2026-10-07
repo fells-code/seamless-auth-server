@@ -232,6 +232,7 @@ export function createSeamlessAuthServer(
       path: string | ((req: Request) => string),
       identity: "preAuth" | "access" | "register",
       method: AuthFetchOptions["method"] = "POST",
+      { raw = false }: { raw?: boolean } = {},
     ) =>
     async (req: Request & { cookiePayload?: any }, res: Response) => {
       const rejection = checkProxyIdentity({
@@ -269,6 +270,7 @@ export function createSeamlessAuthServer(
         forwardedUserAgent: buildForwardedUserAgent(req),
         query: req.query,
         body: req.body,
+        raw,
       });
 
       respond(res, result, resolvedOpts);
@@ -686,6 +688,27 @@ export function createSeamlessAuthServer(
   r.post(
     "/admin/enrollment/invites",
     proxyWithIdentity("admin/enrollment/invites", "access"),
+  );
+  r.get(
+    "/admin/auth-events/integrity",
+    proxyWithIdentity("admin/auth-events/integrity", "access", "GET"),
+  );
+  r.get(
+    "/admin/auth-events/export",
+    proxyWithIdentity("admin/auth-events/export", "access", "GET", {
+      raw: true,
+    }),
+  );
+  r.get(
+    "/admin/reports/authentication-coverage",
+    proxyWithIdentity(
+      "admin/reports/authentication-coverage",
+      "access",
+      "GET",
+      {
+        raw: true,
+      },
+    ),
   );
 
   r.get("/admin/sessions", (req, res) =>

@@ -136,6 +136,26 @@ export interface ProxyRequestOptions {
   forwardedUserAgent?: string;
   query?: QueryInput;
   body?: unknown;
+  /**
+   * Pass the response through as bytes, with the headers that describe it, instead of
+   * parsing it as JSON. For routes that answer with a file, such as CSV or NDJSON.
+   */
+  raw?: boolean;
+}
+
+// Only what describes the body. Hop-by-hop and length headers are left to the adapter's
+// framework, which re-chunks the stream anyway.
+const RAW_HEADERS = ["content-type", "content-disposition", "cache-control"];
+
+function pickRawHeaders(headers: Headers): Record<string, string> {
+  const picked: Record<string, string> = {};
+
+  for (const name of RAW_HEADERS) {
+    const value = headers.get(name);
+    if (value !== null) picked[name] = value;
+  }
+
+  return picked;
 }
 
 /**
@@ -160,6 +180,13 @@ export async function proxyRequest(
       ...(method === "GET" ? {} : { body: opts.body }),
     },
   );
+
+  if (opts.raw) {
+    return {
+      status: upstream.status,
+      raw: { headers: pickRawHeaders(upstream.headers), body: upstream.body },
+    };
+  }
 
   return { status: upstream.status, body: await upstream.json() };
 }

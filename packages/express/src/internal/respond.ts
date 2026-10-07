@@ -1,3 +1,6 @@
+import { Readable } from "node:stream";
+import type { ReadableStream as NodeReadableStream } from "node:stream/web";
+
 import { Response } from "express";
 import {
   applyResult,
@@ -46,6 +49,21 @@ export function expressResponseAdapter(res: Response): ResponseAdapter {
       }
 
       res.status(status).json(body);
+    },
+
+    sendRaw(status, raw) {
+      res.status(status).set(raw.headers);
+
+      if (!raw.body) {
+        res.end();
+        return;
+      }
+
+      // A failure partway through cannot change a status already sent, so the
+      // connection is cut and the client sees a truncated download, not a hang.
+      Readable.fromWeb(raw.body as NodeReadableStream<Uint8Array>)
+        .on("error", () => res.destroy())
+        .pipe(res);
     },
   };
 }

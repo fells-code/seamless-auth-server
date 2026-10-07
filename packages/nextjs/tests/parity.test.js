@@ -7,15 +7,12 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import request from "supertest";
 
-const { createSeamlessAuthHandler, createSeamlessConsoleProxy } = await import(
-  "../dist/index.js"
-);
+const { createSeamlessAuthHandler, createSeamlessConsoleProxy } =
+  await import("../dist/index.js");
 const {
   default: createSeamlessAuthServer,
   createSeamlessConsoleProxy: createExpressConsoleProxy,
-} = await import(
-  "../../express/dist/index.js"
-);
+} = await import("../../express/dist/index.js");
 
 const COOKIE_SECRET = "cookie-secret-cookie-secret-cookie-secret";
 const SERVICE_SECRET = "service-secret-service-secret-service-secret";
@@ -101,14 +98,7 @@ async function viaNext({ method, path, cookie, headers, payload, options }) {
   };
 }
 
-async function viaExpress({
-  method,
-  path,
-  cookie,
-  headers,
-  payload,
-  options,
-}) {
+async function viaExpress({ method, path, cookie, headers, payload, options }) {
   let req = request(buildExpress(options))[method](`/auth${path}`);
   if (headers) req = req.set(headers);
   if (cookie) req = req.set("Cookie", cookie);
@@ -241,6 +231,15 @@ describe("next.js and express adapters agree", () => {
       "passthrough proxy forwards a 4xx",
       { method: "get", path: "/organizations", cookie: accessCookie() },
       upstream(403, { error: "forbidden" }),
+    ],
+    [
+      "admin audit integrity forwards the report",
+      {
+        method: "get",
+        path: "/admin/auth-events/integrity",
+        cookie: accessCookie(),
+      },
+      upstream(200, { verified: true, rowsChecked: 3, firstFailure: null }),
     ],
     [
       "admin enrollment invite forwards the body",
@@ -390,24 +389,24 @@ describe("next.js and express adapters agree", () => {
         cookie: preAuthCookie(),
       },
     ],
-  ])("answers 401 on %s, and asks upstream nothing", async (
-    _label,
-    scenario,
-  ) => {
-    const upstreamResponse = upstream(200, {});
+  ])(
+    "answers 401 on %s, and asks upstream nothing",
+    async (_label, scenario) => {
+      const upstreamResponse = upstream(200, {});
 
-    global.fetch = jest.fn(async () => upstreamResponse);
-    const nextResult = await viaNext(scenario);
-    const nextCalls = global.fetch.mock.calls.length;
+      global.fetch = jest.fn(async () => upstreamResponse);
+      const nextResult = await viaNext(scenario);
+      const nextCalls = global.fetch.mock.calls.length;
 
-    global.fetch = jest.fn(async () => upstreamResponse);
-    const expressResult = await viaExpress(scenario);
+      global.fetch = jest.fn(async () => upstreamResponse);
+      const expressResult = await viaExpress(scenario);
 
-    expect(nextResult.status).toBe(401);
-    expect(expressResult.status).toBe(401);
-    expect(nextCalls).toBe(0);
-    expect(global.fetch.mock.calls.length).toBe(0);
-  });
+      expect(nextResult.status).toBe(401);
+      expect(expressResult.status).toBe(401);
+      expect(nextCalls).toBe(0);
+      expect(global.fetch.mock.calls.length).toBe(0);
+    },
+  );
 
   // The sign-in screens call this with no session at all. Forwarding an identity
   // would be pointless on a route upstream serves publicly, and it would put a
@@ -454,7 +453,9 @@ describe("next.js and express adapters agree", () => {
       Object.keys(headers)
         .filter((key) => key !== "x-seamless-client-ip")
         .sort();
-    expect(withoutClientIp(nextHeaders)).toEqual(withoutClientIp(expressHeaders));
+    expect(withoutClientIp(nextHeaders)).toEqual(
+      withoutClientIp(expressHeaders),
+    );
   });
 
   // The auth API records the user agent on every audit row and folds it into a
@@ -807,5 +808,110 @@ describe("next.js and express console proxies agree", () => {
 
     expect(next.status).toBeGreaterThanOrEqual(400);
     expect(expressResult.status).toBeGreaterThanOrEqual(400);
+  });
+});
+
+async function viaNextRaw({ method, path, cookie }) {
+  const handlers = createSeamlessAuthHandler(OPTIONS);
+  const verb = method.toUpperCase();
+  const res = await handlers[verb](
+    new Request(`http://localhost/auth${path}`, {
+      method: verb,
+      headers: cookie ? { cookie } : {},
+    }),
+  );
+  return {
+    status: res.status,
+    text: await res.text(),
+    contentType: res.headers.get("content-type"),
+    disposition: res.headers.get("content-disposition") ?? undefined,
+  };
+}
+
+async function viaExpressRaw({ method, path, cookie }) {
+  let req = request(buildExpress())[method](`/auth${path}`).buffer(true);
+  req = req.parse((res, done) => {
+    let text = "";
+    res.setEncoding("utf8");
+    res.on("data", (chunk) => (text += chunk));
+    res.on("end", () => done(null, text));
+  });
+  if (cookie) req = req.set("Cookie", cookie);
+  const res = await req;
+  return {
+    status: res.status,
+    text: res.body,
+    contentType: res.headers["content-type"],
+    disposition: res.headers["content-disposition"],
+  };
+}
+
+// Downloads are forwarded as bytes with the headers that make them a file. A JSON
+// round trip would wrap the body in { message } and drop the attachment header.
+describe("next.js and express forward downloads unparsed", () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  const NDJSON = '{"seq":1,"hash":"a"}\n{"type":"manifest","count":1}\n';
+  const CSV = 'Section,Field,Value\r\nCoverage,"Users, active",3\r\n';
+
+  function download(status, text, headers) {
+    return () => new Response(text, { status, headers });
+  }
+
+  async function rawVia(adapter, scenario, respond) {
+    global.fetch = jest.fn(async () => respond());
+    return adapter(scenario);
+  }
+
+  it.each([
+    [
+      "NDJSON audit export",
+      "/admin/auth-events/export?from=2026-01-01T00:00:00Z",
+      download(200, NDJSON, {
+        "content-type": "application/x-ndjson; charset=utf-8",
+        "content-disposition": 'attachment; filename="auth-events.ndjson"',
+        "cache-control": "no-store",
+      }),
+      "application/x-ndjson",
+      NDJSON,
+    ],
+    [
+      "CSV coverage report",
+      "/admin/reports/authentication-coverage?format=csv",
+      download(200, CSV, {
+        "content-type": "text/csv; charset=utf-8",
+        "content-disposition": 'attachment; filename="coverage.csv"',
+      }),
+      "text/csv",
+      CSV,
+    ],
+    [
+      "JSON error from a download route",
+      "/admin/auth-events/export",
+      download(403, '{"error":"step_up_required"}', {
+        "content-type": "application/json; charset=utf-8",
+      }),
+      "application/json",
+      '{"error":"step_up_required"}',
+    ],
+  ])("%s", async (_name, path, respond, contentType, text) => {
+    const scenario = { method: "get", path, cookie: accessCookie() };
+
+    const other = await rawVia(viaNextRaw, scenario, respond);
+    const expressResult = await rawVia(viaExpressRaw, scenario, respond);
+
+    for (const result of [other, expressResult]) {
+      expect(result.text).toBe(text);
+      expect(result.contentType).toContain(contentType);
+    }
+    expect(other.status).toBe(expressResult.status);
+    expect(other.disposition).toBe(expressResult.disposition);
+    const [upstreamUrl] = global.fetch.mock.calls[0];
+    expect(upstreamUrl).toMatch(
+      new RegExp(`^https://auth\\.example\\.com${path.split("?")[0]}`),
+    );
   });
 });

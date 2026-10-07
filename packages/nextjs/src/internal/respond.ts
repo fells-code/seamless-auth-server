@@ -3,6 +3,7 @@ import {
   applyResult,
   type AppliableResult,
   type CookieSecurityOptions,
+  type RawBody,
   type ResponseAdapter,
 } from "@seamless-auth/core";
 
@@ -26,6 +27,7 @@ export class ResponseCollector {
   private readonly setCookies: string[] = [];
   private status = 200;
   private body: unknown;
+  private raw: RawBody | undefined;
 
   readonly adapter: ResponseAdapter = {
     setCookie: (command) => {
@@ -58,6 +60,11 @@ export class ResponseCollector {
       this.status = status;
       this.body = body;
     },
+
+    sendRaw: (status, raw) => {
+      this.status = status;
+      this.raw = raw;
+    },
   };
 
   json(status: number, body: unknown): Response {
@@ -70,6 +77,17 @@ export class ResponseCollector {
 
     for (const cookie of this.setCookies) {
       headers.append("set-cookie", cookie);
+    }
+
+    if (this.raw) {
+      for (const [name, value] of Object.entries(this.raw.headers)) {
+        headers.set(name, value);
+      }
+
+      return new Response(
+        NULL_BODY_STATUSES.has(this.status) ? null : this.raw.body,
+        { status: this.status, headers },
+      );
     }
 
     if (this.body === undefined || NULL_BODY_STATUSES.has(this.status)) {

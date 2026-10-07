@@ -8,7 +8,12 @@ const COOKIE_SECRET = "cookie-secret-cookie-secret-cookie-secret";
 
 function accessCookie() {
   const token = jwt.sign(
-    { sub: "user-123", roles: ["admin"], sessionId: "s-1", token: "access-token" },
+    {
+      sub: "user-123",
+      roles: ["admin"],
+      sessionId: "s-1",
+      token: "access-token",
+    },
     COOKIE_SECRET,
     { algorithm: "HS256", expiresIn: "300s" },
   );
@@ -38,7 +43,18 @@ const QUERY_ROUTES = [
   ["/admin/sessions", "limit=10&offset=20"],
   ["/admin/auth-events", "type=login_success&limit=10"],
   ["/admin/organizations", "search=acme&limit=10&offset=20"],
-  ["/admin/enrollment", "organizationId=org-1&status=none&imported=true&limit=10"],
+  [
+    "/admin/enrollment",
+    "organizationId=org-1&status=none&imported=true&limit=10",
+  ],
+  [
+    "/admin/auth-events/export",
+    "from=2026-01-01T00%3A00%3A00Z&to=2026-02-01T00%3A00%3A00Z",
+  ],
+  [
+    "/admin/reports/authentication-coverage",
+    "from=2026-01-01&to=2026-03-31&bucket=week&format=csv",
+  ],
   ["/internal/auth-events/summary", "from=2026-01-01&interval=day"],
   ["/internal/auth-events/timeseries", "from=2026-01-01&interval=day"],
   ["/internal/auth-events/grouped", "from=2026-01-01&interval=day"],
@@ -51,11 +67,14 @@ describe("query forwarding", () => {
   const originalFetch = global.fetch;
 
   beforeEach(() => {
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-    });
+    // A fresh real Response per call: the download routes read its headers and body.
+    global.fetch = jest.fn(
+      async () =>
+        new Response("{}", {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    );
   });
 
   afterEach(() => {
