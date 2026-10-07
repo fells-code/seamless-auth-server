@@ -2,6 +2,10 @@ import { verifyCookieJwt } from "./verifyCookieJwt.js";
 import type { ResultFailure } from "./result.js";
 import { refreshAccessToken } from "./refreshAccessToken.js";
 import { assertSecrets } from "./validateSecrets.js";
+import {
+  issueSessionCookies,
+  type UpstreamSessionResponse,
+} from "./upstreamSession.js";
 
 export interface EnsureCookiesInput {
   path: string;
@@ -48,8 +52,17 @@ export interface EnsureCookiesOptions {
   preAuthCookieName: string;
   cookieSecret: string;
   serviceSecret: string;
+  /** Issuer of the service token the silent refresh sends upstream. */
   issuer: string;
+  /** Audience of the service token the silent refresh sends upstream. */
   audience: string;
+  /**
+   * Audience the auth API signs user access tokens for: the adopter's
+   * configured `audience`, not the service token's. A refreshed access token is
+   * verified against it before any cookie is issued. Defaults to
+   * `authServerUrl`, the usual setup.
+   */
+  accessTokenAudience?: string;
   keyId: string;
   forwardedClientIp?: string;
   forwardedUserAgent?: string;
@@ -231,56 +244,55 @@ async function refreshRequiredCookie(
     forwardedUserAgent: opts.forwardedUserAgent,
   });
 
+  const failure: EnsureCookiesResult = {
+    type: "error",
+    status: 401,
+    errorCode: "Refresh failed",
+    clearCookies: [
+      cookieName,
+      opts.registrationCookieName,
+      opts.refreshCookieName,
+    ],
+  };
+
   if (!refreshed?.token) {
-    return {
-      type: "error",
-      status: 401,
-      errorCode: "Refresh failed",
-      clearCookies: [
-        cookieName,
-        opts.registrationCookieName,
-        opts.refreshCookieName,
-      ],
-    };
+    return failure;
   }
+
+  // The cookie signs whatever goes into it with the adopter's own secret, and
+  // every later request trusts its roles without asking the auth API again. So
+  // the refreshed token is held to the same JWKS check as every other flow that
+  // issues a session, or a forged refresh response would become a trusted
+  // cookie.
+  let setCookies: CookieInstruction[];
+  try {
+    setCookies = await issueSessionCookies(
+      refreshed as UpstreamSessionResponse,
+      {
+        authServerUrl: opts.authServerUrl,
+        audience: opts.accessTokenAudience || opts.authServerUrl,
+        accessCookieName: cookieName,
+        refreshCookieName: opts.refreshCookieName,
+        cookieDomain: opts.cookieDomain,
+      },
+    );
+  } catch {
+    return failure;
+  }
+
+  const access = setCookies[0].value;
 
   return {
     type: "ok",
     user: {
-      sub: refreshed.sub,
-      ...(refreshed.sessionId === undefined
+      sub: access.sub,
+      ...(access.sessionId === undefined
         ? {}
-        : { sessionId: refreshed.sessionId }),
-      token: refreshed.token,
-      roles: refreshed.roles,
+        : { sessionId: access.sessionId }),
+      token: access.token,
+      roles: access.roles,
     },
-    setCookies: [
-      {
-        name: cookieName,
-        value: {
-          sub: refreshed.sub,
-          ...(refreshed.sessionId === undefined
-            ? {}
-            : { sessionId: refreshed.sessionId }),
-          token: refreshed.token,
-          roles: refreshed.roles,
-          email: refreshed.email,
-          phone: refreshed.phone,
-          organizationId: refreshed.organizationId ?? null,
-        },
-        ttl: refreshed.ttl,
-        domain: opts.cookieDomain,
-      },
-      {
-        name: opts.refreshCookieName,
-        value: {
-          sub: refreshed.sub,
-          refreshToken: refreshed.refreshToken,
-        },
-        ttl: refreshed.refreshTtl,
-        domain: opts.cookieDomain,
-      },
-    ],
+    setCookies,
   };
 }
 

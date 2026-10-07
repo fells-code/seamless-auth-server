@@ -2,6 +2,7 @@ import { jest } from "@jest/globals";
 
 const verifyCookieJwtMock = jest.fn();
 const refreshAccessTokenMock = jest.fn();
+const verifySignedAuthResponseMock = jest.fn();
 
 jest.unstable_mockModule("../dist/verifyCookieJwt.js", () => ({
   verifyCookieJwt: verifyCookieJwtMock,
@@ -9,6 +10,10 @@ jest.unstable_mockModule("../dist/verifyCookieJwt.js", () => ({
 
 jest.unstable_mockModule("../dist/refreshAccessToken.js", () => ({
   refreshAccessToken: refreshAccessTokenMock,
+}));
+
+jest.unstable_mockModule("../dist/verifySignedAuthResponse.js", () => ({
+  verifySignedAuthResponse: verifySignedAuthResponseMock,
 }));
 
 const BASE_OPTS = {
@@ -29,6 +34,7 @@ describe("ensureCookies", () => {
   beforeEach(() => {
     verifyCookieJwtMock.mockReset();
     refreshAccessTokenMock.mockReset();
+    verifySignedAuthResponseMock.mockReset();
   });
 
   it("returns ok when route does not require cookies", async () => {
@@ -115,9 +121,12 @@ describe("ensureCookies", () => {
   it("refreshes session when required cookie missing but refresh cookie exists", async () => {
     const { ensureCookies } = await import("../dist/ensureCookies.js");
 
+    verifySignedAuthResponseMock.mockResolvedValue({
+      sub: "user-123",
+      sid: "session-123",
+    });
     refreshAccessTokenMock.mockResolvedValue({
       sub: "user-123",
-      sessionId: "session-123",
       token: "new-access",
       refreshToken: "new-refresh",
       roles: ["user"],
@@ -192,9 +201,12 @@ describe("ensureCookies", () => {
       sessionId: "session-123",
       roles: ["user"],
     });
+    verifySignedAuthResponseMock.mockResolvedValue({
+      sub: "user-123",
+      sid: "session-456",
+    });
     refreshAccessTokenMock.mockResolvedValue({
       sub: "user-123",
-      sessionId: "session-456",
       token: "new-access",
       refreshToken: "new-refresh",
       roles: ["user"],
@@ -219,6 +231,102 @@ describe("ensureCookies", () => {
       sessionId: "session-456",
       token: "new-access",
       roles: ["user"],
+    });
+  });
+
+  describe("verifying the refreshed access token", () => {
+    const REFRESHED = {
+      sub: "user-123",
+      token: "new-access",
+      refreshToken: "new-refresh",
+      roles: ["admin"],
+      email: "test@example.com",
+      phone: null,
+      ttl: 300,
+      refreshTtl: 3600,
+    };
+
+    async function silentRefresh(opts = BASE_OPTS) {
+      const { ensureCookies } = await import("../dist/ensureCookies.js");
+      refreshAccessTokenMock.mockResolvedValue(REFRESHED);
+
+      return ensureCookies(
+        { path: "/users/me", cookies: { refresh: "refresh.jwt" } },
+        opts,
+      );
+    }
+
+    // The access cookie is signed with the adopter's own secret and its roles
+    // are trusted on every later request, so an unverified refresh response
+    // would become a trusted session.
+    it("issues no cookie when the token fails JWKS verification", async () => {
+      verifySignedAuthResponseMock.mockResolvedValue(null);
+
+      const result = await silentRefresh();
+
+      expect(result.type).toBe("error");
+      expect(result.status).toBe(401);
+      expect(result.setCookies).toBeUndefined();
+      expect(result.user).toBeUndefined();
+      expect(result.clearCookies).toEqual(["access", "registration", "refresh"]);
+    });
+
+    it("issues no cookie when the token names a different subject than the body", async () => {
+      verifySignedAuthResponseMock.mockResolvedValue({ sub: "someone-else" });
+
+      const result = await silentRefresh();
+
+      expect(result.status).toBe(401);
+      expect(result.setCookies).toBeUndefined();
+    });
+
+    it("verifies against the access token audience, not the service token's", async () => {
+      verifySignedAuthResponseMock.mockResolvedValue({ sub: "user-123" });
+
+      await silentRefresh({
+        ...BASE_OPTS,
+        issuer: "seamless-portal-api",
+        audience: "seamless-auth",
+        accessTokenAudience: "https://app.example.com",
+      });
+
+      expect(verifySignedAuthResponseMock).toHaveBeenCalledWith(
+        "new-access",
+        "https://auth.example.com",
+        "https://app.example.com",
+      );
+    });
+
+    it("defaults the access token audience to the auth server URL", async () => {
+      verifySignedAuthResponseMock.mockResolvedValue({ sub: "user-123" });
+
+      await silentRefresh({ ...BASE_OPTS, audience: "seamless-auth" });
+
+      expect(verifySignedAuthResponseMock).toHaveBeenCalledWith(
+        "new-access",
+        "https://auth.example.com",
+        "https://auth.example.com",
+      );
+    });
+
+    it("takes the session id from the signed token rather than the body", async () => {
+      verifySignedAuthResponseMock.mockResolvedValue({
+        sub: "user-123",
+        sid: "signed-session",
+      });
+      refreshAccessTokenMock.mockResolvedValue({
+        ...REFRESHED,
+        sessionId: "body-session",
+      });
+      const { ensureCookies } = await import("../dist/ensureCookies.js");
+
+      const result = await ensureCookies(
+        { path: "/users/me", cookies: { refresh: "refresh.jwt" } },
+        BASE_OPTS,
+      );
+
+      expect(result.user?.sessionId).toBe("signed-session");
+      expect(result.setCookies[0].value.sessionId).toBe("signed-session");
     });
   });
 

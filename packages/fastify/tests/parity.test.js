@@ -5,6 +5,7 @@ import { jest } from "@jest/globals";
 import express from "express";
 import Fastify from "fastify";
 import jwt from "jsonwebtoken";
+import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import request from "supertest";
 
 const { default: seamlessAuth, seamlessConsoleProxy } =
@@ -22,6 +23,26 @@ const OPTIONS = {
   audience: "https://auth.example.com",
   jwksKid: "test-main",
 };
+
+const { privateKey, publicKey } = await generateKeyPair("RS256");
+const jwk = { ...(await exportJWK(publicKey)), alg: "RS256", kid: "k1", use: "sig" };
+
+async function accessToken(claims, key = privateKey) {
+  return new SignJWT(claims)
+    .setProtectedHeader({ alg: "RS256", kid: "k1" })
+    .setIssuer(OPTIONS.authServerUrl)
+    .setAudience(OPTIONS.audience)
+    .setIssuedAt()
+    .setExpirationTime("5m")
+    .sign(key);
+}
+
+const REFRESHED_ACCESS_TOKEN = await accessToken({
+  sub: "user-123",
+  typ: "access",
+  sid: "s-2",
+  roles: ["admin"],
+});
 
 function upstream(status, body) {
   return { ok: status >= 200 && status < 300, status, json: async () => body };
@@ -117,6 +138,19 @@ async function viaExpress({ method, path, cookie, headers, payload, options }) {
   };
 }
 
+// The auth API for a silent refresh: rotates the session, publishes the key
+// set the rotated token is verified against, and answers the route itself.
+function refreshUpstream(refreshBody) {
+  return jest.fn(async (url) => {
+    const href = String(url);
+    if (href.endsWith("/.well-known/jwks.json")) {
+      return upstream(200, { keys: [jwk] });
+    }
+    if (href.endsWith("/refresh")) return upstream(200, refreshBody);
+    return upstream(200, { user: { id: "u1" } });
+  });
+}
+
 async function bothAdapters(scenario, upstreamResponse) {
   global.fetch = jest.fn(async () => upstreamResponse);
   const fastify = await viaFastify(scenario);
@@ -135,7 +169,7 @@ describe("fastify and express adapters agree", () => {
 
   const REFRESH_OK = {
     sub: "user-123",
-    token: "new-access",
+    token: REFRESHED_ACCESS_TOKEN,
     refreshToken: "new-refresh",
     roles: ["admin"],
     email: "user@example.com",
@@ -582,23 +616,67 @@ describe("fastify and express adapters agree", () => {
       options,
     };
 
-    global.fetch = jest.fn(async (url) =>
-      String(url).endsWith("/refresh")
-        ? upstream(200, REFRESH_OK)
-        : upstream(200, { user: { id: "u1" } }),
-    );
+    global.fetch = refreshUpstream(REFRESH_OK);
     const fastify = await viaFastify(scenario);
 
-    global.fetch = jest.fn(async (url) =>
-      String(url).endsWith("/refresh")
-        ? upstream(200, REFRESH_OK)
-        : upstream(200, { user: { id: "u1" } }),
-    );
+    global.fetch = refreshUpstream(REFRESH_OK);
     const expressResult = await viaExpress(scenario);
 
+    expect(fastify.status).toBe(200);
     expect(fastify.cookies).toEqual(expressResult.cookies);
-    expect(fastify.cookies.length).toBeGreaterThan(0);
+    expect(fastify.cookies).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/^seamless-access=<signed>/),
+        expect.stringMatching(/^seamless-refresh=<signed>/),
+      ]),
+    );
     expect(fastify.status).toBe(expressResult.status);
+  });
+
+  // Every other flow verifies the token the auth API returns before minting a
+  // session from it. The silent refresh must too: the access cookie is signed
+  // with the adopter's own secret, and its roles are trusted on every later
+  // request without asking the auth API again.
+  it.each([
+    [
+      "signed by a key the auth server does not publish",
+      async () =>
+        accessToken(
+          { sub: "user-123", typ: "access", roles: ["admin"] },
+          (await generateKeyPair("RS256")).privateKey,
+        ),
+    ],
+    ["not a JWT at all", async () => "forged-access"],
+    [
+      "for a different subject than the body",
+      async () => accessToken({ sub: "someone-else", typ: "access" }),
+    ],
+  ])("refuses a silent refresh whose token is %s", async (label, forge) => {
+    const scenario = {
+      method: "get",
+      path: "/users/me",
+      cookie: `seamless-refresh=${signed({ sub: "user-123", refreshToken: `forged-${label}` }, "3600s")}`,
+    };
+    const forged = { ...REFRESH_OK, token: await forge(), roles: ["admin"] };
+    const spy = jest.spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      global.fetch = refreshUpstream(forged);
+      const fastify = await viaFastify(scenario);
+      const fastifyCalls = global.fetch.mock.calls.map(([url]) => String(url));
+
+      global.fetch = refreshUpstream(forged);
+      const expressResult = await viaExpress(scenario);
+
+      expect(fastify.status).toBe(401);
+      expect(fastify.status).toBe(expressResult.status);
+      expect(fastify.body).toEqual(expressResult.body);
+      expect(fastify.cookies).toEqual(expressResult.cookies);
+      expect(fastify.cookies.some((c) => c.includes("=<signed>"))).toBe(false);
+      expect(fastifyCalls.some((url) => url.endsWith("/users/me"))).toBe(false);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("sends the same upstream URL for a repeated query parameter", async () => {

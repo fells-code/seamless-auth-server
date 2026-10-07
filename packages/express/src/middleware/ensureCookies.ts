@@ -25,6 +25,11 @@ export interface EnsureCookiesMiddlewareOptions {
   serviceSecret: string;
   issuer: string;
   audience: string;
+  /**
+   * Audience of the user access tokens the auth API issues, which a silently
+   * refreshed token is verified against. Defaults to `authServerUrl`.
+   */
+  accessTokenAudience?: string;
   keyId: string;
   resolveClientIp?: ClientIpResolver;
 }
@@ -62,6 +67,7 @@ export function createEnsureCookiesMiddleware(
         serviceSecret: opts.serviceSecret,
         issuer: opts.issuer,
         audience: opts.audience,
+        accessTokenAudience: opts.accessTokenAudience,
         keyId: opts.keyId,
         forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
         forwardedUserAgent: buildForwardedUserAgent(req),
