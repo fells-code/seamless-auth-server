@@ -181,6 +181,10 @@ const COOKIE_REQUIREMENTS: Record<
     name: "accessCookieName",
     required: true,
   },
+  "/admin/review-accounts": {
+    name: "accessCookieName",
+    required: true,
+  },
   "/admin/reports": {
     name: "accessCookieName",
     required: true,

@@ -110,6 +110,7 @@ export async function getSecurityAnomalies(
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
     forwardedUserAgent: buildForwardedUserAgent(req),
+    query: req.query,
   });
 
   return handle(res, result, opts);
@@ -128,6 +129,7 @@ export async function getDashboardMetrics(
     serviceAuthorization: buildProxyServiceAuthorization(opts),
     forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
     forwardedUserAgent: buildForwardedUserAgent(req),
+    query: req.query,
   });
 
   return handle(res, result, opts);

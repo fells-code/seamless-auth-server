@@ -710,6 +710,10 @@ export function createSeamlessAuthServer(
       },
     ),
   );
+  r.get(
+    "/admin/review-accounts",
+    proxyWithIdentity("admin/review-accounts", "access", "GET"),
+  );
 
   r.get("/admin/sessions", (req, res) =>
     admin.listAllSessions(req, res, resolvedOpts),

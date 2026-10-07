@@ -72,7 +72,8 @@ const ROUTES: Array<["GET" | "POST" | "PATCH" | "DELETE", string, Call]> = [
   [
     "GET",
     "/admin/users",
-    (c, r) => getUsersHandler({ ...c, query: r.query as Record<string, unknown> }),
+    (c, r) =>
+      getUsersHandler({ ...c, query: r.query as Record<string, unknown> }),
   ],
   ["POST", "/admin/users", (c, r) => createUserHandler({ ...c, body: r.body })],
   [
@@ -186,9 +187,21 @@ const ROUTES: Array<["GET" | "POST" | "PATCH" | "DELETE", string, Call]> = [
   [
     "GET",
     "/internal/security/anomalies",
-    (c) => getSecurityAnomaliesHandler(c),
+    (c, r) =>
+      getSecurityAnomaliesHandler({
+        ...c,
+        query: r.query as Record<string, unknown>,
+      }),
   ],
-  ["GET", "/internal/metrics/dashboard", (c) => getDashboardMetricsHandler(c)],
+  [
+    "GET",
+    "/internal/metrics/dashboard",
+    (c, r) =>
+      getDashboardMetricsHandler({
+        ...c,
+        query: r.query as Record<string, unknown>,
+      }),
+  ],
   [
     "GET",
     "/internal/metrics/funnel",
