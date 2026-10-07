@@ -1,3 +1,6 @@
+import { Readable } from "node:stream";
+import type { ReadableStream as NodeReadableStream } from "node:stream/web";
+
 import type { FastifyReply } from "fastify";
 import {
   applyResult,
@@ -49,6 +52,17 @@ export function fastifyResponseAdapter(reply: FastifyReply): ResponseAdapter {
       }
 
       reply.status(status).send(body);
+    },
+
+    sendRaw(status, raw) {
+      reply.status(status).headers(raw.headers);
+
+      if (!raw.body) {
+        reply.send();
+        return;
+      }
+
+      reply.send(Readable.fromWeb(raw.body as NodeReadableStream<Uint8Array>));
     },
   };
 }

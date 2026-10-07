@@ -166,9 +166,13 @@ function registerProxyRoutes(
           forwardedUserAgent: buildForwardedUserAgent(req),
           query: req.query as Record<string, unknown>,
           body: req.body,
+          raw: route.raw,
         });
 
         respond(reply, result, opts);
+        // Returned so Fastify waits for a streamed download rather than finishing the
+        // reply when this handler resolves.
+        return reply;
       },
     });
   }

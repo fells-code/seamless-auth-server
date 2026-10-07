@@ -182,3 +182,48 @@ describe("proxyRequest", () => {
     ).toEqual({ status: 403, body: { error: "forbidden" } });
   });
 });
+
+describe("proxyRequest raw passthrough", () => {
+  it("returns the body unparsed with only the headers that describe it", async () => {
+    authFetchMock.mockResolvedValueOnce(
+      new Response("a,b\r\n1,2\r\n", {
+        status: 200,
+        headers: {
+          "content-type": "text/csv; charset=utf-8",
+          "content-disposition": 'attachment; filename="r.csv"',
+          "x-powered-by": "Express",
+        },
+      }),
+    );
+
+    const result = await proxyRequest({
+      authServerUrl: "https://auth.example.com",
+      path: "admin/reports/authentication-coverage",
+      method: "GET",
+      query: { format: "csv" },
+      raw: true,
+    });
+
+    expect(result.status).toBe(200);
+    expect(result.body).toBeUndefined();
+    expect(result.raw.headers).toEqual({
+      "content-type": "text/csv; charset=utf-8",
+      "content-disposition": 'attachment; filename="r.csv"',
+    });
+    expect(await new Response(result.raw.body).text()).toBe("a,b\r\n1,2\r\n");
+  });
+
+  it("still parses JSON when raw is not asked for", async () => {
+    authFetchMock.mockResolvedValueOnce(
+      new Response('{"ok":true}', { status: 200 }),
+    );
+
+    const result = await proxyRequest({
+      authServerUrl: "https://auth.example.com",
+      path: "admin/auth-events/integrity",
+      method: "GET",
+    });
+
+    expect(result).toEqual({ status: 200, body: { ok: true } });
+  });
+});

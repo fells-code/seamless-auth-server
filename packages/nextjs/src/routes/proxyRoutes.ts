@@ -10,6 +10,8 @@ export interface ProxyRouteDefinition {
    */
   upstream: string;
   identity: ProxyIdentity;
+  /** Forward the upstream body and its content headers unparsed, for file downloads. */
+  raw?: boolean;
 }
 
 /**
@@ -241,6 +243,26 @@ export const PROXY_ROUTES: ProxyRouteDefinition[] = [
     path: "/admin/enrollment/invites",
     upstream: "admin/enrollment/invites",
     identity: "access",
+  },
+  {
+    method: "GET",
+    path: "/admin/auth-events/integrity",
+    upstream: "admin/auth-events/integrity",
+    identity: "access",
+  },
+  {
+    method: "GET",
+    path: "/admin/auth-events/export",
+    upstream: "admin/auth-events/export",
+    identity: "access",
+    raw: true,
+  },
+  {
+    method: "GET",
+    path: "/admin/reports/authentication-coverage",
+    upstream: "admin/reports/authentication-coverage",
+    identity: "access",
+    raw: true,
   },
 ];
 

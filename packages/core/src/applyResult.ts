@@ -85,6 +85,20 @@ export interface ResponseAdapter {
   clearCookie(command: ClearCookieCommand): void;
   /** `body` is `undefined` when the response carries none. */
   send(status: number, body: unknown): void;
+  /** Sends an upstream response through unparsed, see {@link RawBody}. */
+  sendRaw(status: number, raw: RawBody): void;
+}
+
+/**
+ * An upstream body forwarded as bytes rather than parsed as JSON.
+ *
+ * For routes whose answer is not a JSON document, such as a CSV report or an NDJSON
+ * export, which a JSON round trip would wrap in `{ message }` and strip of the headers
+ * that make it a download. `headers` holds only the ones that describe the body.
+ */
+export interface RawBody {
+  headers: Record<string, string>;
+  body: ReadableStream<Uint8Array> | null;
 }
 
 export interface SessionCookie {
@@ -97,6 +111,8 @@ export interface SessionCookie {
 export interface AppliableResult extends ResultFailure {
   status: number;
   body?: unknown;
+  /** Set instead of `body` when the upstream response is passed through unparsed. */
+  raw?: RawBody;
   setCookies?: SessionCookie[];
   clearCookies?: string[];
 }
@@ -136,7 +152,11 @@ export function signSessionCookie(
 function toTtlSeconds(ttl: unknown): number {
   const seconds = typeof ttl === "string" ? Number(ttl) : ttl;
 
-  if (typeof seconds !== "number" || !Number.isInteger(seconds) || seconds <= 0) {
+  if (
+    typeof seconds !== "number" ||
+    !Number.isInteger(seconds) ||
+    seconds <= 0
+  ) {
     throw new Error(
       `Upstream returned an unusable cookie ttl: ${JSON.stringify(ttl)}`,
     );
@@ -236,6 +256,11 @@ export function applyResult(
         ? { error: result.errorCode }
         : { error: result.errorCode, details: result.details },
     );
+    return;
+  }
+
+  if (result.raw) {
+    adapter.sendRaw(result.status, result.raw);
     return;
   }
 
