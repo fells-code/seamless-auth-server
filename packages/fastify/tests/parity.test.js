@@ -237,6 +237,25 @@ describe("fastify and express adapters agree", () => {
       upstream(403, { error: "forbidden" }),
     ],
     [
+      "admin review accounts forwards the report",
+      {
+        method: "get",
+        path: "/admin/review-accounts",
+        cookie: accessCookie(),
+      },
+      upstream(200, {
+        enabled: true,
+        emails: ["review@example.com"],
+        codeConfigured: true,
+        recentSignIns: {
+          days: 30,
+          count: 2,
+          failedVerifications: 0,
+          lastSignInAt: null,
+        },
+      }),
+    ],
+    [
       "admin audit integrity forwards the report",
       {
         method: "get",

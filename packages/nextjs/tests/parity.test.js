@@ -233,6 +233,25 @@ describe("next.js and express adapters agree", () => {
       upstream(403, { error: "forbidden" }),
     ],
     [
+      "admin review accounts forwards the report",
+      {
+        method: "get",
+        path: "/admin/review-accounts",
+        cookie: accessCookie(),
+      },
+      upstream(200, {
+        enabled: true,
+        emails: ["review@example.com"],
+        codeConfigured: true,
+        recentSignIns: {
+          days: 30,
+          count: 2,
+          failedVerifications: 0,
+          lastSignInAt: null,
+        },
+      }),
+    ],
+    [
       "admin audit integrity forwards the report",
       {
         method: "get",
@@ -913,5 +932,36 @@ describe("next.js and express forward downloads unparsed", () => {
     expect(upstreamUrl).toMatch(
       new RegExp(`^https://auth\\.example\\.com${path.split("?")[0]}`),
     );
+  });
+});
+
+// A handler built without the query forwards a bare path and answers 200 for the
+// default window, which nothing else would notice.
+describe("next.js forwards the range on ranged internal metrics", () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it.each([
+    ["/internal/metrics/dashboard", "from=2026-01-01&to=2026-02-01"],
+    [
+      "/internal/security/anomalies",
+      "from=2026-01-01&to=2026-02-01&limit=50&offset=100",
+    ],
+  ])("GET %s", async (path, query) => {
+    global.fetch = jest.fn(async () => upstream(200, {}));
+
+    await viaNext({
+      method: "get",
+      path: `${path}?${query}`,
+      cookie: accessCookie(),
+    });
+
+    const [url] = global.fetch.mock.calls[0];
+    const forwarded = new URL(url).searchParams;
+    for (const [name, value] of new URLSearchParams(query)) {
+      expect(forwarded.get(name)).toBe(value);
+    }
   });
 });

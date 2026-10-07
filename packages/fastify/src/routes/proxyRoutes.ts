@@ -278,6 +278,12 @@ export const PROXY_ROUTES: ProxyRouteDefinition[] = [
     identity: "access",
     raw: true,
   },
+  {
+    method: "GET",
+    path: "/admin/review-accounts",
+    upstream: "admin/review-accounts",
+    identity: "access",
+  },
 ];
 
 /**

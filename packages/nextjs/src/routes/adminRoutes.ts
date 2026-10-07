@@ -53,11 +53,7 @@ type Call = (ctx: CallContext, req: AuthContext) => Promise<AppliableResult>;
 
 const TABLE: Array<[RouteMethod, string, Call]> = [
   // Users
-  [
-    "GET",
-    "/admin/users",
-    (c, r) => getUsersHandler({ ...c, query: r.query }),
-  ],
+  ["GET", "/admin/users", (c, r) => getUsersHandler({ ...c, query: r.query })],
   ["POST", "/admin/users", (c, r) => createUserHandler({ ...c, body: r.body })],
   [
     "DELETE",
@@ -93,8 +89,7 @@ const TABLE: Array<[RouteMethod, string, Call]> = [
   [
     "GET",
     "/admin/auth-events",
-    (c, r) =>
-      getAuthEventsHandler({ ...c, query: r.query }),
+    (c, r) => getAuthEventsHandler({ ...c, query: r.query }),
   ],
   ["GET", "/admin/credential-count", (c) => getCredentialCountHandler(c)],
 
@@ -155,8 +150,7 @@ const TABLE: Array<[RouteMethod, string, Call]> = [
   [
     "GET",
     "/internal/auth-events/login-stats",
-    (c, r) =>
-      getLoginStatsHandler({ ...c, query: r.query }),
+    (c, r) => getLoginStatsHandler({ ...c, query: r.query }),
   ],
   [
     "GET",
@@ -170,9 +164,13 @@ const TABLE: Array<[RouteMethod, string, Call]> = [
   [
     "GET",
     "/internal/security/anomalies",
-    (c) => getSecurityAnomaliesHandler(c),
+    (c, r) => getSecurityAnomaliesHandler({ ...c, query: r.query }),
   ],
-  ["GET", "/internal/metrics/dashboard", (c) => getDashboardMetricsHandler(c)],
+  [
+    "GET",
+    "/internal/metrics/dashboard",
+    (c, r) => getDashboardMetricsHandler({ ...c, query: r.query }),
+  ],
   [
     "GET",
     "/internal/metrics/funnel",
