@@ -275,8 +275,9 @@ This repository uses pnpm workspaces and Changesets for package releases.
   Published from `main`. Changesets opens a version PR, then publishes npm
   packages, Git tags, changelogs, and GitHub Releases when that PR is merged.
 
-The core and official JavaScript adapters are linked while the API is pre-1.0
-so adopters can treat releases as a known-good set. See `RELEASES.md` for the
+`@seamless-auth/core` and `@seamless-auth/express` are linked while the API is
+pre-1.0 so adopters can treat them as a known-good set. `@seamless-auth/fastify`
+and `@seamless-auth/nextjs` version independently. See `RELEASES.md` for the
 release policy.
 
 ---
