@@ -1,6 +1,6 @@
 {
   "name": "@seamless-auth/nextjs",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Next.js App Router adapter for Seamless Auth passwordless authentication",
   "keywords": [
     "authentication",
