@@ -135,7 +135,7 @@ Adopters typically source the secrets from their own environment and pass them i
 | `authServerUrl` | yes      | Base URL of your Seamless Auth Server                          |
 | `cookieSecret`  | yes      | Secret used to sign the adapter's session cookies (min 32 chars) |
 | `serviceSecret` | yes      | Shared machine-to-machine secret, must match the auth server   |
-| `audience`      | yes      | Expected audience when verifying signed auth-server responses  |
+| `audience`      | yes      | Expected `aud` on auth-server tokens: the auth server's `ISSUER`, so `authServerUrl` or the same value as `authServerIssuer` |
 | `authServerIssuer` | no    | Expected `iss` on auth-server tokens; defaults to `authServerUrl` (see below) |
 
 See [`createSeamlessAuthServer(options)`](#createseamlessauthserveroptions) below for the optional
@@ -153,6 +153,18 @@ They differ when the adapter reaches the auth server at another address than the
 auth server signs as `http://auth:5312`). Set `authServerIssuer` to the auth server's `ISSUER` in
 that case. Requests still go to `authServerUrl`, and the key set is still fetched from it; only the
 `iss` check reads `authServerIssuer`.
+
+The auth server also sets `aud` to its `ISSUER`, and `audience` is what the adapter checks `aud`
+against. So with `authServerIssuer` set, set `audience` to the same value:
+
+```ts
+createSeamlessAuthServer({
+  authServerUrl: "http://localhost:5312",
+  authServerIssuer: "http://auth:5312",
+  audience: "http://auth:5312",
+  // ...
+});
+```
 
 Without it, verification fails on every login, and because the check fails closed the only symptom
 is a generic `[SeamlessAuth] Failed to verify signed auth response.` log line with no mention of the
@@ -199,7 +211,7 @@ generate routes instead.
   authServerUrl: string;   // required
   cookieSecret: string;    // required (min 32 chars)
   serviceSecret: string;   // required (min 32 chars)
-  audience: string;        // required
+  audience: string;        // required, expected `aud`: the auth server's ISSUER
   authServerIssuer?: string; // optional, expected `iss` (defaults to authServerUrl)
   jwksKid?: string;        // optional, kid header on service tokens (defaults to "dev-main", warns)
   cookieDomain?: string;  // optional (defaults to host)
@@ -571,10 +583,13 @@ app.get("/api/profile", guard, (req, res) => {
   cookieSecret: string;    // required, must match createSeamlessAuthServer
   cookieName?: string;     // optional (defaults to "seamless-access")
   authServerUrl?: string;  // with audience, enables bearer access tokens
-  audience?: string;       // expected `aud` on a bearer token, usually the auth server URL
+  audience?: string;       // expected `aud` on a bearer token: the auth server's ISSUER
   authServerIssuer?: string; // expected `iss` on a bearer token (defaults to authServerUrl)
 }
 ```
+
+With `authServerIssuer` set, pass the same value as `audience`: the auth API sets both `iss` and
+`aud` to its `ISSUER`.
 
 `authServerUrl` and `audience` must be given together. Leave both out and the guard accepts
 cookies only, which is what every earlier version did.

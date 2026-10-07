@@ -44,7 +44,7 @@ async function accessToken(authServerUrl, overrides = {}, issuer = authServerUrl
   return new SignJWT({ sub: "user-123", typ: "access", roles: ["athlete"], ...overrides })
     .setProtectedHeader({ alg: "RS256", kid: "k1" })
     .setIssuer(issuer)
-    .setAudience(authServerUrl)
+    .setAudience(issuer)
     .setIssuedAt()
     .setExpirationTime("5m")
     .sign(privateKey);
@@ -220,8 +220,20 @@ describe("getSeamlessUser with bearer tokens (express)", () => {
 
 describe("authServerIssuer (express)", () => {
   // fells-code/seamless-cli#224: the Docker stack's auth server signs as
-  // http://auth:5312 while a host-run app reaches it at a different URL.
+  // http://auth:5312 while a host-run app reaches it at a different URL. The
+  // auth API sets `aud` to its ISSUER as well, so `audience` follows it.
   const ISSUER = "http://auth:5312";
+  const SERVER_GUARD = (server) => ({
+    cookieSecret: COOKIE_SECRET,
+    authServerUrl: server,
+    audience: server,
+  });
+  const DOCKER_GUARD = (server) => ({
+    cookieSecret: COOKIE_SECRET,
+    authServerUrl: server,
+    authServerIssuer: ISSUER,
+    audience: ISSUER,
+  });
   const originalFetch = global.fetch;
   let warn;
 
@@ -239,7 +251,7 @@ describe("authServerIssuer (express)", () => {
     mockAuthServer(server);
     const token = await accessToken(server);
 
-    const res = await request(buildApp({ cookieSecret: COOKIE_SECRET, authServerUrl: server, audience: server }))
+    const res = await request(buildApp(SERVER_GUARD(server)))
       .get("/protected")
       .set("Authorization", `Bearer ${token}`);
 
@@ -251,7 +263,7 @@ describe("authServerIssuer (express)", () => {
     mockAuthServer(server);
     const token = await accessToken(server, {}, ISSUER);
 
-    const res = await request(buildApp({ cookieSecret: COOKIE_SECRET, authServerUrl: server, audience: server, authServerIssuer: ISSUER }))
+    const res = await request(buildApp(DOCKER_GUARD(server)))
       .get("/protected")
       .set("Authorization", `Bearer ${token}`);
 
@@ -265,10 +277,10 @@ describe("authServerIssuer (express)", () => {
     const fromIssuer = await accessToken(server, {}, ISSUER);
     const fromUrl = await accessToken(server);
 
-    const unconfigured = await request(buildApp({ cookieSecret: COOKIE_SECRET, authServerUrl: server, audience: server }))
+    const unconfigured = await request(buildApp(SERVER_GUARD(server)))
       .get("/protected")
       .set("Authorization", `Bearer ${fromIssuer}`);
-    const misconfigured = await request(buildApp({ cookieSecret: COOKIE_SECRET, authServerUrl: server, audience: server, authServerIssuer: ISSUER }))
+    const misconfigured = await request(buildApp(DOCKER_GUARD(server)))
       .get("/protected")
       .set("Authorization", `Bearer ${fromUrl}`);
 
@@ -297,6 +309,7 @@ describe("authServerIssuer (express)", () => {
       getSeamlessUser({ cookies: {}, headers: { authorization: `Bearer ${token}` }, app: { get: () => 1 } }, {
         ...options,
         authServerIssuer: ISSUER,
+        audience: ISSUER,
       }),
     ).resolves.toEqual(ME);
     expect(meCalls).toHaveLength(1);

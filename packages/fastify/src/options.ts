@@ -10,6 +10,11 @@ export type SeamlessAuthServerOptions = {
   authServerUrl: string;
   cookieSecret: string;
   serviceSecret: string;
+  /**
+   * Expected `aud` on the auth server's tokens and signed responses. The auth
+   * API sets `aud` to its ISSUER, so this is normally `authServerUrl`, or the
+   * same value as `authServerIssuer` when that is set.
+   */
   audience: string;
   /**
    * Expected `iss` on the tokens and signed responses the auth server returns.
@@ -17,7 +22,8 @@ export type SeamlessAuthServerOptions = {
    * server at a different URL from the one the auth server advertises as its
    * issuer (its `ISSUER` setting), for example a host-run app calling
    * `http://localhost:5312` while the Docker stack's auth server signs as
-   * `http://auth:5312`. Requests still go to `authServerUrl`.
+   * `http://auth:5312`. Requests still go to `authServerUrl`. The auth API
+   * also sets `aud` to its ISSUER, so set `audience` to the same value.
    */
   authServerIssuer?: string;
   jwksKid?: string;

@@ -177,8 +177,8 @@ adapters, plus `basePath`.
 | Option | Default | Purpose |
 | --- | --- | --- |
 | `authServerUrl` | required | Base URL of your Seamless Auth instance |
-| `audience` | required | Audience your user tokens are issued for |
-| `authServerIssuer` | `authServerUrl` | Expected `iss` on the auth server's tokens; set it when the auth server advertises an issuer other than the URL you reach it at, for example a host-run app against the Docker stack (`http://auth:5312`) |
+| `audience` | required | Expected `aud` on the auth server's tokens. The auth API sets it to its `ISSUER`, so this is `authServerUrl`, or the same value as `authServerIssuer` when that is set |
+| `authServerIssuer` | `authServerUrl` | Expected `iss` on the auth server's tokens; set it when the auth server advertises an issuer other than the URL you reach it at, for example a host-run app against the Docker stack (`http://auth:5312`), and set `audience` to the same value |
 | `cookieSecret` | required | Signs the session cookies, 32 characters minimum |
 | `serviceSecret` | required | Shared secret for machine-to-machine calls |
 | `jwksKid` | `dev-main` | `kid` header on the HS256 service tokens the adapter signs; warns when left as the placeholder |

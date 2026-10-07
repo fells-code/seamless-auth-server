@@ -105,6 +105,7 @@ remain for direct imports.
   expected `iss` of the auth server's tokens and defaults to `authServerUrl`. Set it when the auth
   server is reached at another URL than the issuer it advertises, for example a host-run app
   against the Docker stack (`http://auth:5312`). Requests and key fetches still use `authServerUrl`.
+  The auth API sets `aud` to its issuer as well, so pass the same value as `audience`.
 - `getSeamlessUser(...)` – resolves the hydrated user, typed as `SeamlessUser | null`, from a cookie or a bearer token
 - `hasScopedRole(...)` – checks scoped role grants such as `admin:read`
 

@@ -1,6 +1,8 @@
 // The auth server can advertise an issuer that differs from the URL this
 // server reaches it at: on the local Docker stack it signs as http://auth:5312
 // while a host-run app calls http://localhost:5312 (fells-code/seamless-cli#224).
+// The auth API sets both `iss` and `aud` to its ISSUER, so the tokens here do
+// too, and a host-run app configures both `authServerIssuer` and `audience`.
 // Drives the session-issuing flows through both adapters with and without
 // `authServerIssuer` and holds them to the same answer.
 import { jest } from "@jest/globals";
@@ -36,13 +38,14 @@ function signed(issuer, claims) {
   return new SignJWT(claims)
     .setProtectedHeader({ alg: "RS256", kid: "k1" })
     .setIssuer(issuer)
-    .setAudience(AUTH)
+    .setAudience(issuer)
     .setIssuedAt()
     .setExpirationTime("5m")
     .sign(privateKey);
 }
 
-// Answers as an auth server whose tokens carry `issuer`. Keys are only ever
+// Answers as an auth server whose ISSUER is `issuer`: its tokens carry it as
+// both `iss` and `aud`. Keys are only ever
 // served from the URL the adapter was given, never from the issuer.
 async function mockUpstream(issuer) {
   const ephemeral = await signed(issuer, { sub: "user-123", typ: "ephemeral" });
@@ -102,6 +105,8 @@ const preAuthCookie = () =>
     COOKIE_SECRET,
     { algorithm: "HS256", expiresIn: "300s" },
   )}`;
+
+const DOCKER_OPTIONS = { authServerIssuer: DOCKER_ISSUER, audience: DOCKER_ISSUER };
 
 const STEPS = [
   [
@@ -200,10 +205,24 @@ describe("authServerIssuer", () => {
       async (_label, step) => {
         const calls = await mockUpstream(DOCKER_ISSUER);
 
-        const res = await run(step, { authServerIssuer: DOCKER_ISSUER });
+        const res = await run(step, DOCKER_OPTIONS);
 
         expect(res.status).toBe(200);
         expect(calls.every((href) => href.startsWith(`${AUTH}/`))).toBe(true);
+      },
+    );
+
+    // The auth API's `aud` is its ISSUER, so an audience left at the URL
+    // fails even with the issuer configured.
+    it.each(STEPS)(
+      "rejects %s when only the issuer is configured and audience stays the URL",
+      async (_label, step) => {
+        await mockUpstream(DOCKER_ISSUER);
+
+        const res = await run(step, { authServerIssuer: DOCKER_ISSUER });
+
+        expect(res.status).toBe(500);
+        expect(res.cookies).not.toContain("seamless-access");
       },
     );
 
@@ -214,9 +233,7 @@ describe("authServerIssuer", () => {
         const unconfigured = await run(step, {});
 
         await mockUpstream(AUTH);
-        const misconfigured = await run(step, {
-          authServerIssuer: DOCKER_ISSUER,
-        });
+        const misconfigured = await run(step, DOCKER_OPTIONS);
 
         for (const res of [unconfigured, misconfigured]) {
           expect(res.status).toBe(500);
@@ -232,11 +249,9 @@ describe("authServerIssuer", () => {
     const [, step] = STEPS[0];
 
     await mockUpstream(DOCKER_ISSUER);
-    const fastify = await viaFastify(step, { authServerIssuer: DOCKER_ISSUER });
+    const fastify = await viaFastify(step, DOCKER_OPTIONS);
     await mockUpstream(DOCKER_ISSUER);
-    const expressResult = await viaExpress(step, {
-      authServerIssuer: DOCKER_ISSUER,
-    });
+    const expressResult = await viaExpress(step, DOCKER_OPTIONS);
 
     expect(fastify).toEqual(expressResult);
     expect(fastify.cookies).toEqual(

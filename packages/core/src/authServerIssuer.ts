@@ -7,8 +7,10 @@ export interface AuthServerIssuerOption {
    * from the one the server advertises as its issuer (its `ISSUER` setting).
    * For example, an application run on the host against the local Docker
    * stack calls `http://localhost:5312`, while the auth server signs as
-   * `http://auth:5312`. Requests still go to `authServerUrl`; only token
-   * verification reads this.
+   * `http://auth:5312`. Requests and key set fetches still go to
+   * `authServerUrl`; only the `iss` check reads this. The auth API also sets
+   * `aud` to its ISSUER, so the `audience` passed alongside should normally
+   * be the same value.
    */
   authServerIssuer?: string;
 }
