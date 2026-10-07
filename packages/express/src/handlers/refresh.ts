@@ -24,6 +24,7 @@ export async function refresh(
     {
       authServerUrl: opts.authServerUrl,
       audience: opts.audience,
+      authServerIssuer: opts.authServerIssuer,
       cookieSecret: opts.cookieSecret,
       serviceSecret: opts.serviceSecret,
       keyId: opts.jwksKid!,

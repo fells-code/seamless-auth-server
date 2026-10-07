@@ -29,8 +29,9 @@ export const SERVICE_TOKEN_ISSUER = "seamless-portal-api";
 export const SERVICE_TOKEN_AUDIENCE = "seamless-auth";
 
 /**
- * Fallback JWKS key id. Deploying on it is a misconfiguration, and adapters
- * warn when it is in use.
+ * Placeholder `kid` header for the HS256 service tokens an adapter signs when
+ * its `jwksKid` is unset. It names the `serviceSecret` key, not the auth
+ * server's RSA signing key. Adapters warn when it is in use.
  */
 export const DEV_JWKS_KID = "dev-main";
 

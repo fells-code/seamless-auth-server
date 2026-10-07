@@ -19,6 +19,12 @@ export interface CookieReader {
 
 export interface SeamlessSessionOptions {
   authServerUrl: string;
+  /**
+   * Accepted so one options object can serve the route handler and these
+   * helpers. The helpers verify only the adapter's own cookies, never a token
+   * the auth server signed, so it changes nothing here.
+   */
+  authServerIssuer?: string;
   cookieSecret: string;
   /** Lets the auth API trust the forwarded user agent. Optional here. */
   serviceSecret?: string;

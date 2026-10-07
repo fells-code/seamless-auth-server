@@ -29,7 +29,7 @@ function mockJwks(authServerUrl) {
   });
 }
 
-async function accessToken(authServerUrl, overrides = {}) {
+async function accessToken(authServerUrl, overrides = {}, issuer = authServerUrl) {
   return new SignJWT({
     sub: "user-123",
     typ: "access",
@@ -38,7 +38,7 @@ async function accessToken(authServerUrl, overrides = {}) {
     ...overrides,
   })
     .setProtectedHeader({ alg: "RS256", kid: "k1" })
-    .setIssuer(authServerUrl)
+    .setIssuer(issuer)
     .setAudience(authServerUrl)
     .setIssuedAt()
     .setExpirationTime("5m")
@@ -215,6 +215,52 @@ describe("authenticateRequest", () => {
     });
 
     expect(result.user).toMatchObject({ id: "user-123", token });
+  });
+
+  it("verifies a bearer token against a configured auth server issuer", async () => {
+    const server = nextServer();
+    mockJwks(server);
+    const token = await accessToken(server, {}, "http://auth:5312");
+
+    const configured = await authenticateRequest({
+      token: undefined,
+      cookieSecret: COOKIE_SECRET,
+      authorization: `Bearer ${token}`,
+      bearer: {
+        authServerUrl: server,
+        audience: server,
+        authServerIssuer: "http://auth:5312",
+      },
+    });
+    expect(configured.user).toMatchObject({ id: "user-123", token });
+
+    const unconfigured = await authenticateRequest({
+      token: undefined,
+      cookieSecret: COOKIE_SECRET,
+      authorization: `Bearer ${token}`,
+      bearer: { authServerUrl: server, audience: server },
+    });
+    expect(unconfigured.rejection).toEqual({
+      status: 401,
+      errorCode: "Invalid or expired session",
+    });
+  });
+
+  it("rejects a bearer token from an issuer other than the configured one", async () => {
+    const server = nextServer();
+    mockJwks(server);
+
+    const result = await authenticateBearer({
+      authorization: `Bearer ${await accessToken(server)}`,
+      authServerUrl: server,
+      audience: server,
+      authServerIssuer: "http://auth:5312",
+    });
+
+    expect(result.rejection).toEqual({
+      status: 401,
+      errorCode: "Invalid or expired session",
+    });
   });
 
   it("names both credentials in the warning when neither is present", async () => {

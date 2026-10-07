@@ -223,3 +223,117 @@ describe("verifySignedAuthResponse", () => {
     });
   });
 });
+
+// The local Docker stack's auth server signs as http://auth:5312 while a
+// host-run app reaches it at http://localhost:5312 (fells-code/seamless-cli#224).
+describe("verifySignedAuthResponse with a configured auth server issuer", () => {
+  const originalFetch = global.fetch;
+  let serverCount = 0;
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    setSeamlessLogger();
+  });
+
+  function nextServer() {
+    serverCount += 1;
+    return `http://localhost-${serverCount}.test:5312`;
+  }
+
+  async function signedBy(issuer, jwksUrl) {
+    const { privateKey, publicKey } = await generateKeyPair("RS256");
+    const jwk = {
+      ...(await exportJWK(publicKey)),
+      alg: "RS256",
+      kid: "test-key",
+      use: "sig",
+    };
+    global.fetch = jest.fn(async (url) => {
+      if (url.toString() === `${jwksUrl}/.well-known/jwks.json`) {
+        return new Response(JSON.stringify({ keys: [jwk] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      throw new Error(`Unexpected fetch URL: ${url}`);
+    });
+
+    return new SignJWT({ sub: "user-123" })
+      .setProtectedHeader({ alg: "RS256", kid: "test-key" })
+      .setIssuer(issuer)
+      .setAudience("app-a")
+      .setExpirationTime("5m")
+      .sign(privateKey);
+  }
+
+  it("verifies against the URL when no issuer is configured", async () => {
+    const { verifySignedAuthResponse } = await import(
+      "../dist/verifySignedAuthResponse.js"
+    );
+    const url = nextServer();
+
+    const payload = await verifySignedAuthResponse(
+      await signedBy(url, url),
+      url,
+      "app-a",
+    );
+
+    expect(payload?.sub).toBe("user-123");
+  });
+
+  it("verifies an issuer distinct from the URL, fetching keys from the URL", async () => {
+    const { verifySignedAuthResponse } = await import(
+      "../dist/verifySignedAuthResponse.js"
+    );
+    const url = nextServer();
+
+    const payload = await verifySignedAuthResponse(
+      await signedBy("http://auth:5312", url),
+      url,
+      "app-a",
+      "http://auth:5312",
+    );
+
+    expect(payload?.sub).toBe("user-123");
+    expect(global.fetch.mock.calls.map(([href]) => href.toString())).toEqual([
+      `${url}/.well-known/jwks.json`,
+    ]);
+  });
+
+  it("rejects a token whose issuer is not the configured one", async () => {
+    const { verifySignedAuthResponse } = await import(
+      "../dist/verifySignedAuthResponse.js"
+    );
+    const logged = [];
+    setSeamlessLogger({ warn: () => {}, error: (m) => logged.push(m) });
+    const url = nextServer();
+
+    const payload = await verifySignedAuthResponse(
+      await signedBy(url, url),
+      url,
+      "app-a",
+      "http://auth:5312",
+    );
+
+    expect(payload).toBeNull();
+    expect(logged).toEqual([
+      "[SeamlessAuth] Failed to verify signed auth response (ERR_JWT_CLAIM_VALIDATION_FAILED).",
+    ]);
+  });
+
+  it("rejects a token from a distinct issuer when none is configured", async () => {
+    const { verifySignedAuthResponse } = await import(
+      "../dist/verifySignedAuthResponse.js"
+    );
+    setSeamlessLogger({ warn: () => {}, error: () => {} });
+    const url = nextServer();
+
+    const payload = await verifySignedAuthResponse(
+      await signedBy("http://auth:5312", url),
+      url,
+      "app-a",
+    );
+
+    expect(payload).toBeNull();
+  });
+});

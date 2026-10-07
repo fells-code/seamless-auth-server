@@ -16,6 +16,7 @@ export async function getSeamlessUser(
 
   return getSeamlessUserCore(req.cookies ?? {}, {
     authServerUrl: opts.authServerUrl,
+    authServerIssuer: opts.authServerIssuer,
     cookieSecret: opts.cookieSecret,
     cookieName: opts.accessCookieName ?? "seamless-access",
     authorization,

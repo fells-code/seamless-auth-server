@@ -1,3 +1,4 @@
+import type { AuthServerIssuerOption } from "../authServerIssuer.js";
 import { authFetch } from "../authFetch.js";
 import { sessionResult } from "../upstreamSession.js";
 import type { AuthTransport } from "../transport.js";
@@ -13,7 +14,7 @@ export interface SwitchOrganizationInput {
   forwardedUserAgent?: string;
 }
 
-export interface SwitchOrganizationOptions {
+export interface SwitchOrganizationOptions extends AuthServerIssuerOption {
   authServerUrl: string;
   audience: string;
   cookieDomain?: string;
@@ -67,6 +68,7 @@ export async function switchOrganizationHandler(
     status: up.status,
     ...(await sessionResult(data, {
       authServerUrl: opts.authServerUrl,
+      authServerIssuer: opts.authServerIssuer,
       audience: opts.audience,
       accessCookieName: opts.accessCookieName,
       cookieDomain: opts.cookieDomain,

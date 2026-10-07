@@ -47,10 +47,10 @@ function mockAuthServer(authServerUrl, { meStatus = 200 } = {}) {
   return calls;
 }
 
-async function accessToken(authServerUrl, overrides = {}) {
+async function accessToken(authServerUrl, overrides = {}, issuer = authServerUrl) {
   return new SignJWT({ sub: "user-123", typ: "access", roles: ["athlete"], ...overrides })
     .setProtectedHeader({ alg: "RS256", kid: "k1" })
-    .setIssuer(authServerUrl)
+    .setIssuer(issuer)
     .setAudience(authServerUrl)
     .setIssuedAt()
     .setExpirationTime("5m")
@@ -112,6 +112,45 @@ describe("getSeamlessUser with a bearer access token", () => {
         {
           ...options(server, `Bearer ${token}`),
           bearer: { authorization: `Bearer ${token}`, audience: "https://other.example.com" },
+        },
+      ),
+    ).resolves.toBeNull();
+    expect(meCalls).toHaveLength(0);
+  });
+
+  it("verifies the bearer token against a configured auth server issuer", async () => {
+    const server = nextServer();
+    const meCalls = mockAuthServer(server);
+    const token = await accessToken(server, {}, "http://auth:5312");
+
+    await expect(
+      getSeamlessUser({}, options(server, `Bearer ${token}`)),
+    ).resolves.toBeNull();
+    expect(meCalls).toHaveLength(0);
+
+    await expect(
+      getSeamlessUser(
+        {},
+        {
+          ...options(server, `Bearer ${token}`),
+          authServerIssuer: "http://auth:5312",
+        },
+      ),
+    ).resolves.toEqual(USER);
+    expect(meCalls).toHaveLength(1);
+  });
+
+  it("returns null for a token signed under the URL once an issuer is configured", async () => {
+    const server = nextServer();
+    const meCalls = mockAuthServer(server);
+    const token = await accessToken(server);
+
+    await expect(
+      getSeamlessUser(
+        {},
+        {
+          ...options(server, `Bearer ${token}`),
+          authServerIssuer: "http://auth:5312",
         },
       ),
     ).resolves.toBeNull();

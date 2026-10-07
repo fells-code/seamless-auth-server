@@ -1,4 +1,5 @@
 import type { SessionCookie } from "./applyResult.js";
+import type { AuthServerIssuerOption } from "./authServerIssuer.js";
 import type { AuthTransport } from "./transport.js";
 import { verifySignedAuthResponse } from "./verifySignedAuthResponse.js";
 
@@ -63,11 +64,13 @@ export async function verifyUpstreamSession(
   data: UpstreamSessionResponse,
   authServerUrl: string,
   audience: string,
+  authServerIssuer?: string,
 ): Promise<VerifiedUpstreamSession> {
   const verified = await verifySignedAuthResponse(
     data.token,
     authServerUrl,
     audience,
+    authServerIssuer,
   );
 
   if (!verified) {
@@ -83,7 +86,7 @@ export async function verifyUpstreamSession(
   };
 }
 
-export interface IssueSessionCookiesOptions {
+export interface IssueSessionCookiesOptions extends AuthServerIssuerOption {
   authServerUrl: string;
   audience: string;
   accessCookieName: string;
@@ -106,6 +109,7 @@ export async function issueSessionCookies(
     data,
     opts.authServerUrl,
     opts.audience,
+    opts.authServerIssuer,
   );
 
   const cookies: SessionCookie[] = [
@@ -161,7 +165,12 @@ export async function sessionResult(
   opts: SessionResultOptions,
 ): Promise<SessionResult> {
   if (opts.transport === "bearer") {
-    await verifyUpstreamSession(data, opts.authServerUrl, opts.audience);
+    await verifyUpstreamSession(
+      data,
+      opts.authServerUrl,
+      opts.audience,
+      opts.authServerIssuer,
+    );
     return { body: data };
   }
 

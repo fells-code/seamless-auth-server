@@ -14,6 +14,15 @@ export type SeamlessAuthHandlerOptions = {
   cookieSecret: string;
   serviceSecret: string;
   audience: string;
+  /**
+   * Expected `iss` on the tokens and signed responses the auth server returns.
+   * Defaults to `authServerUrl`. Set it when this server reaches the auth
+   * server at a different URL from the one the auth server advertises as its
+   * issuer (its `ISSUER` setting), for example a host-run app calling
+   * `http://localhost:5312` while the Docker stack's auth server signs as
+   * `http://auth:5312`. Requests still go to `authServerUrl`.
+   */
+  authServerIssuer?: string;
   jwksKid?: string;
   cookieDomain?: string;
   cookieSecure?: boolean;

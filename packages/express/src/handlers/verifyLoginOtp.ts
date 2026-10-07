@@ -35,6 +35,7 @@ async function verifyOtp(
     {
       authServerUrl: opts.authServerUrl,
       audience: opts.audience,
+      authServerIssuer: opts.authServerIssuer,
       cookieDomain: opts.cookieDomain,
       accessCookieName: opts.accessCookieName!,
       refreshCookieName: opts.refreshCookieName!,

@@ -40,10 +40,10 @@ function mockAuthServer(authServerUrl) {
   return meCalls;
 }
 
-async function accessToken(authServerUrl, overrides = {}) {
+async function accessToken(authServerUrl, overrides = {}, issuer = authServerUrl) {
   return new SignJWT({ sub: "user-123", typ: "access", roles: ["athlete"], ...overrides })
     .setProtectedHeader({ alg: "RS256", kid: "k1" })
-    .setIssuer(authServerUrl)
+    .setIssuer(issuer)
     .setAudience(authServerUrl)
     .setIssuedAt()
     .setExpirationTime("5m")
@@ -215,5 +215,90 @@ describe("getSeamlessUser with bearer tokens (express)", () => {
 
     expect(user).toBeNull();
     expect(meCalls).toHaveLength(0);
+  });
+});
+
+describe("authServerIssuer (express)", () => {
+  // fells-code/seamless-cli#224: the Docker stack's auth server signs as
+  // http://auth:5312 while a host-run app reaches it at a different URL.
+  const ISSUER = "http://auth:5312";
+  const originalFetch = global.fetch;
+  let warn;
+
+  beforeEach(() => {
+    warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warn.mockRestore();
+    global.fetch = originalFetch;
+  });
+
+  it("requireAuth verifies against authServerUrl by default", async () => {
+    const server = nextServer();
+    mockAuthServer(server);
+    const token = await accessToken(server);
+
+    const res = await request(buildApp({ cookieSecret: COOKIE_SECRET, authServerUrl: server, audience: server }))
+      .get("/protected")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+  });
+
+  it("requireAuth accepts a token from a configured issuer distinct from the URL", async () => {
+    const server = nextServer();
+    mockAuthServer(server);
+    const token = await accessToken(server, {}, ISSUER);
+
+    const res = await request(buildApp({ cookieSecret: COOKIE_SECRET, authServerUrl: server, audience: server, authServerIssuer: ISSUER }))
+      .get("/protected")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.user).toMatchObject({ id: "user-123", token });
+  });
+
+  it("requireAuth rejects a token whose issuer is not the expected one", async () => {
+    const server = nextServer();
+    mockAuthServer(server);
+    const fromIssuer = await accessToken(server, {}, ISSUER);
+    const fromUrl = await accessToken(server);
+
+    const unconfigured = await request(buildApp({ cookieSecret: COOKIE_SECRET, authServerUrl: server, audience: server }))
+      .get("/protected")
+      .set("Authorization", `Bearer ${fromIssuer}`);
+    const misconfigured = await request(buildApp({ cookieSecret: COOKIE_SECRET, authServerUrl: server, audience: server, authServerIssuer: ISSUER }))
+      .get("/protected")
+      .set("Authorization", `Bearer ${fromUrl}`);
+
+    for (const res of [unconfigured, misconfigured]) {
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({ error: "Invalid or expired session" });
+    }
+  });
+
+  it("getSeamlessUser verifies a bearer token against the configured issuer", async () => {
+    const server = nextServer();
+    const meCalls = mockAuthServer(server);
+    const token = await accessToken(server, {}, ISSUER);
+    const options = {
+      authServerUrl: server,
+      cookieSecret: COOKIE_SECRET,
+      serviceSecret: SERVICE_SECRET,
+      audience: server,
+      jwksKid: "test-main",
+    };
+
+    await expect(getSeamlessUser({ cookies: {}, headers: { authorization: `Bearer ${token}` }, app: { get: () => 1 } }, options)).resolves.toBeNull();
+    expect(meCalls).toHaveLength(0);
+
+    await expect(
+      getSeamlessUser({ cookies: {}, headers: { authorization: `Bearer ${token}` }, app: { get: () => 1 } }, {
+        ...options,
+        authServerIssuer: ISSUER,
+      }),
+    ).resolves.toEqual(ME);
+    expect(meCalls).toHaveLength(1);
   });
 });

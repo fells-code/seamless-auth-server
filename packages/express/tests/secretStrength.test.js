@@ -126,7 +126,7 @@ describe("jwksKid default", () => {
     createSeamlessAuthServer(serverOptions({ jwksKid: "dev-main" }));
 
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("jwksKid is not set"),
+      expect.stringContaining('jwksKid is "dev-main", a placeholder'),
     );
   });
 

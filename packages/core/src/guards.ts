@@ -2,6 +2,7 @@ import type { SeamlessAuthUser } from "@seamless-auth/types";
 
 import { resolveCookieSameSite, type CookieSameSite } from "./applyResult.js";
 import { hasScopedRole } from "@seamless-auth/types/role/matching";
+import type { AuthServerIssuerOption } from "./authServerIssuer.js";
 import { assertSecretStrength } from "./validateSecrets.js";
 import { extractBearerToken, verifyAccessToken } from "./verifyAccessToken.js";
 import { verifyCookieJwt } from "./verifyCookieJwt.js";
@@ -154,11 +155,14 @@ export function authenticateCookie(input: CookieAuthInput): CookieAuthResult {
   };
 }
 
-export interface BearerAuthInput {
+export interface BearerAuthInput extends AuthServerIssuerOption {
   /** The raw `Authorization` header, or `undefined` when the request carried none. */
   authorization?: string;
   authServerUrl: string;
-  /** Expected `aud` on the access token. The issuer is `authServerUrl`. */
+  /**
+   * Expected `aud` on the access token. The expected issuer is
+   * `authServerIssuer`, which defaults to `authServerUrl`.
+   */
   audience: string;
 }
 
@@ -198,6 +202,7 @@ export async function authenticateBearer(
     token,
     input.authServerUrl,
     input.audience,
+    input.authServerIssuer,
   );
 
   if (!claims) {
@@ -224,7 +229,11 @@ export interface RequestAuthInput extends CookieAuthInput {
    * Enables bearer tokens. Left out, the guard accepts cookies only, which is
    * what every adopter predating this option gets.
    */
-  bearer?: { authServerUrl: string; audience: string };
+  bearer?: {
+    authServerUrl: string;
+    audience: string;
+    authServerIssuer?: string;
+  };
 }
 
 /**

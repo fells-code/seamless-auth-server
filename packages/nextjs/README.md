@@ -178,9 +178,10 @@ adapters, plus `basePath`.
 | --- | --- | --- |
 | `authServerUrl` | required | Base URL of your Seamless Auth instance |
 | `audience` | required | Audience your user tokens are issued for |
+| `authServerIssuer` | `authServerUrl` | Expected `iss` on the auth server's tokens; set it when the auth server advertises an issuer other than the URL you reach it at, for example a host-run app against the Docker stack (`http://auth:5312`) |
 | `cookieSecret` | required | Signs the session cookies, 32 characters minimum |
 | `serviceSecret` | required | Shared secret for machine-to-machine calls |
-| `jwksKid` | `dev-main` | Active JWKS key id; set it explicitly before deploying |
+| `jwksKid` | `dev-main` | `kid` header on the HS256 service tokens the adapter signs; warns when left as the placeholder |
 | `basePath` | `/auth` | Where the catch-all route is mounted |
 | `cookieDomain` | none | Domain attribute for the auth cookies |
 | `cookieSecure` | `true` | Set `false` only for local HTTP development |
@@ -194,7 +195,9 @@ adapters, plus `basePath`.
 | `resolveClientIp` | none | Picks the end user's IP to forward |
 
 The session helpers take `authServerUrl`, `cookieSecret`, and optionally
-`serviceSecret`, `jwksKid`, the cookie names, and `userAgent`.
+`serviceSecret`, `jwksKid`, the cookie names, and `userAgent`. They also accept
+`authServerIssuer`, so one options object can serve the handler and the helpers;
+the helpers verify only the adapter's own cookies, so it has no effect there.
 
 ### Client IP
 

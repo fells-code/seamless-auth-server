@@ -74,6 +74,8 @@ token in `Authorization: Bearer`, which is how a native client with no cookie ja
 authenticates. A bearer token is verified against the auth API's JWKS, including
 `typ: "access"`, so a sign-in flow's ephemeral token is refused. The cookie wins
 when both are present. Leave the pair out and the guard accepts cookies only.
+Pass `authServerIssuer` as well when the auth server signs under an issuer other
+than `authServerUrl`.
 
 It does not refresh: silent refresh belongs to the plugin's own hook on the auth
 routes, and a bearer client refreshes through `POST /auth/refresh` itself. Role
@@ -157,9 +159,10 @@ into the dashboard work: the upstream answers them with the SPA shell.
 | --- | --- | --- |
 | `authServerUrl` | required | Base URL of your Seamless Auth instance |
 | `audience` | required | Audience your user tokens are issued for |
+| `authServerIssuer` | `authServerUrl` | Expected `iss` on the auth server's tokens; set it when the auth server advertises an issuer other than the URL you reach it at, for example a host-run app against the Docker stack (`http://auth:5312`) |
 | `cookieSecret` | required | Signs the session cookies, 32 characters minimum |
 | `serviceSecret` | required | Shared secret for machine-to-machine calls |
-| `jwksKid` | `dev-main` | Active JWKS key id; set it explicitly before deploying |
+| `jwksKid` | `dev-main` | `kid` header on the HS256 service tokens the adapter signs; warns when left as the placeholder |
 | `cookieDomain` | none | Domain attribute for the auth cookies |
 | `cookieSecure` | `true` | Set `false` only for local HTTP development |
 | `cookieSameSite` | `none` when secure, else `lax` | SameSite policy |
