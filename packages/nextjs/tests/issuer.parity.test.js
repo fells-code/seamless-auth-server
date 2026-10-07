@@ -93,6 +93,19 @@ async function mockUpstream(issuer) {
         refreshTtl: 2592000,
       });
     }
+    if (href === `${AUTH}/refresh`) {
+      return Response.json({
+        sub: "user-123",
+        token: access,
+        refreshToken: "refresh-2",
+        roles: ["athlete"],
+        ttl: 1800,
+        refreshTtl: 2592000,
+      });
+    }
+    if (href === `${AUTH}/users/me`) {
+      return Response.json({ user: { id: "user-123" } });
+    }
     throw new Error(`Unexpected upstream call: ${href}`);
   });
 
@@ -105,6 +118,19 @@ const preAuthCookie = () =>
     COOKIE_SECRET,
     { algorithm: "HS256", expiresIn: "300s" },
   )}`;
+
+// Each silent refresh needs its own refresh token: core replays a recent
+// refresh result for the same token rather than calling the auth API again.
+let refreshCount = 0;
+const silentRefresh = () => ({
+  method: "get",
+  path: "/users/me",
+  cookie: `seamless-refresh=${jwt.sign(
+    { sub: "user-123", refreshToken: `refresh-${++refreshCount}` },
+    COOKIE_SECRET,
+    { algorithm: "HS256", expiresIn: "3600s" },
+  )}`,
+});
 
 const DOCKER_OPTIONS = { authServerIssuer: DOCKER_ISSUER, audience: DOCKER_ISSUER };
 
@@ -243,6 +269,32 @@ describe("authServerIssuer", () => {
         }
       },
     );
+
+    it("accepts a silent refresh signed by a configured issuer distinct from the URL", async () => {
+      const calls = await mockUpstream(DOCKER_ISSUER);
+
+      const res = await run(silentRefresh(), DOCKER_OPTIONS);
+
+      expect(res.status).toBe(200);
+      expect(res.cookies).toEqual(
+        expect.arrayContaining(["seamless-access", "seamless-refresh"]),
+      );
+      expect(calls.every((href) => href.startsWith(`${AUTH}/`))).toBe(true);
+    });
+
+    it("rejects a silent refresh from an issuer other than the expected one", async () => {
+      await mockUpstream(DOCKER_ISSUER);
+      const unconfigured = await run(silentRefresh(), {});
+
+      await mockUpstream(AUTH);
+      const misconfigured = await run(silentRefresh(), DOCKER_OPTIONS);
+
+      // The 401 clears the session cookies, so their names still appear.
+      for (const res of [unconfigured, misconfigured]) {
+        expect(res.status).toBe(401);
+        expect(res.body).toEqual({ error: "Refresh failed" });
+      }
+    });
   });
 
   it("sets the same session cookies from both adapters with a configured issuer", async () => {

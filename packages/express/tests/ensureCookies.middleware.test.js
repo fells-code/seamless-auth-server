@@ -78,11 +78,11 @@ describe("createEnsureCookiesMiddleware silent refresh", () => {
     return server;
   }
 
-  async function refreshWithTokenFor(audience, options, refreshToken) {
+  async function refreshWithTokenFor(audience, options, refreshToken, issuer = AUTH) {
     const token = jwt.sign({ sub: "user-123", typ: "access", sid: "s-1" }, privateKey, {
       algorithm: "RS256",
       keyid: "k1",
-      issuer: AUTH,
+      issuer,
       audience,
       expiresIn: "5m",
     });
@@ -126,6 +126,34 @@ describe("createEnsureCookiesMiddleware silent refresh", () => {
   it("refuses a refreshed token issued for another audience", async () => {
     const spy = jest.spyOn(console, "error").mockImplementation(() => {});
     const res = await refreshWithTokenFor("https://app.example.com", {}, "opaque-2");
+    spy.mockRestore();
+
+    expect(res.status).toBe(401);
+    expect(res.headers["set-cookie"].join(";")).not.toMatch(/access=ey/);
+  });
+
+  // On the local Docker stack the auth server signs as http://auth:5312 while
+  // the app reaches it at authServerUrl (fells-code/seamless-cli#224).
+  it("verifies the refreshed token against authServerIssuer", async () => {
+    const res = await refreshWithTokenFor(
+      "http://auth:5312",
+      { accessTokenAudience: "http://auth:5312", authServerIssuer: "http://auth:5312" },
+      "opaque-3",
+      "http://auth:5312",
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ sub: "user-123", sessionId: "s-1" });
+  });
+
+  it("refuses a refreshed token from an issuer other than the expected one", async () => {
+    const spy = jest.spyOn(console, "error").mockImplementation(() => {});
+    const res = await refreshWithTokenFor(
+      "http://auth:5312",
+      { accessTokenAudience: "http://auth:5312" },
+      "opaque-4",
+      "http://auth:5312",
+    );
     spy.mockRestore();
 
     expect(res.status).toBe(401);
