@@ -1,3 +1,4 @@
+import type { AuthServerIssuerOption } from "../authServerIssuer.js";
 import { authFetch } from "../authFetch.js";
 import { sessionResult } from "../upstreamSession.js";
 import type { AuthTransport } from "../transport.js";
@@ -14,7 +15,7 @@ export interface VerifyLoginOtpInput {
   kind: "email" | "phone";
 }
 
-export interface VerifyLoginOtpOptions {
+export interface VerifyLoginOtpOptions extends AuthServerIssuerOption {
   authServerUrl: string;
   audience: string;
   cookieDomain?: string;
@@ -73,6 +74,7 @@ async function verifyOtp(
     status: up.status,
     ...(await sessionResult(data, {
       authServerUrl: opts.authServerUrl,
+      authServerIssuer: opts.authServerIssuer,
       audience: opts.audience,
       accessCookieName: opts.accessCookieName,
       refreshCookieName: opts.refreshCookieName,

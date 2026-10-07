@@ -29,10 +29,14 @@ function mockJwks(authServerUrl) {
   });
 }
 
-async function sign(authServerUrl, claims, { audience = authServerUrl } = {}) {
+async function sign(
+  authServerUrl,
+  claims,
+  { audience = authServerUrl, issuer = authServerUrl } = {},
+) {
   return new SignJWT(claims)
     .setProtectedHeader({ alg: "RS256", kid: "k1" })
-    .setIssuer(authServerUrl)
+    .setIssuer(issuer)
     .setAudience(audience)
     .setIssuedAt()
     .setExpirationTime("5m")
@@ -197,5 +201,69 @@ describe("verifyAccessToken", () => {
     } finally {
       jest.restoreAllMocks();
     }
+  });
+
+  describe("with a configured auth server issuer", () => {
+    // fells-code/seamless-cli#224: the Docker stack's auth server signs as
+    // http://auth:5312 while a host-run app reaches it at localhost.
+    const ISSUER = "http://auth:5312";
+
+    it("verifies a token from the configured issuer", async () => {
+      const server = nextServer();
+      mockJwks(server);
+
+      const claims = await verifyAccessToken(
+        await sign(server, ACCESS_CLAIMS, { issuer: ISSUER }),
+        server,
+        server,
+        ISSUER,
+      );
+
+      expect(claims).toMatchObject(ACCESS_CLAIMS);
+    });
+
+    it("rejects a token signed under the URL once an issuer is configured", async () => {
+      const server = nextServer();
+      mockJwks(server);
+
+      const claims = await verifyAccessToken(
+        await sign(server, ACCESS_CLAIMS),
+        server,
+        server,
+        ISSUER,
+      );
+
+      expect(claims).toBeNull();
+    });
+
+    it("rejects a token from a distinct issuer when none is configured", async () => {
+      const server = nextServer();
+      mockJwks(server);
+
+      const claims = await verifyAccessToken(
+        await sign(server, ACCESS_CLAIMS, { issuer: ISSUER }),
+        server,
+        server,
+      );
+
+      expect(claims).toBeNull();
+    });
+
+    it("falls back to the URL for an empty issuer rather than skipping the check", async () => {
+      const server = nextServer();
+      mockJwks(server);
+
+      await expect(
+        verifyAccessToken(await sign(server, ACCESS_CLAIMS), server, server, ""),
+      ).resolves.toMatchObject(ACCESS_CLAIMS);
+      await expect(
+        verifyAccessToken(
+          await sign(server, ACCESS_CLAIMS, { issuer: ISSUER }),
+          server,
+          server,
+          "",
+        ),
+      ).resolves.toBeNull();
+    });
   });
 });

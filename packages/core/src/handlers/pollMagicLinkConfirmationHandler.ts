@@ -1,3 +1,4 @@
+import type { AuthServerIssuerOption } from "../authServerIssuer.js";
 import { authFetch } from "../authFetch.js";
 import { sessionResult } from "../upstreamSession.js";
 import type { AuthTransport } from "../transport.js";
@@ -11,7 +12,7 @@ export interface PollMagicLinkConfirmationInput {
   forwardedUserAgent?: string;
 }
 
-export interface PollMagicLinkConfirmationOptions {
+export interface PollMagicLinkConfirmationOptions extends AuthServerIssuerOption {
   authServerUrl: string;
   audience: string;
   cookieDomain?: string;
@@ -70,6 +71,7 @@ export async function pollMagicLinkConfirmationHandler(
     status: 200,
     ...(await sessionResult(data, {
       authServerUrl: opts.authServerUrl,
+      authServerIssuer: opts.authServerIssuer,
       audience: opts.audience,
       accessCookieName: opts.accessCookieName,
       refreshCookieName: opts.refreshCookieName,

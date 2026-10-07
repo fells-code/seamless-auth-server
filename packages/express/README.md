@@ -135,23 +135,41 @@ Adopters typically source the secrets from their own environment and pass them i
 | `authServerUrl` | yes      | Base URL of your Seamless Auth Server                          |
 | `cookieSecret`  | yes      | Secret used to sign the adapter's session cookies (min 32 chars) |
 | `serviceSecret` | yes      | Shared machine-to-machine secret, must match the auth server   |
-| `audience`      | yes      | Expected audience when verifying signed auth-server responses  |
+| `audience`      | yes      | Expected `aud` on auth-server tokens: the auth server's `ISSUER`, so `authServerUrl` or the same value as `authServerIssuer` |
+| `authServerIssuer` | no    | Expected `iss` on auth-server tokens; defaults to `authServerUrl` (see below) |
 
 See [`createSeamlessAuthServer(options)`](#createseamlessauthserveroptions) below for the optional
 settings (cookie names, cookie security, `jwksKid`, messaging).
 
-### `authServerUrl` must match the auth server's issuer
+### The expected issuer: `authServerUrl` or `authServerIssuer`
 
-The adapter verifies signed auth-server responses by requiring the token's `iss` claim to equal
-`authServerUrl` exactly. The auth server stamps `iss` from its own `ISSUER` environment variable.
-Those two values must be identical strings, including scheme, host, port, and any trailing slash.
+The adapter verifies signed auth-server responses and bearer access tokens by requiring the token's
+`iss` claim to equal the expected issuer exactly. The auth server stamps `iss` from its own `ISSUER`
+environment variable. By default the expected issuer is `authServerUrl`, so the two must be
+identical strings, including scheme, host, port, and any trailing slash.
 
-This matters when the adapter reaches the auth server over an internal address (a service name, a
-private load balancer, or `localhost` in a container network) while the auth server's `ISSUER` is
-its public URL. Verification then fails on every login, and because the check fails closed the only
-symptom is a generic `[SeamlessAuth] Failed to verify signed auth response.` log line with no
-mention of the mismatch. If logins fail that way, compare `authServerUrl` against the auth server's
-`ISSUER` before looking anywhere else.
+They differ when the adapter reaches the auth server at another address than the one it advertises
+(a service name, a private load balancer, or `localhost` on the host against a Docker stack whose
+auth server signs as `http://auth:5312`). Set `authServerIssuer` to the auth server's `ISSUER` in
+that case. Requests still go to `authServerUrl`, and the key set is still fetched from it; only the
+`iss` check reads `authServerIssuer`.
+
+The auth server also sets `aud` to its `ISSUER`, and `audience` is what the adapter checks `aud`
+against. So with `authServerIssuer` set, set `audience` to the same value:
+
+```ts
+createSeamlessAuthServer({
+  authServerUrl: "http://localhost:5312",
+  authServerIssuer: "http://auth:5312",
+  audience: "http://auth:5312",
+  // ...
+});
+```
+
+Without it, verification fails on every login, and because the check fails closed the only symptom
+is a generic `[SeamlessAuth] Failed to verify signed auth response.` log line with no mention of the
+mismatch. If logins fail that way, compare the expected issuer against the auth server's `ISSUER`
+before looking anywhere else.
 
 ---
 
@@ -193,8 +211,9 @@ generate routes instead.
   authServerUrl: string;   // required
   cookieSecret: string;    // required (min 32 chars)
   serviceSecret: string;   // required (min 32 chars)
-  audience: string;        // required
-  jwksKid?: string;        // optional (defaults to "dev-main", warns when unset)
+  audience: string;        // required, expected `aud`: the auth server's ISSUER
+  authServerIssuer?: string; // optional, expected `iss` (defaults to authServerUrl)
+  jwksKid?: string;        // optional, kid header on service tokens (defaults to "dev-main", warns)
   cookieDomain?: string;  // optional (defaults to host)
   cookieSecure?: boolean;  // optional (defaults to true)
   cookieSameSite?: "lax" | "none" | "strict";  // optional
@@ -226,11 +245,13 @@ constructed, and to `getSeamlessUser`, which validates through `@seamless-auth/c
 Generate secrets with a CSPRNG, for example `openssl rand -base64 48`, and supply them through the
 environment rather than source.
 
-#### JWKS key id
+#### Service token key id
 
-`jwksKid` is optional and still falls back to `dev-main`. When it is omitted or set to `dev-main`,
-the adapter logs a startup warning, because a dev-flavored key id in a deployed environment usually
-means the value was never configured. Set `jwksKid` to the active JWKS key id in production.
+`jwksKid` is the `kid` header on the HS256 service tokens the adapter signs with `serviceSecret`
+for its machine-to-machine calls to the auth server. It is not the auth server's RSA signing key,
+and the auth server does not check it today. It is optional and falls back to the placeholder
+`dev-main`. When it is omitted or set to `dev-main`, the adapter logs a startup warning, because
+the placeholder usually means the value was never configured.
 
 #### Client IP forwarding and `trust proxy`
 
@@ -562,9 +583,13 @@ app.get("/api/profile", guard, (req, res) => {
   cookieSecret: string;    // required, must match createSeamlessAuthServer
   cookieName?: string;     // optional (defaults to "seamless-access")
   authServerUrl?: string;  // with audience, enables bearer access tokens
-  audience?: string;       // expected `aud` on a bearer token, usually the auth server URL
+  audience?: string;       // expected `aud` on a bearer token: the auth server's ISSUER
+  authServerIssuer?: string; // expected `iss` on a bearer token (defaults to authServerUrl)
 }
 ```
+
+With `authServerIssuer` set, pass the same value as `audience`: the auth API sets both `iss` and
+`aud` to its `ISSUER`.
 
 `authServerUrl` and `audience` must be given together. Leave both out and the guard accepts
 cookies only, which is what every earlier version did.
@@ -644,8 +669,8 @@ const user = await getSeamlessUser(req, authOptions);
 access cookie name is read from `accessCookieName` and defaults to `seamless-access`.
 
 A request with no access cookie but an `Authorization: Bearer` access token from the auth API
-resolves too: the token is verified against the auth API's JWKS using `authServerUrl` and
-`audience` from the options, then forwarded as the caller's identity. A request that carries
+resolves too: the token is verified against the auth API's JWKS using `authServerUrl`,
+`audience`, and `authServerIssuer` from the options, then forwarded as the caller's identity. A request that carries
 neither, or a token that fails verification, returns `null` without calling the auth server.
 
 Returns `SeamlessUser | null`:

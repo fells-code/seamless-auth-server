@@ -15,8 +15,20 @@ export interface RequireAuthOptions {
    * only, as it always has.
    */
   authServerUrl?: string;
-  /** Expected `aud` on a bearer access token. Usually the same value as `authServerUrl`. */
+  /**
+   * Expected `aud` on a bearer access token. The auth API sets it to its
+   * ISSUER, so this is `authServerUrl`, or `authServerIssuer` when that is set.
+   */
   audience?: string;
+  /**
+   * Expected `iss` on a bearer access token. Defaults to `authServerUrl`. Set
+   * it when this server reaches the auth server at a different URL from the
+   * one the auth server advertises as its issuer, for example a host-run app
+   * against the Docker stack. Only read when bearer tokens are enabled. The
+   * auth API sets `aud` to its ISSUER too, so pass the same value as
+   * `audience`.
+   */
+  authServerIssuer?: string;
 }
 
 /**
@@ -48,6 +60,7 @@ export function requireAuth(opts: RequireAuthOptions) {
     cookieSecret,
     authServerUrl,
     audience,
+    authServerIssuer,
   } = opts;
 
   // Eagerly, so a weak secret fails at setup rather than on the first request.
@@ -67,7 +80,7 @@ export function requireAuth(opts: RequireAuthOptions) {
 
   const bearer =
     authServerUrl !== undefined && audience !== undefined
-      ? { authServerUrl, audience }
+      ? { authServerUrl, audience, authServerIssuer }
       : undefined;
 
   const hint = bearer

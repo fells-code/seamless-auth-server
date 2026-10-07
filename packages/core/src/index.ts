@@ -1,4 +1,5 @@
 export * from "./authFetch.js";
+export type { AuthServerIssuerOption } from "./authServerIssuer.js";
 export * from "./authMessaging.js";
 export * from "./deliverAuthMessage.js";
 export * from "./ensureCookies.js";

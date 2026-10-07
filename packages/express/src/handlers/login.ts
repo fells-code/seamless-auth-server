@@ -17,6 +17,7 @@ export async function login(
     {
       authServerUrl: opts.authServerUrl,
       audience: opts.audience,
+      authServerIssuer: opts.authServerIssuer,
       cookieDomain: opts.cookieDomain,
       preAuthCookieName: opts.preAuthCookieName!,
       transport: transportOf(req),

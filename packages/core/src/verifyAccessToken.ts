@@ -1,4 +1,5 @@
 import type { JWTPayload } from "jose";
+import { resolveAuthServerIssuer } from "./authServerIssuer.js";
 import { verifyWithAuthServerJwks } from "./jwks.js";
 
 /**
@@ -40,11 +41,15 @@ export function extractBearerToken(
  * Silent on failure: a guard turns `null` into a 401 and has nothing useful to
  * add from the reason, while logging the reason for every bad token a client
  * sends is a log-flooding vector.
+ *
+ * `authServerIssuer` is the expected `iss` and defaults to `authServerUrl`; see
+ * `AuthServerIssuerOption` for when the two differ.
  */
 export async function verifyAccessToken(
   token: string,
   authServerUrl: string,
   audience: string,
+  authServerIssuer?: string,
 ): Promise<AccessTokenClaims | null> {
   // jose skips the claim check for an empty expected value, which would turn a
   // blank audience into "any audience". Refuse rather than verify loosely.
@@ -55,7 +60,7 @@ export async function verifyAccessToken(
   try {
     const payload = await verifyWithAuthServerJwks(token, authServerUrl, {
       algorithms: ["RS256"],
-      issuer: authServerUrl,
+      issuer: resolveAuthServerIssuer(authServerUrl, authServerIssuer),
       audience,
     });
 

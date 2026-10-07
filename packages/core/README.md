@@ -96,8 +96,16 @@ remain for direct imports.
 - `verifyCookieJwt(...)` – verifies signed cookie payloads
 - `verifyRefreshCookie(...)` – verifies a refresh cookie, returning `null` on failure
 - `verifySignedAuthResponse(...)` – verifies an auth API response signature against its JWKS
+  (an optional fourth argument, `authServerIssuer`, is the expected `iss`; it defaults to `authServerUrl`)
 - `verifyAccessToken(...)` – verifies an auth API access token against its JWKS, requiring `typ: "access"`
+  (takes the same optional `authServerIssuer` argument)
 - `extractBearerToken(...)` – reads the token out of an `Authorization: Bearer` header
+- `AuthServerIssuerOption` – the optional `authServerIssuer` that `getSeamlessUser`, the bearer
+  guards, `sessionResult`, `issueSessionCookies`, and the session-issuing handlers take. It is the
+  expected `iss` of the auth server's tokens and defaults to `authServerUrl`. Set it when the auth
+  server is reached at another URL than the issuer it advertises, for example a host-run app
+  against the Docker stack (`http://auth:5312`). Requests and key fetches still use `authServerUrl`.
+  The auth API sets `aud` to its issuer as well, so pass the same value as `audience`.
 - `getSeamlessUser(...)` – resolves the hydrated user, typed as `SeamlessUser | null`, from a cookie or a bearer token
 - `hasScopedRole(...)` – checks scoped role grants such as `admin:read`
 
@@ -145,7 +153,7 @@ User, session, auth-event, metrics, and system-config handlers, for example
 
 - `SERVICE_TOKEN_ISSUER` / `SERVICE_TOKEN_AUDIENCE` – the fixed identity for M2M service tokens
 - `AUTH_DELIVERY_MODE_HEADER` / `EXTERNAL_DELIVERY_MODE` / `EXTERNAL_DELIVERY_HEADERS`
-- `DEV_JWKS_KID` – the fallback key id, which is a misconfiguration to deploy on
+- `DEV_JWKS_KID` – the placeholder `kid` for service tokens when an adapter's `jwksKid` is unset
 - `createServiceToken(...)` / `buildExternalDeliveryAuthorization(...)` – mint service tokens
 
 **Utilities**

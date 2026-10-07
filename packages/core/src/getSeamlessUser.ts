@@ -1,6 +1,7 @@
 import type { MeUser } from "@seamless-auth/types";
 
 import { authFetch } from "./authFetch.js";
+import type { AuthServerIssuerOption } from "./authServerIssuer.js";
 import { assertSecretStrength } from "./validateSecrets.js";
 import { extractBearerToken, verifyAccessToken } from "./verifyAccessToken.js";
 import { verifyCookieJwt } from "./verifyCookieJwt.js";
@@ -20,7 +21,7 @@ import { verifyCookieJwt } from "./verifyCookieJwt.js";
  */
 export type SeamlessUser = MeUser;
 
-export interface GetSeamlessUserOptions {
+export interface GetSeamlessUserOptions extends AuthServerIssuerOption {
   authServerUrl: string;
   cookieSecret: string;
   authorization?: string;
@@ -36,7 +37,10 @@ export interface GetSeamlessUserOptions {
   bearer?: {
     /** The request's raw `Authorization` header. */
     authorization?: string;
-    /** Expected `aud` on the access token. The issuer is `authServerUrl`. */
+    /**
+     * Expected `aud` on the access token. The expected issuer is
+     * `authServerIssuer`, which defaults to `authServerUrl`.
+     */
     audience: string;
   };
 }
@@ -101,6 +105,7 @@ async function resolveUpstreamAuthorization(
     token,
     opts.authServerUrl,
     opts.bearer.audience,
+    opts.authServerIssuer,
   );
 
   return claims ? `Bearer ${token}` : null;

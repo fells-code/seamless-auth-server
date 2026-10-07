@@ -1,3 +1,4 @@
+import type { AuthServerIssuerOption } from "../authServerIssuer.js";
 import { authFetch } from "../authFetch.js";
 import { readPassthroughFailure } from "../upstreamError.js";
 import type { ResultFailure } from "../result.js";
@@ -12,7 +13,7 @@ export interface LoginInput {
   body: unknown;
 }
 
-export interface LoginOptions {
+export interface LoginOptions extends AuthServerIssuerOption {
   authServerUrl: string;
   audience: string;
   cookieDomain?: string;
@@ -67,7 +68,12 @@ export async function loginHandler(
 
   // Login issues only the pre-auth cookie, so it verifies the response without
   // building session cookies from it.
-  await verifyUpstreamSession(data, opts.authServerUrl, opts.audience);
+  await verifyUpstreamSession(
+    data,
+    opts.authServerUrl,
+    opts.audience,
+    opts.authServerIssuer,
+  );
 
   // The ephemeral token is what carries the flow forward, and a bearer client
   // has nowhere to get it from but the body.

@@ -85,6 +85,25 @@ describe("verifyUpstreamSession", () => {
       "access-token",
       "https://auth.test",
       "the-audience",
+      undefined,
+    );
+  });
+
+  it("passes a configured auth server issuer through to verification", async () => {
+    verifySignedAuthResponseMock.mockResolvedValue({ sub: "user-1" });
+
+    await verifyUpstreamSession(
+      SESSION,
+      "https://auth.test",
+      "the-audience",
+      "http://auth:5312",
+    );
+
+    expect(verifySignedAuthResponseMock).toHaveBeenCalledWith(
+      "access-token",
+      "https://auth.test",
+      "the-audience",
+      "http://auth:5312",
     );
   });
 });
@@ -151,6 +170,22 @@ describe("issueSessionCookies", () => {
 
     expect(cookies).toHaveLength(1);
     expect(cookies[0].name).toBe("seamless-access");
+  });
+
+  it("verifies against the configured auth server issuer", async () => {
+    verifySignedAuthResponseMock.mockResolvedValue({ sub: "user-1" });
+
+    await issueSessionCookies(SESSION, {
+      ...OPTIONS,
+      authServerIssuer: "http://auth:5312",
+    });
+
+    expect(verifySignedAuthResponseMock).toHaveBeenCalledWith(
+      "access-token",
+      "https://auth.test",
+      "https://auth.test",
+      "http://auth:5312",
+    );
   });
 
   it("does not build cookies from a response it could not verify", async () => {

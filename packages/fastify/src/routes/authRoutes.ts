@@ -63,6 +63,7 @@ export function registerAuthRoutes(
 
   const sessionCookies = (req: FastifyRequest) => ({
     audience: opts.audience,
+    authServerIssuer: opts.authServerIssuer,
     cookieDomain: opts.cookieDomain,
     accessCookieName: opts.accessCookieName,
     refreshCookieName: opts.refreshCookieName,
@@ -75,6 +76,7 @@ export function registerAuthRoutes(
       {
         ...common(req),
         audience: opts.audience,
+        authServerIssuer: opts.authServerIssuer,
         cookieDomain: opts.cookieDomain,
         preAuthCookieName: opts.preAuthCookieName,
         transport: transportOf(req),
@@ -315,6 +317,7 @@ export function registerAuthRoutes(
       {
         authServerUrl: opts.authServerUrl,
         audience: opts.audience,
+        authServerIssuer: opts.authServerIssuer,
         cookieDomain: opts.cookieDomain,
         accessCookieName: opts.accessCookieName,
         transport: transportOf(req),
@@ -337,6 +340,7 @@ export function registerAuthRoutes(
       {
         authServerUrl: opts.authServerUrl,
         audience: opts.audience,
+        authServerIssuer: opts.authServerIssuer,
         cookieSecret: opts.cookieSecret,
         serviceSecret: opts.serviceSecret,
         keyId: opts.jwksKid,

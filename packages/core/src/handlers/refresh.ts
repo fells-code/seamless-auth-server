@@ -1,3 +1,4 @@
+import type { AuthServerIssuerOption } from "../authServerIssuer.js";
 import { extractBearerToken } from "../verifyAccessToken.js";
 import {
   refreshAccessToken,
@@ -20,7 +21,7 @@ export interface RefreshInput {
   forwardedUserAgent?: string;
 }
 
-export interface RefreshOptions {
+export interface RefreshOptions extends AuthServerIssuerOption {
   authServerUrl: string;
   audience: string;
   cookieSecret: string;
@@ -62,6 +63,7 @@ export async function refreshHandler(
 
   const session = {
     authServerUrl: opts.authServerUrl,
+    authServerIssuer: opts.authServerIssuer,
     audience: opts.audience,
     accessCookieName: opts.accessCookieName,
     refreshCookieName: opts.refreshCookieName,

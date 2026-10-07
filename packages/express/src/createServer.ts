@@ -80,6 +80,7 @@ type ResolvedSeamlessAuthServerOptions = {
   cookieSecret: string;
   serviceSecret: string;
   audience: string;
+  authServerIssuer?: string;
   jwksKid: string;
   cookieDomain: string;
   cookieSecure?: boolean;
@@ -97,7 +98,22 @@ export type SeamlessAuthServerOptions = {
   authServerUrl: string;
   cookieSecret: string;
   serviceSecret: string;
+  /**
+   * Expected `aud` on the auth server's tokens and signed responses. The auth
+   * API sets `aud` to its ISSUER, so this is normally `authServerUrl`, or the
+   * same value as `authServerIssuer` when that is set.
+   */
   audience: string;
+  /**
+   * Expected `iss` on the tokens and signed responses the auth server returns.
+   * Defaults to `authServerUrl`. Set it when this server reaches the auth
+   * server at a different URL from the one the auth server advertises as its
+   * issuer (its `ISSUER` setting), for example a host-run app calling
+   * `http://localhost:5312` while the Docker stack's auth server signs as
+   * `http://auth:5312`. Requests still go to `authServerUrl`. The auth API
+   * also sets `aud` to its ISSUER, so set `audience` to the same value.
+   */
+  authServerIssuer?: string;
   jwksKid?: string;
   cookieDomain?: string;
   cookieSecure?: boolean;
@@ -180,9 +196,14 @@ function clientErrorStatus(err: unknown): number | null {
  *
  * @param opts - Configuration options for the Seamless Auth proxy:
  *   - `authServerUrl` - Base URL of your Seamless Auth instance (required)
+ *   - `audience` - Expected `aud` on the auth server's tokens: its ISSUER, so `authServerUrl`
+ *     or the same value as `authServerIssuer` (required)
+ *   - `authServerIssuer` - Expected `iss` on the auth server's tokens, when it differs from
+ *     `authServerUrl` (defaults to `authServerUrl`)
  *   - `cookieSecret` - The value to encode your cookies secrets with (required, at least 32 characters)
  *   - `serviceSecret` - An machine to machine shared secret that matches your auth servers (required, at least 32 characters)
- *   - `jwksKid` - The active jwks KID (defaults to `dev-main` and warns; set it explicitly in production)
+ *   - `jwksKid` - The `kid` header on the HS256 service tokens this adapter signs (defaults to the
+ *     placeholder `dev-main` and warns)
  *   - `cookieDomain` - Domain attribute applied to all auth cookies
  *   - `cookieSecure` (defaults to `true`; set `false` only for local HTTP dev)
  *   - `cookieSameSite` (defaults to `none` when secure, `lax` otherwise)
@@ -210,6 +231,7 @@ export function createSeamlessAuthServer(
   const resolvedOpts: ResolvedSeamlessAuthServerOptions = {
     authServerUrl: opts.authServerUrl,
     audience: opts.audience,
+    authServerIssuer: opts.authServerIssuer,
     cookieSecret: opts.cookieSecret,
     serviceSecret: opts.serviceSecret,
     jwksKid: opts.jwksKid ?? DEV_JWKS_KID,

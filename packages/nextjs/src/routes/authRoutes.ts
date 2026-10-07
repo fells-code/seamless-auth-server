@@ -57,6 +57,7 @@ function deliveryServiceAuthorization(opts: ResolvedOptions) {
 function sessionCookies(ctx: AuthContext, opts: ResolvedOptions) {
   return {
     audience: opts.audience,
+    authServerIssuer: opts.authServerIssuer,
     cookieDomain: opts.cookieDomain,
     accessCookieName: opts.accessCookieName,
     refreshCookieName: opts.refreshCookieName,
@@ -154,6 +155,7 @@ export const AUTH_ROUTES: Route[] = [
         {
           ...common(ctx, opts),
           audience: opts.audience,
+          authServerIssuer: opts.authServerIssuer,
           cookieDomain: opts.cookieDomain,
           preAuthCookieName: opts.preAuthCookieName,
           transport: ctx.transport,
@@ -333,6 +335,7 @@ export const AUTH_ROUTES: Route[] = [
         {
           authServerUrl: opts.authServerUrl,
           audience: opts.audience,
+          authServerIssuer: opts.authServerIssuer,
           cookieDomain: opts.cookieDomain,
           accessCookieName: opts.accessCookieName,
           transport: ctx.transport,
@@ -354,6 +357,7 @@ export const AUTH_ROUTES: Route[] = [
         {
           authServerUrl: opts.authServerUrl,
           audience: opts.audience,
+          authServerIssuer: opts.authServerIssuer,
           cookieSecret: opts.cookieSecret,
           serviceSecret: opts.serviceSecret,
           keyId: opts.jwksKid,

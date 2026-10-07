@@ -31,6 +31,7 @@ export async function switchOrganization(
     {
       authServerUrl: opts.authServerUrl,
       audience: opts.audience,
+      authServerIssuer: opts.authServerIssuer,
       cookieDomain: opts.cookieDomain,
       accessCookieName: opts.accessCookieName!,
       transport: transportOf(req),
