@@ -1,5 +1,34 @@
 # @seamless-auth/core
 
+## 0.19.0
+
+### Minor Changes
+
+- a004f89: Pass the auth API's audit and reporting routes through with the caller's access identity: `GET /admin/auth-events/integrity` (fells-code/seamless-auth-api#174), `GET /admin/auth-events/export` (fells-code/seamless-auth-api#173) and `GET /admin/reports/authentication-coverage` (fells-code/seamless-auth-api#178), each with its query.
+
+  The export and the coverage report answer with a file (NDJSON, or CSV when `format=csv`), so proxied routes can now forward an upstream response unparsed. `proxyRequest` takes `raw: true` and returns `raw: { headers, body }`, holding the body stream and its `content-type`, `content-disposition` and `cache-control`. Each adapter streams it through as is, so the download keeps its type and filename rather than arriving wrapped in `{ message }`.
+
+  `ResponseAdapter` gains a required `sendRaw(status, raw)`. A custom adapter that implements `ResponseAdapter` itself has to add it. The adapters in this repository already do.
+
+  `@seamless-auth/types` is now `^0.27.0`.
+
+- 79aad32: Add `authServerIssuer`, the expected `iss` of the tokens and signed responses the auth server returns. It defaults to `authServerUrl`, so nothing changes unless you set it. Set it when the auth server is reached at a different URL from the issuer it advertises: on the local Docker stack the auth server signs as `http://auth:5312`, while an app run on the host calls `http://localhost:5312`, and every sign-in failed with `Invalid signed response from Auth Server` (fells-code/seamless-cli#224). Requests and key set fetches still go to `authServerUrl`; only the `iss` check reads the new option.
+
+  The auth API sets `aud` to its ISSUER as well, and `audience` stays required with no default, so with `authServerIssuer` set, set `audience` to the same value. For the Docker stack from the host that is `authServerUrl: "http://localhost:5312"`, `authServerIssuer: "http://auth:5312"`, `audience: "http://auth:5312"`. The option docs and READMEs now say this.
+
+  It is accepted by `createSeamlessAuthServer`, `requireAuth` and `getSeamlessUser` in Express, the `seamlessAuth` plugin, `requireAuth` and `getSeamlessUser` in Fastify, and `createSeamlessAuthHandler` and `getSeamlessSession` in Next.js. In core, `verifySignedAuthResponse`, `verifyAccessToken` and `verifyUpstreamSession` take it as an optional last argument, and `getSeamlessUser`, `authenticateBearer`, `authenticateRequest` (under `bearer`), `issueSessionCookies`, `sessionResult` and the session-issuing handlers' options take it as a field (`AuthServerIssuerOption`).
+
+  The startup warning for an unset or `dev-main` `jwksKid` now says what the value is: the `kid` header on the HS256 service tokens the adapter signs with `serviceSecret`, not the auth server's signing key. The READMEs describe `jwksKid` the same way.
+
+- 629c428: - `GET /internal/metrics/dashboard` and `GET /internal/security/anomalies` now forward their query string, so the time range and paging the auth API accepts on them reach it (fells-code/seamless-auth-api#132). Before, both handlers were built without a query, and a range from the dashboard was silently dropped. `getDashboardMetricsHandler` and `getSecurityAnomaliesHandler` accept `query`.
+  - Pass `GET /admin/review-accounts` (with its `days` query) through to the auth API with the caller's access identity (fells-code/seamless-auth-api#331).
+
+### Patch Changes
+
+- 9dbd345: Recover when the auth server starts signing with a new key under the same `kid`. The cached key set was only refetched for an unknown `kid`, so after such a change (a recreated local auth container regenerates its dev key this way) every signed auth response and Bearer token failed verification for up to 10 minutes, and sign-in answered 500 until the application restarted. A signature that does not match a cached key now refetches the key set once and verifies again, at most once per 30 second cooldown so a stream of bad signatures cannot hammer the JWKS endpoint. The verification failure log now includes the `jose` error code. Fixes #184.
+- da7f33f: Support Node 22 and newer. The `engines` field now requires `>=22` instead of `>=24 <25`, and CI runs on Node 22, 24, and the latest release (fells-code/seamless-auth-api#339).
+- 4006a5b: Depend on `@seamless-auth/types` `^0.28.0`, which adds the ranged dashboard metrics and security anomalies schemas (fells-code/seamless-auth-api#132).
+
 ## 0.18.0
 
 ### Minor Changes
