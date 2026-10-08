@@ -70,6 +70,32 @@ describe("getSeamlessUser", () => {
     );
   });
 
+  // A route outside the adapter's own has no cookie payload loaded, so the caller
+  // passes no authorization. The verified cookie carries the token (#207).
+  it("sends the token from the verified cookie when the caller supplies none", async () => {
+    const { getSeamlessUser } = await import("../dist/getSeamlessUser.js");
+    const { authorization: _authorization, ...options } = baseOptions();
+
+    await getSeamlessUser({ "seamless-access": createAccessCookie() }, options);
+
+    expect(global.fetch.mock.calls[0][1].headers.Authorization).toBe(
+      "Bearer user-access-token",
+    );
+  });
+
+  it("prefers the authorization the caller supplies", async () => {
+    const { getSeamlessUser } = await import("../dist/getSeamlessUser.js");
+
+    await getSeamlessUser(
+      { "seamless-access": createAccessCookie() },
+      { ...baseOptions(), authorization: "Bearer from-the-caller" },
+    );
+
+    expect(global.fetch.mock.calls[0][1].headers.Authorization).toBe(
+      "Bearer from-the-caller",
+    );
+  });
+
   it("returns the canonical user from the response body", async () => {
     const { getSeamlessUser } = await import("../dist/getSeamlessUser.js");
 

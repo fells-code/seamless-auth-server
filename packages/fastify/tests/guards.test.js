@@ -4,9 +4,12 @@ import Fastify from "fastify";
 import jwt from "jsonwebtoken";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 
-const { requireAuth, requireRole, getSeamlessUser } = await import(
-  "../dist/index.js"
-);
+const {
+  default: seamlessAuth,
+  requireAuth,
+  requireRole,
+  getSeamlessUser,
+} = await import("../dist/index.js");
 
 const COOKIE_SECRET = "cookie-secret-cookie-secret-cookie-secret";
 const SERVICE_SECRET = "service-secret-service-secret-service-secret";
@@ -366,5 +369,106 @@ describe("authServerIssuer (fastify)", () => {
       }),
     ).resolves.toEqual(ME);
     expect(meCalls).toHaveLength(1);
+  });
+});
+
+// The plugin registers @fastify/cookie in its own encapsulated scope, so an
+// application route outside it has no request.cookies. The guard and
+// getSeamlessUser are for exactly those routes (#207).
+describe("routes outside the plugin, with no cookie plugin of their own", () => {
+  const originalFetch = global.fetch;
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  async function appWithPlugin() {
+    const app = Fastify();
+    await app.register(seamlessAuth, {
+      prefix: "/auth",
+      fetchManifest: false,
+      authServerUrl: "https://auth.example.com",
+      cookieSecret: COOKIE_SECRET,
+      serviceSecret: SERVICE_SECRET,
+      audience: "https://auth.example.com",
+      jwksKid: "test-main",
+    });
+    app.get(
+      "/api/me",
+      { preHandler: requireAuth({ cookieSecret: COOKIE_SECRET }) },
+      async (req) => ({ user: req.user }),
+    );
+    await app.ready();
+    return app;
+  }
+
+  it("requireAuth reads the session cookie from the Cookie header", async () => {
+    const app = await appWithPlugin();
+    try {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/me",
+        headers: {
+          cookie: `theme=dark; seamless-access=${signedCookie({ sub: "user-1", token: "inner" })}`,
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json().user).toMatchObject({ id: "user-1", token: "inner" });
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("requireAuth still refuses a forged cookie there", async () => {
+    const app = await appWithPlugin();
+    const forged = jwt.sign({ sub: "user-1" }, "attacker-secret-attacker-secret-attacker");
+    try {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/me",
+        headers: { cookie: `seamless-access=${forged}` },
+      });
+
+      expect(res.statusCode).toBe(401);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("requireAuth refuses a request with no Cookie header", async () => {
+    const app = await appWithPlugin();
+    try {
+      const res = await app.inject({ method: "GET", url: "/api/me" });
+
+      expect(res.statusCode).toBe(401);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("getSeamlessUser reads the session cookie from the Cookie header", async () => {
+    const server = nextServer();
+    const meCalls = mockAuthServer(server);
+
+    const user = await getSeamlessUser(
+      {
+        headers: {
+          cookie: `seamless-access=${signedCookie({ sub: "user-123", token: "inner" })}`,
+        },
+        ip: "203.0.113.44",
+        server: { initialConfig: {} },
+      },
+      {
+        authServerUrl: server,
+        cookieSecret: COOKIE_SECRET,
+        serviceSecret: SERVICE_SECRET,
+        audience: server,
+        jwksKid: "test-main",
+      },
+    );
+
+    expect(user).toEqual(ME);
+    expect(meCalls[0].headers.Authorization).toBe("Bearer inner");
   });
 });
