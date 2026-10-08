@@ -4,6 +4,7 @@ import { EXTERNAL_DELIVERY_HEADERS } from "../apiContract.js";
 import type { ResultFailure } from "../result.js";
 import type { CookiePayload } from "../ensureCookies.js";
 import type { AuthTransport } from "../transport.js";
+import { withoutTokens } from "../bodyTokens.js";
 
 export interface RegisterInput {
   body: unknown;
@@ -63,7 +64,7 @@ export async function registerHandler(
 
   return {
     status: 200,
-    body: data,
+    body: withoutTokens(data),
     setCookies: [
       {
         name: opts.registrationCookieName,

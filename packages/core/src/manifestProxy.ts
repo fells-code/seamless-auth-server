@@ -3,6 +3,7 @@ import { authFetch } from "./authFetch.js";
 import type { AuthServerIssuerOption } from "./authServerIssuer.js";
 import type { SeamlessAuthMessagingOptions } from "./authMessaging.js";
 import { EXTERNAL_DELIVERY_HEADERS } from "./apiContract.js";
+import { withoutTokens } from "./bodyTokens.js";
 import { applyExternalDelivery } from "./deliverAuthMessage.js";
 import {
   type AdapterHeld,
@@ -80,24 +81,13 @@ function isUpstreamSession(value: unknown): value is UpstreamSessionResponse {
   );
 }
 
-/**
- * The body a cookie-transport caller receives.
- *
- * The browser never sees a token: the cookies carry them. That holds for every
- * route, not only session-issuing ones, because the auth API also returns the
- * ephemeral token it re-mints on an OTP send.
- */
+/** The body a cookie-transport caller receives: a `pick`, or everything but tokens. */
 function cookieTransportBody(route: AdapterManifestRoute, data: unknown) {
-  if (!isObject(data)) return data;
+  if (!isObject(data) || !route.body) return withoutTokens(data);
 
-  if (route.body) {
-    return Object.fromEntries(
-      route.body.pick.filter((key) => key in data).map((key) => [key, data[key]]),
-    );
-  }
-
-  const { token: _token, refreshToken: _refreshToken, ...rest } = data;
-  return rest;
+  return Object.fromEntries(
+    route.body.pick.filter((key) => key in data).map((key) => [key, data[key]]),
+  );
 }
 
 async function cookiesFor(

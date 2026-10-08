@@ -153,6 +153,7 @@ export function registerAuthRoutes(
         { kind, flow, authorization: buildServiceAuthorization(req) },
         {
           ...common(req),
+          transport: transportOf(req),
           externalDelivery: Boolean(opts.messaging),
           serviceAuthorization: deliveryServiceAuthorization(),
         },
