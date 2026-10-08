@@ -1200,3 +1200,76 @@ describe("fastify and express agree on routes served from the manifest", () => {
     expect(fastify).toEqual(expressResult);
   });
 });
+
+// The cookies carry every token, so none may reach the browser in a body (#202).
+describe("no adapter returns an ephemeral token in a cookie-transport body", () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it.each([
+    "/otp/generate-email-otp",
+    "/otp/generate-phone-otp",
+    "/otp/generate-login-email-otp",
+    "/otp/generate-login-phone-otp",
+  ])("%s", async (path) => {
+    const scenario = { method: "post", path, cookie: preAuthCookie(), payload: {} };
+    const sent = upstream(200, { message: "success", token: "re-minted" });
+
+    global.fetch = jest.fn(async () => sent);
+    const fastify = await viaFastify(scenario);
+    global.fetch = jest.fn(async () => sent);
+    const expressResult = await viaExpress(scenario);
+
+    expect(fastify.status).toBe(200);
+    expect(fastify.body).toEqual({ message: "success" });
+    expect(expressResult.body).toEqual(fastify.body);
+  });
+
+  it("/registration/register", async () => {
+    const scenario = {
+      method: "post",
+      path: "/registration/register",
+      payload: { email: "user@example.com" },
+    };
+    const registered = upstream(200, {
+      message: "Success",
+      sub: "user-123",
+      token: "registration-token",
+      ttl: 300,
+    });
+
+    global.fetch = jest.fn(async () => registered);
+    const fastify = await viaFastify(scenario);
+    global.fetch = jest.fn(async () => registered);
+    const expressResult = await viaExpress(scenario);
+
+    expect(fastify.status).toBe(200);
+    expect(fastify.body).toEqual({ message: "Success", sub: "user-123", ttl: 300 });
+    expect(expressResult.body).toEqual(fastify.body);
+    expect(fastify.cookies).toEqual(expressResult.cookies);
+    expect(fastify.cookies).toEqual([expect.stringMatching(/^seamless-ephemeral=<signed>/)]);
+  });
+
+  it("still returns the token to a bearer client", async () => {
+    const scenario = {
+      method: "post",
+      path: "/otp/generate-login-email-otp",
+      headers: {
+        "x-seamless-auth-transport": "bearer",
+        authorization: "Bearer client-pre-auth",
+      },
+      payload: {},
+    };
+    const sent = upstream(200, { message: "success", token: "re-minted" });
+
+    global.fetch = jest.fn(async () => sent);
+    const fastify = await viaFastify(scenario);
+    global.fetch = jest.fn(async () => sent);
+    const expressResult = await viaExpress(scenario);
+
+    expect(fastify.body).toEqual({ message: "success", token: "re-minted" });
+    expect(expressResult.body).toEqual(fastify.body);
+  });
+});

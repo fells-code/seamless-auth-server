@@ -8,6 +8,7 @@ import {
 } from "../internal/buildAuthorization";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
 import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
+import { transportOf } from "../internal/transport";
 import { applyExternalDelivery } from "@seamless-auth/core";
 import { SeamlessAuthServerOptions } from "../createServer";
 
@@ -26,6 +27,7 @@ export async function requestOtp(
     },
     {
       authServerUrl: opts.authServerUrl,
+      transport: transportOf(req),
       externalDelivery: Boolean(opts.messaging),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
       forwardedUserAgent: buildForwardedUserAgent(req),

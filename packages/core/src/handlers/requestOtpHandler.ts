@@ -2,6 +2,8 @@ import { authFetch } from "../authFetch.js";
 import { readPassthroughFailure } from "../upstreamError.js";
 import { EXTERNAL_DELIVERY_HEADERS } from "../apiContract.js";
 import type { ResultFailure } from "../result.js";
+import type { AuthTransport } from "../transport.js";
+import { withoutTokens } from "../bodyTokens.js";
 
 export interface RequestOtpInput {
   authorization?: string;
@@ -15,6 +17,8 @@ export interface RequestOtpOptions {
   forwardedClientIp?: string;
   forwardedUserAgent?: string;
   serviceAuthorization?: string;
+  /** Cookie transport (the default) drops the re-minted token from the body. */
+  transport?: AuthTransport;
 }
 
 export interface RequestOtpResult extends ResultFailure {
@@ -60,6 +64,6 @@ export async function requestOtpHandler(
 
   return {
     status: up.status,
-    body: data,
+    body: opts.transport === "bearer" ? data : withoutTokens(data),
   };
 }

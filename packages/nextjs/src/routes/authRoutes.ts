@@ -80,6 +80,7 @@ const otpRequestRoutes: Route[] = (
       { kind, flow, authorization: buildServiceAuthorization(ctx) },
       {
         ...common(ctx, opts),
+        transport: ctx.transport,
         externalDelivery: Boolean(opts.messaging),
         serviceAuthorization: deliveryServiceAuthorization(opts),
       },
