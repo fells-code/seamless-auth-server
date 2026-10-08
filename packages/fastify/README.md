@@ -182,11 +182,18 @@ into the dashboard work: the upstream answers them with the SPA shell.
 ### Client IP
 
 The adapter forwards the end user's IP so the auth API can rate limit and audit
-against the real caller. With Fastify's `trustProxy` set to blanket `true`,
-`request.ip` comes from the leftmost `X-Forwarded-For` entry, which any client
-can set, so the adapter drops it and warns rather than forwarding a value the
-caller chose. Set `trustProxy` to an explicit hop count or subnet, or pass
+against the real caller. It takes it from `request.ip`, so set Fastify's
+`trustProxy` to the address or subnet of the proxy in front of the app (for example
+`trustProxy: "10.0.0.0/8"`, or `"loopback"` behind a proxy on the same host), or pass
 `resolveClientIp`.
+
+- **Trusting every address** (`trustProxy: true`) makes `request.ip` the leftmost
+  `X-Forwarded-For` entry, which any client can set. The adapter detects it, drops
+  the address rather than forward one the caller chose, and warns.
+- **A hop count** (`trustProxy: 1`) is ignored by Fastify 5.12.1 and later, which
+  then trusts no proxy: `request.ip` is the proxy, and every user would share one
+  rate-limit bucket and one audit address on the auth API. The adapter warns when
+  requests carry `X-Forwarded-For` that nothing trusts.
 
 The browser's `User-Agent` is forwarded alongside it as
 `x-seamless-client-user-agent`, capped at 512 characters, so the auth API can
