@@ -4,6 +4,10 @@ import Fastify from "fastify";
 import jwt from "jsonwebtoken";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 
+// An auth API access token as the cookie carries it. The guard reads its type,
+// so a placeholder string would not pass for a session.
+const INNER = jwt.sign({ sub: "user-1", typ: "access" }, "upstream-signing-key");
+
 const {
   default: seamlessAuth,
   requireAuth,
@@ -94,11 +98,11 @@ describe("requireAuth (fastify)", () => {
     const app = await buildApp({ cookieSecret: COOKIE_SECRET });
 
     const res = await get(app, {
-      cookie: `seamless-access=${signedCookie({ sub: "user-1", roles: ["admin"], token: "inner" })}`,
+      cookie: `seamless-access=${signedCookie({ sub: "user-1", roles: ["admin"], token: INNER })}`,
     });
 
     expect(res.status).toBe(200);
-    expect(res.body.user).toMatchObject({ id: "user-1", roles: ["admin"], token: "inner" });
+    expect(res.body.user).toMatchObject({ id: "user-1", roles: ["admin"], token: INNER });
   });
 
   it("rejects a request with no credential", async () => {
@@ -165,7 +169,7 @@ describe("requireAuth (fastify)", () => {
     const res = await get(
       await buildApp({ cookieSecret: COOKIE_SECRET, authServerUrl: server, audience: server }),
       {
-        cookie: `seamless-access=${signedCookie({ sub: "cookie-user" })}`,
+        cookie: `seamless-access=${signedCookie({ sub: "cookie-user", token: INNER })}`,
         authorization: `Bearer ${await accessToken(server)}`,
       },
     );
@@ -227,8 +231,8 @@ describe("getSeamlessUser (fastify)", () => {
 
     const user = await getSeamlessUser(
       {
-        cookies: { "seamless-access": signedCookie({ sub: "user-123", token: "inner" }) },
-        user: { token: "inner" },
+        cookies: { "seamless-access": signedCookie({ sub: "user-123", token: INNER }) },
+        user: { token: INNER },
         headers: {},
         ip: "203.0.113.44",
         server: { initialConfig: {} },
@@ -237,7 +241,7 @@ describe("getSeamlessUser (fastify)", () => {
     );
 
     expect(user).toEqual(ME);
-    expect(meCalls[0].headers.Authorization).toBe("Bearer inner");
+    expect(meCalls[0].headers.Authorization).toBe(`Bearer ${INNER}`);
   });
 
   it("hydrates the user from a bearer token when there is no cookie", async () => {
@@ -409,12 +413,33 @@ describe("routes outside the plugin, with no cookie plugin of their own", () => 
         method: "GET",
         url: "/api/me",
         headers: {
-          cookie: `theme=dark; seamless-access=${signedCookie({ sub: "user-1", token: "inner" })}`,
+          cookie: `theme=dark; seamless-access=${signedCookie({ sub: "user-1", token: INNER })}`,
         },
       });
 
       expect(res.statusCode).toBe(200);
-      expect(res.json().user).toMatchObject({ id: "user-1", token: "inner" });
+      expect(res.json().user).toMatchObject({ id: "user-1", token: INNER });
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("requireAuth refuses a pre-auth or refresh cookie presented as the session", async () => {
+    const app = await appWithPlugin();
+    const ephemeral = jwt.sign({ sub: "user-1", typ: "ephemeral" }, "upstream-signing-key");
+    try {
+      for (const payload of [
+        { sub: "user-1", token: ephemeral },
+        { sub: "user-1", refreshToken: "opaque" },
+      ]) {
+        const res = await app.inject({
+          method: "GET",
+          url: "/api/me",
+          headers: { cookie: `seamless-access=${signedCookie(payload)}` },
+        });
+
+        expect(res.statusCode).toBe(401);
+      }
     } finally {
       await app.close();
     }
@@ -454,7 +479,7 @@ describe("routes outside the plugin, with no cookie plugin of their own", () => 
     const user = await getSeamlessUser(
       {
         headers: {
-          cookie: `seamless-access=${signedCookie({ sub: "user-123", token: "inner" })}`,
+          cookie: `seamless-access=${signedCookie({ sub: "user-123", token: INNER })}`,
         },
         ip: "203.0.113.44",
         server: { initialConfig: {} },
@@ -469,6 +494,6 @@ describe("routes outside the plugin, with no cookie plugin of their own", () => 
     );
 
     expect(user).toEqual(ME);
-    expect(meCalls[0].headers.Authorization).toBe("Bearer inner");
+    expect(meCalls[0].headers.Authorization).toBe(`Bearer ${INNER}`);
   });
 });

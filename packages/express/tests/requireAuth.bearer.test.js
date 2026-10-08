@@ -5,6 +5,10 @@ import request from "supertest";
 import jwt from "jsonwebtoken";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 
+// An auth API access token as the cookie carries it. The guard reads its type,
+// so a placeholder string would not pass for a session.
+const INNER = jwt.sign({ sub: "user-1", typ: "access" }, "upstream-signing-key");
+
 const { requireAuth, getSeamlessUser } = await import("../dist/index.js");
 
 const COOKIE_SECRET = "cookie-secret-cookie-secret-cookie-secret";
@@ -124,7 +128,7 @@ describe("requireAuth with bearer tokens (express)", () => {
   it("still honours the cookie, and prefers it over a bearer header", async () => {
     const server = nextServer();
     mockAuthServer(server);
-    const cookie = jwt.sign({ sub: "cookie-user", token: "inner" }, COOKIE_SECRET, {
+    const cookie = jwt.sign({ sub: "cookie-user", token: INNER }, COOKIE_SECRET, {
       expiresIn: "1h",
     });
 
