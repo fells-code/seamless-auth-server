@@ -19,6 +19,7 @@ const COOKIE_SECRET = "cookie-secret-cookie-secret-cookie-secret";
 const SERVICE_SECRET = "service-secret-service-secret-service-secret";
 
 const OPTIONS = {
+  fetchManifest: false,
   authServerUrl: "https://auth.example.com",
   cookieSecret: COOKIE_SECRET,
   serviceSecret: SERVICE_SECRET,
@@ -1041,5 +1042,122 @@ describe("next.js forwards the range on ranged internal metrics", () => {
     for (const [name, value] of new URLSearchParams(query)) {
       expect(forwarded.get(name)).toBe(value);
     }
+  });
+});
+
+describe("next and express agree on routes served from the manifest", () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  function routedUpstream(routes) {
+    return jest.fn(async (url, init) => {
+      const { pathname } = new URL(String(url));
+      if (pathname === "/.well-known/jwks.json") return upstream(200, { keys: [jwk] });
+      const respond = routes[`${init?.method ?? "GET"} ${pathname}`];
+      return respond ? respond() : upstream(404, { error: "not_found" });
+    });
+  }
+
+  async function both(scenario, routes) {
+    global.fetch = routedUpstream(routes);
+    const next = await viaNext(scenario);
+
+    global.fetch = routedUpstream(routes);
+    const expressResult = await viaExpress(scenario);
+
+    return { next, express: expressResult };
+  }
+
+  it("signs in with TOTP and sets the same session cookies", async () => {
+    const token = await accessToken({ sub: "user-123", typ: "access", sid: "s-9" });
+    const { next, express: expressResult } = await both(
+      {
+        method: "post",
+        path: "/totp/verify-login",
+        cookie: preAuthCookie(),
+        payload: { code: "123456" },
+      },
+      {
+        "POST /totp/verify-login": () =>
+          upstream(200, {
+            message: "Success",
+            sub: "user-123",
+            token,
+            refreshToken: "refresh-9",
+            ttl: 300,
+            refreshTtl: 3600,
+          }),
+      },
+    );
+
+    expect(next.status).toBe(200);
+    expect(next.body).toEqual({
+      message: "Success",
+      sub: "user-123",
+      ttl: 300,
+      refreshTtl: 3600,
+    });
+    expect(next).toEqual(expressResult);
+    expect(next.cookies).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/^seamless-access=<signed>/),
+        expect.stringMatching(/^seamless-refresh=<signed>/),
+      ]),
+    );
+  });
+
+  // The route handler exported no PUT before the manifest, so this route was
+  // unreachable through Next.js.
+  it("serves a PUT route", async () => {
+    const path =
+      "/admin/organizations/org-1/oauth-providers/google/retirement";
+    const { next, express: expressResult } = await both(
+      {
+        method: "put",
+        path,
+        cookie: accessCookie(),
+        payload: { retireAt: "2026-12-01T00:00:00Z" },
+      },
+      { [`PUT ${path}`]: () => upstream(200, { retired: true }) },
+    );
+
+    expect(next).toEqual({ status: 200, body: { retired: true }, cookies: [] });
+    expect(next).toEqual(expressResult);
+  });
+
+  it("answers 404 for a path the manifest does not list", async () => {
+    const { next, express: expressResult } = await both(
+      { method: "get", path: "/no-such-route" },
+      {},
+    );
+
+    expect(next.status).toBe(404);
+    expect(expressResult.status).toBe(404);
+  });
+
+  it("follows a route only the live manifest knows", async () => {
+    const { next, express: expressResult } = await both(
+      {
+        method: "get",
+        path: "/brand-new",
+        cookie: accessCookie(),
+        options: { fetchManifest: true },
+      },
+      {
+        "GET /.well-known/seamless-adapter.json": () =>
+          upstream(200, {
+            schemaVersion: 1,
+            apiVersion: "9.9.9",
+            session: {},
+            routes: [{ method: "GET", path: "/brand-new", credential: "access" }],
+          }),
+        "GET /brand-new": () => upstream(200, { fresh: true }),
+      },
+    );
+
+    expect(next).toEqual({ status: 200, body: { fresh: true }, cookies: [] });
+    expect(next).toEqual(expressResult);
   });
 });

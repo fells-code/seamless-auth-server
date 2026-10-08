@@ -11,6 +11,7 @@ const COOKIE_SECRET = "cookie-secret-cookie-secret-cookie-secret";
 const SERVICE_SECRET = "service-secret-service-secret-service-secret";
 
 const OPTIONS = {
+  fetchManifest: false,
   authServerUrl: "https://auth.example.com",
   cookieSecret: COOKIE_SECRET,
   serviceSecret: SERVICE_SECRET,

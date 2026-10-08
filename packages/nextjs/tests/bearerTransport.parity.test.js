@@ -19,6 +19,7 @@ const SERVICE_SECRET = "service-secret-service-secret-service-secret";
 const BEARER = { "x-seamless-auth-transport": "bearer" };
 
 const OPTIONS = {
+  fetchManifest: false,
   authServerUrl: AUTH,
   cookieSecret: COOKIE_SECRET,
   serviceSecret: SERVICE_SECRET,

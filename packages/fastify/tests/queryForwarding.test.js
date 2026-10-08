@@ -26,6 +26,7 @@ async function buildApp() {
 
   await app.register(seamlessAuth, {
     prefix: "/auth",
+    fetchManifest: false,
     authServerUrl: "https://auth.example.com",
     cookieSecret: COOKIE_SECRET,
     serviceSecret: "service-secret-service-secret-service-secret",

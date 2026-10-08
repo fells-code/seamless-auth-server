@@ -37,6 +37,13 @@ export type SeamlessAuthServerOptions = {
   preAuthCookieName?: string;
   messaging?: SeamlessAuthMessagingOptions;
   resolveClientIp?: ClientIpResolver;
+  /**
+   * Fetch the adapter manifest from the auth API (the default). Routes with no
+   * handler of their own here are proxied as it describes, so a new API route
+   * works without upgrading this package. `false` uses the manifest bundled with
+   * this package version only.
+   */
+  fetchManifest?: boolean;
 };
 
 export type ResolvedOptions = SeamlessAuthServerOptions & {

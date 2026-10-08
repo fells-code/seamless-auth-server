@@ -97,6 +97,12 @@ packages/
   error path.
 - The adapters bridge to `seamless-auth-api`; when behavior looks off, check the
   API's route/token/JWKS contract before changing code here.
+- A new API route needs no change here. Each adapter serves any route in the
+  API's adapter manifest (`/.well-known/seamless-adapter.json`) that it has no
+  handler of its own for, through `handleManifestRoute` in core. Add a dedicated
+  handler only for behaviour the manifest cannot describe. Refresh the bundled
+  fallback with `node scripts/sync-adapter-manifest.mjs` after the API's
+  manifest changes.
 
 ## Tooling
 

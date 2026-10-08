@@ -6,15 +6,19 @@ import type {
   FastifyRequest,
 } from "fastify";
 import {
+  type AdapterManifestSource,
   applyExternalDelivery,
   assertSecrets,
   checkProxyIdentity,
+  createAdapterManifestSource,
   DEV_JWKS_KID,
+  handleManifestRoute,
+  matchManifestRoute,
   proxyRequest,
   redactSensitiveText,
 } from "@seamless-auth/core";
 
-import { createEnsureCookiesHook } from "./hooks/ensureCookies";
+import { createEnsureCookiesHook, mountRelativePath } from "./hooks/ensureCookies";
 import { createOriginGuardHook } from "./hooks/originGuard";
 import {
   buildInternalServiceAuthorization,
@@ -82,6 +86,10 @@ export const seamlessAuth: FastifyPluginAsync<
   warnOnDevJwksKid(opts.jwksKid);
 
   const resolved = resolveOptions(opts);
+  const manifestSource = createAdapterManifestSource({
+    authServerUrl: resolved.authServerUrl,
+    fetchManifest: resolved.fetchManifest,
+  });
 
   await fastify.register(cookie);
 
@@ -90,12 +98,13 @@ export const seamlessAuth: FastifyPluginAsync<
   fastify.addHook("onRequest", createOriginGuardHook(resolved));
   fastify.addHook(
     "onRequest",
-    createEnsureCookiesHook(resolved, fastify.prefix),
+    createEnsureCookiesHook(resolved, fastify.prefix, manifestSource),
   );
 
   registerAuthRoutes(fastify, resolved);
   registerAdminRoutes(fastify, resolved);
   registerProxyRoutes(fastify, resolved);
+  registerManifestRoutes(fastify, resolved, manifestSource);
 
   fastify.setErrorHandler((error, request, reply) => {
     const status = clientErrorStatus(error);
@@ -179,6 +188,58 @@ function registerProxyRoutes(
       },
     });
   }
+}
+
+/**
+ * Serves every manifest route the routes above do not. Fastify prefers a static
+ * route over a wildcard, so a route with a handler of its own always wins. Only
+ * the methods the manifest uses are claimed, leaving `OPTIONS` to whatever CORS
+ * handling the application registers.
+ */
+function registerManifestRoutes(
+  fastify: FastifyInstance,
+  opts: ResolvedOptions,
+  manifestSource: AdapterManifestSource,
+): void {
+  fastify.route({
+    method: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    url: "/*",
+    handler: async (req: FastifyRequest, reply: FastifyReply) => {
+      const match = matchManifestRoute(
+        await manifestSource.get(),
+        req.method,
+        mountRelativePath(req.url, fastify.prefix),
+      );
+
+      if (!match) {
+        return reply.status(404).send({ error: "not_found" });
+      }
+
+      const result = await handleManifestRoute(
+        {
+          ...match,
+          transport: transportOf(req),
+          query: req.query as Record<string, unknown>,
+          body: req.body,
+          authorization: req.headers.authorization,
+          cookiePayload: req.cookiePayload,
+          cookies: req.cookies ?? {},
+          forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+          forwardedUserAgent: buildForwardedUserAgent(req),
+        },
+        {
+          ...opts,
+          serviceAuthorization: buildProxyServiceAuthorization(opts),
+          deliveryAuthorization: opts.messaging
+            ? buildInternalServiceAuthorization(opts)
+            : undefined,
+        },
+      );
+
+      respond(reply, result, opts);
+      return reply;
+    },
+  });
 }
 
 export { applyExternalDelivery, buildInternalServiceAuthorization };

@@ -1,5 +1,6 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import {
+  type AdapterManifestSource,
   applyCookies,
   assertSecrets,
   ensureCookies,
@@ -27,7 +28,7 @@ import type { ResolvedOptions } from "../options";
  * prefix, so it has to come off here or nothing matches and every route silently
  * loses its cookie payload.
  */
-function mountRelativePath(url: string, prefix: string): string {
+export function mountRelativePath(url: string, prefix: string): string {
   const path = url.split("?")[0];
 
   if (!prefix || prefix === "/") {
@@ -37,7 +38,11 @@ function mountRelativePath(url: string, prefix: string): string {
   return path.startsWith(prefix) ? path.slice(prefix.length) || "/" : path;
 }
 
-export function createEnsureCookiesHook(opts: ResolvedOptions, prefix: string) {
+export function createEnsureCookiesHook(
+  opts: ResolvedOptions,
+  prefix: string,
+  manifestSource?: AdapterManifestSource,
+) {
   assertSecrets(opts);
 
   return async function ensureCookiesHook(
@@ -54,6 +59,8 @@ export function createEnsureCookiesHook(opts: ResolvedOptions, prefix: string) {
       {
         path: mountRelativePath(req.url, prefix),
         cookies: req.cookies ?? {},
+        method: req.method,
+        manifest: await manifestSource?.get(),
       },
       {
         authServerUrl: opts.authServerUrl,

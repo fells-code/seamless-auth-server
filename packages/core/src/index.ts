@@ -3,6 +3,8 @@ export type { AuthServerIssuerOption } from "./authServerIssuer.js";
 export * from "./authMessaging.js";
 export * from "./deliverAuthMessage.js";
 export * from "./ensureCookies.js";
+export * from "./manifest/adapterManifest.js";
+export * from "./manifestProxy.js";
 export * from "./verifyCookieJwt.js";
 export * from "./verifyRefreshCookie.js";
 export * from "./verifySignedAuthResponse.js";

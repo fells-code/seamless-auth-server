@@ -17,6 +17,7 @@ const COOKIE_SECRET = "cookie-secret-cookie-secret-cookie-secret";
 const SERVICE_SECRET = "service-secret-service-secret-service-secret";
 
 const OPTIONS = {
+  fetchManifest: false,
   authServerUrl: "https://auth.example.com",
   cookieSecret: COOKIE_SECRET,
   serviceSecret: SERVICE_SECRET,
@@ -1076,5 +1077,126 @@ describe("fastify and express forward downloads unparsed", () => {
     expect(upstreamUrl).toMatch(
       new RegExp(`^https://auth\\.example\\.com${path.split("?")[0]}`),
     );
+  });
+});
+
+describe("fastify and express agree on routes served from the manifest", () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  function routedUpstream(routes) {
+    return jest.fn(async (url, init) => {
+      const { pathname } = new URL(String(url));
+      if (pathname === "/.well-known/jwks.json") return upstream(200, { keys: [jwk] });
+      const respond = routes[`${init?.method ?? "GET"} ${pathname}`];
+      return respond ? respond() : upstream(404, { error: "not_found" });
+    });
+  }
+
+  async function both(scenario, routes) {
+    global.fetch = routedUpstream(routes);
+    const fastify = await viaFastify(scenario);
+    const fastifyCalls = global.fetch.mock.calls;
+
+    global.fetch = routedUpstream(routes);
+    const expressResult = await viaExpress(scenario);
+
+    return { fastify, express: expressResult, fastifyCalls, expressCalls: global.fetch.mock.calls };
+  }
+
+  it("signs in with TOTP and sets the same session cookies", async () => {
+    const token = await accessToken({ sub: "user-123", typ: "access", sid: "s-9" });
+    const { fastify, express: expressResult } = await both(
+      {
+        method: "post",
+        path: "/totp/verify-login",
+        cookie: preAuthCookie(),
+        payload: { code: "123456" },
+      },
+      {
+        "POST /totp/verify-login": () =>
+          upstream(200, {
+            message: "Success",
+            sub: "user-123",
+            token,
+            refreshToken: "refresh-9",
+            ttl: 300,
+            refreshTtl: 3600,
+          }),
+      },
+    );
+
+    expect(fastify.status).toBe(200);
+    expect(fastify.body).toEqual({
+      message: "Success",
+      sub: "user-123",
+      ttl: 300,
+      refreshTtl: 3600,
+    });
+    expect(fastify).toEqual(expressResult);
+    expect(fastify.cookies).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/^seamless-access=<signed>/),
+        expect.stringMatching(/^seamless-refresh=<signed>/),
+      ]),
+    );
+  });
+
+  it("proxies an access route neither adapter declares", async () => {
+    const result = await both(
+      {
+        method: "post",
+        path: "/registration/phone",
+        cookie: accessCookie(),
+        payload: { phone: "+14155552671" },
+      },
+      { "POST /registration/phone": () => upstream(200, { message: "sent" }) },
+    );
+
+    expect(result.fastify).toEqual({ status: 200, body: { message: "sent" }, cookies: [] });
+    expect(result.fastify).toEqual(result.express);
+
+    for (const calls of [result.fastifyCalls, result.expressCalls]) {
+      const [, init] = calls.find(([url]) => String(url).endsWith("/registration/phone"));
+      expect(init.headers.Authorization).toBe("Bearer access-token");
+    }
+  });
+
+  it("answers 404 for a path the manifest does not list", async () => {
+    const { fastify, express: expressResult } = await both(
+      { method: "get", path: "/no-such-route" },
+      {},
+    );
+
+    expect(fastify.status).toBe(404);
+    expect(expressResult.status).toBe(404);
+  });
+
+  it("follows a route only the live manifest knows", async () => {
+    const routes = {
+      "GET /.well-known/seamless-adapter.json": () =>
+        upstream(200, {
+          schemaVersion: 1,
+          apiVersion: "9.9.9",
+          session: {},
+          routes: [{ method: "GET", path: "/brand-new", credential: "access" }],
+        }),
+      "GET /brand-new": () => upstream(200, { fresh: true }),
+    };
+
+    const { fastify, express: expressResult } = await both(
+      {
+        method: "get",
+        path: "/brand-new",
+        cookie: accessCookie(),
+        options: { fetchManifest: true },
+      },
+      routes,
+    );
+
+    expect(fastify).toEqual({ status: 200, body: { fresh: true }, cookies: [] });
+    expect(fastify).toEqual(expressResult);
   });
 });
