@@ -1,4 +1,5 @@
 import type { SeamlessAuthUser } from "@seamless-auth/types";
+import { decodeJwt } from "jose";
 
 import { resolveCookieSameSite, type CookieSameSite } from "./applyResult.js";
 import { hasScopedRole } from "@seamless-auth/types/role/matching";
@@ -115,6 +116,26 @@ export type CookieAuthResult =
   | { user?: undefined; rejection: GuardRejection };
 
 /**
+ * Whether a cookie carries an auth API access token.
+ *
+ * Every adapter cookie is signed with the same secret, including the pre-auth
+ * cookie `/login` issues for any existing account from an email address alone.
+ * The signature only proves this adapter wrote the cookie, not which cookie it
+ * is, so a session also needs an access token inside it. The token was verified
+ * against the auth API's key set before the adapter signed it into the cookie,
+ * so its claims are read here without verifying it again.
+ */
+function holdsAccessToken(token: unknown): boolean {
+  if (typeof token !== "string") return false;
+
+  try {
+    return decodeJwt(token).typ === "access";
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Verifies an access cookie into a session.
  *
  * Does not refresh: silent refresh belongs to `ensureCookies`, mounted on the
@@ -136,7 +157,7 @@ export function authenticateCookie(input: CookieAuthInput): CookieAuthResult {
 
   const payload = verifyCookieJwt(input.token, input.cookieSecret);
 
-  if (!payload || !payload.sub) {
+  if (!payload || !payload.sub || !holdsAccessToken(payload.token)) {
     return {
       rejection: { status: 401, errorCode: "Invalid or expired session" },
     };

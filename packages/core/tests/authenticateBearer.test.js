@@ -2,6 +2,10 @@ import { jest } from "@jest/globals";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import jwt from "jsonwebtoken";
 
+// An auth API access token as the cookie carries it. The guard reads its type,
+// so a placeholder string would not pass for a session.
+const INNER = jwt.sign({ sub: "user-1", typ: "access" }, "upstream-signing-key");
+
 const { authenticateBearer, authenticateRequest } = await import(
   "../dist/guards.js"
 );
@@ -166,11 +170,11 @@ describe("authenticateRequest", () => {
 
   it("behaves exactly like authenticateCookie when bearer is not configured", async () => {
     const withCookie = await authenticateRequest({
-      token: cookie({ sub: "user-1", token: "inner" }),
+      token: cookie({ sub: "user-1", token: INNER }),
       cookieSecret: COOKIE_SECRET,
       authorization: "Bearer ignored",
     });
-    expect(withCookie.user).toMatchObject({ id: "user-1", token: "inner" });
+    expect(withCookie.user).toMatchObject({ id: "user-1", token: INNER });
 
     const withoutCookie = await authenticateRequest({
       token: undefined,

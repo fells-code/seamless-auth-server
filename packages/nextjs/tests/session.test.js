@@ -1,6 +1,10 @@
 import { jest } from "@jest/globals";
 import jwt from "jsonwebtoken";
 
+// An auth API access token as the cookie carries it. The guard reads its type,
+// so a placeholder string would not pass for a session.
+const INNER = jwt.sign({ sub: "user-1", typ: "access" }, "upstream-signing-key");
+
 const { getSeamlessClaims, getSeamlessSession, hasSeamlessSession } =
   await import("../dist/index.js");
 
@@ -19,7 +23,7 @@ const signed = (payload, ttl = "300s", secret = COOKIE_SECRET) =>
 
 const ACCESS = {
   sub: "user-123",
-  token: "upstream-access-token",
+  token: INNER,
   roles: ["admin"],
   email: "user@example.com",
 };
@@ -64,7 +68,7 @@ describe("session helpers", () => {
       expect(session).toEqual(ME);
       const [url, init] = global.fetch.mock.calls[0];
       expect(url).toBe("https://auth.example.com/users/me");
-      expect(init.headers.Authorization).toBe("Bearer upstream-access-token");
+      expect(init.headers.Authorization).toBe(`Bearer ${INNER}`);
       expect(init.headers["x-seamless-service-token"]).toMatch(/^Bearer /);
       expect(init.headers["x-seamless-client-user-agent"]).toBe(
         "Mozilla/5.0 (test)",
@@ -186,6 +190,17 @@ describe("session helpers", () => {
         ),
       ).toBeNull();
     });
+  });
+
+  it("getSeamlessClaims refuses a pre-auth cookie presented as the session", () => {
+    const ephemeral = jwt.sign({ sub: "user-123", typ: "ephemeral" }, "upstream-signing-key");
+
+    expect(
+      getSeamlessClaims(
+        jar({ "seamless-access": signed({ sub: "user-123", token: ephemeral }) }),
+        OPTIONS,
+      ),
+    ).toBeNull();
   });
 
   describe("hasSeamlessSession", () => {
