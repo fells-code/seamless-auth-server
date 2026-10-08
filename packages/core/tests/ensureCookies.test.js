@@ -599,3 +599,102 @@ describe("ensureCookies", () => {
     });
   });
 });
+
+describe("ensureCookies with a manifest", () => {
+  const manifest = {
+    schemaVersion: 1,
+    apiVersion: "1.0.0",
+    session: {},
+    routes: [
+      { method: "POST", path: "/totp/verify-login", credential: "preAuth" },
+      { method: "POST", path: "/registration/phone", credential: "access" },
+      { method: "GET", path: "/oauth/providers", credential: "none" },
+      { method: "POST", path: "/refresh", credential: "refresh" },
+    ],
+  };
+
+  beforeEach(() => {
+    verifyCookieJwtMock.mockReset();
+    refreshAccessTokenMock.mockReset();
+    verifySignedAuthResponseMock.mockReset();
+  });
+
+  it("loads the cookie the manifest names for a route the table does not list", async () => {
+    const { ensureCookies } = await import("../dist/ensureCookies.js");
+    verifyCookieJwtMock.mockReturnValue({ sub: "user-1", token: "pre-auth" });
+
+    const result = await ensureCookies(
+      {
+        path: "/totp/verify-login",
+        method: "POST",
+        manifest,
+        cookies: { preauth: "signed" },
+      },
+      BASE_OPTS,
+    );
+
+    expect(verifyCookieJwtMock).toHaveBeenCalledWith("signed", BASE_OPTS.cookieSecret);
+    expect(result).toMatchObject({ type: "ok", user: { sub: "user-1", token: "pre-auth" } });
+  });
+
+  it("answers 401 when the manifest's cookie is missing", async () => {
+    const { ensureCookies } = await import("../dist/ensureCookies.js");
+
+    const result = await ensureCookies(
+      { path: "/totp/verify-login", method: "POST", manifest, cookies: {} },
+      BASE_OPTS,
+    );
+
+    expect(result).toMatchObject({ type: "error", status: 401 });
+  });
+
+  it("refreshes a missing access cookie for an access route", async () => {
+    const { ensureCookies } = await import("../dist/ensureCookies.js");
+    verifySignedAuthResponseMock.mockResolvedValue({ sub: "user-1", sid: "s-1" });
+    refreshAccessTokenMock.mockResolvedValue({
+      sub: "user-1",
+      token: "new-access",
+      refreshToken: "new-refresh",
+      ttl: 300,
+      refreshTtl: 3600,
+    });
+
+    const result = await ensureCookies(
+      {
+        path: "/registration/phone",
+        method: "POST",
+        manifest,
+        cookies: { refresh: "refresh-cookie" },
+      },
+      BASE_OPTS,
+    );
+
+    expect(refreshAccessTokenMock).toHaveBeenCalled();
+    expect(result).toMatchObject({ type: "ok", user: { token: "new-access" } });
+  });
+
+  it.each([
+    ["GET", "/oauth/providers"],
+    ["POST", "/refresh"],
+  ])("requires nothing for %s %s", async (method, path) => {
+    const { ensureCookies } = await import("../dist/ensureCookies.js");
+
+    const result = await ensureCookies(
+      { path, method, manifest, cookies: {} },
+      BASE_OPTS,
+    );
+
+    expect(result).toEqual({ type: "ok" });
+  });
+
+  it("falls back to the table for a route the manifest does not list", async () => {
+    const { ensureCookies } = await import("../dist/ensureCookies.js");
+
+    const result = await ensureCookies(
+      { path: "/users/me", method: "GET", manifest, cookies: {} },
+      BASE_OPTS,
+    );
+
+    expect(result).toMatchObject({ type: "error", status: 401 });
+  });
+});

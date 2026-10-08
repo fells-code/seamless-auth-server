@@ -2,6 +2,10 @@ import { verifyCookieJwt } from "./verifyCookieJwt.js";
 import type { ResultFailure } from "./result.js";
 import { refreshAccessToken } from "./refreshAccessToken.js";
 import { assertSecrets } from "./validateSecrets.js";
+import {
+  type AdapterManifest,
+  matchManifestRoute,
+} from "./manifest/adapterManifest.js";
 import type { AuthServerIssuerOption } from "./authServerIssuer.js";
 import {
   issueSessionCookies,
@@ -11,6 +15,9 @@ import {
 export interface EnsureCookiesInput {
   path: string;
   cookies: Record<string, string | undefined>;
+  /** With `manifest`, the route's credential comes from the manifest. */
+  method?: string;
+  manifest?: AdapterManifest;
 }
 
 export interface CookiePayload {
@@ -225,6 +232,46 @@ const COOKIE_REQUIREMENTS: Record<
   },
 };
 
+const MANIFEST_CREDENTIAL_COOKIES = {
+  preAuth: "preAuthCookieName",
+  registration: "registrationCookieName",
+  access: "accessCookieName",
+} as const;
+
+/**
+ * Which cookie a request needs, if any.
+ *
+ * The manifest wins for any route it lists. The table remains for requests the
+ * manifest cannot place, such as one made without a method or a manifest.
+ */
+function cookieRequirement(
+  input: EnsureCookiesInput,
+): { name: keyof EnsureCookiesOptions; required: boolean } | undefined {
+  if (input.manifest && input.method) {
+    const match = matchManifestRoute(input.manifest, input.method, input.path);
+
+    if (match) {
+      const { credential } = match.route;
+
+      return credential === "none" || credential === "refresh"
+        ? undefined
+        : { name: MANIFEST_CREDENTIAL_COOKIES[credential], required: true };
+    }
+  }
+
+  // Match case-insensitively: Express route matching is case-insensitive by
+  // default, so a client may send a path whose casing differs from the mounted
+  // route (e.g. "/webauthn/..." vs "/webAuthn/..."). A case-sensitive miss here
+  // would silently skip cookie loading and break the request downstream, so the
+  // comparison is normalized to lower case on both sides.
+  const requestPath = input.path.toLowerCase();
+  const match = Object.entries(COOKIE_REQUIREMENTS).find(([path]) =>
+    requestPath.startsWith(path.toLowerCase()),
+  );
+
+  return match?.[1];
+}
+
 async function refreshRequiredCookie(
   cookieName: string,
   refreshCookie: string | undefined,
@@ -304,21 +351,13 @@ export async function ensureCookies(
 ): Promise<EnsureCookiesResult> {
   assertSecrets(opts);
 
-  // Match case-insensitively: Express route matching is case-insensitive by
-  // default, so a client may send a path whose casing differs from the mounted
-  // route (e.g. "/webauthn/..." vs "/webAuthn/..."). A case-sensitive miss here
-  // would silently skip cookie loading and break the request downstream, so the
-  // comparison is normalized to lower case on both sides.
-  const requestPath = input.path.toLowerCase();
-  const match = Object.entries(COOKIE_REQUIREMENTS).find(([path]) =>
-    requestPath.startsWith(path.toLowerCase()),
-  );
+  const requirement = cookieRequirement(input);
 
-  if (!match) {
+  if (!requirement) {
     return { type: "ok" };
   }
 
-  const [, { name, required }] = match;
+  const { name, required } = requirement;
 
   // A not-required entry marks a route that is explicitly ungated: it must pass
   // through regardless of which cookies are (or are not) present, so a stale or

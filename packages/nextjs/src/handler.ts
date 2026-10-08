@@ -1,10 +1,16 @@
 import {
+  type AdapterManifest,
+  type AdapterManifestSource,
+  type AppliableResult,
   applyCookies,
   assertSecrets,
   checkOrigin,
   checkProxyIdentity,
+  createAdapterManifestSource,
   DEV_JWKS_KID,
   ensureCookies,
+  handleManifestRoute,
+  matchManifestRoute,
   proxyRequest,
   redactSensitiveText,
   SERVICE_TOKEN_AUDIENCE,
@@ -12,6 +18,7 @@ import {
 } from "@seamless-auth/core";
 
 import {
+  buildInternalServiceAuthorization,
   buildProxyServiceAuthorization,
   buildServiceAuthorization,
 } from "./internal/buildAuthorization";
@@ -38,6 +45,7 @@ export type RouteHandler = (request: Request) => Promise<Response>;
 export interface SeamlessAuthRouteHandlers {
   GET: RouteHandler;
   POST: RouteHandler;
+  PUT: RouteHandler;
   PATCH: RouteHandler;
   DELETE: RouteHandler;
 }
@@ -125,7 +133,7 @@ function warnOnDevJwksKid(jwksKid: string | undefined): void {
  * // app/auth/[...seamless]/route.ts
  * import { createSeamlessAuthHandler } from "@seamless-auth/nextjs";
  *
- * export const { GET, POST, PATCH, DELETE } = createSeamlessAuthHandler({
+ * export const { GET, POST, PUT, PATCH, DELETE } = createSeamlessAuthHandler({
  *   authServerUrl: process.env.AUTH_SERVER_URL!,
  *   cookieSecret: process.env.COOKIE_SECRET!,
  *   serviceSecret: process.env.SERVICE_SECRET!,
@@ -141,12 +149,16 @@ export function createSeamlessAuthHandler(
   warnOnDevJwksKid(options.jwksKid);
 
   const opts = resolveOptions(options);
+  const manifestSource = createAdapterManifestSource({
+    authServerUrl: opts.authServerUrl,
+    fetchManifest: opts.fetchManifest,
+  });
 
   async function handle(request: Request): Promise<Response> {
     const collector = new ResponseCollector();
 
     try {
-      return await dispatch(request, opts, collector);
+      return await dispatch(request, opts, collector, manifestSource);
     } catch (error) {
       if (error instanceof BodyError) {
         return collector.json(error.status, { error: error.message });
@@ -167,13 +179,20 @@ export function createSeamlessAuthHandler(
     }
   }
 
-  return { GET: handle, POST: handle, PATCH: handle, DELETE: handle };
+  return {
+    GET: handle,
+    POST: handle,
+    PUT: handle,
+    PATCH: handle,
+    DELETE: handle,
+  };
 }
 
 async function dispatch(
   request: Request,
   opts: ResolvedOptions,
   collector: ResponseCollector,
+  manifestSource: AdapterManifestSource,
 ): Promise<Response> {
   // Ordering matches the other adapters: a blocked cross-site request must
   // never trigger a token refresh or reach a handler.
@@ -194,9 +213,10 @@ async function dispatch(
 
   const url = new URL(request.url);
   const path = mountRelativePath(url.pathname, opts.basePath);
-  const match = matchRoute(ROUTES, request.method, path);
+  const manifest = await manifestSource.get();
+  const target = resolveTarget(manifest, request, path, opts);
 
-  if (!match) {
+  if (!target) {
     return collector.json(404, { error: "not_found" });
   }
 
@@ -204,7 +224,7 @@ async function dispatch(
     request,
     method: request.method,
     path,
-    params: match.params,
+    params: target.params,
     query: readQuery(url),
     body: await readBody(request),
     cookies: readCookies(request),
@@ -215,7 +235,7 @@ async function dispatch(
   // there is no cookie here to load or rotate.
   if (ctx.transport !== "bearer") {
     const result = await ensureCookies(
-      { path, cookies: ctx.cookies },
+      { path, cookies: ctx.cookies, method: request.method, manifest },
       {
         authServerUrl: opts.authServerUrl,
         cookieDomain: opts.cookieDomain,
@@ -249,5 +269,55 @@ async function dispatch(
     }
   }
 
-  return respond(collector, ctx, await match.route.run(ctx, opts), opts);
+  return respond(collector, ctx, await target.run(ctx), opts);
+}
+
+interface DispatchTarget {
+  params: Record<string, string>;
+  run: (ctx: AuthContext) => Promise<AppliableResult>;
+}
+
+/** A route with a handler of its own always wins over the manifest. */
+function resolveTarget(
+  manifest: AdapterManifest,
+  request: Request,
+  path: string,
+  opts: ResolvedOptions,
+): DispatchTarget | undefined {
+  const match = matchRoute(ROUTES, request.method, path);
+
+  if (match) {
+    return { params: match.params, run: (ctx) => match.route.run(ctx, opts) };
+  }
+
+  const manifestMatch = matchManifestRoute(manifest, request.method, path);
+
+  if (!manifestMatch) {
+    return undefined;
+  }
+
+  return {
+    params: manifestMatch.params,
+    run: (ctx) =>
+      handleManifestRoute(
+        {
+          ...manifestMatch,
+          transport: ctx.transport,
+          query: ctx.query,
+          body: ctx.body,
+          authorization: request.headers.get("authorization") ?? undefined,
+          cookiePayload: ctx.cookiePayload,
+          cookies: ctx.cookies,
+          forwardedClientIp: forwardedClientIp(request, opts.resolveClientIp),
+          forwardedUserAgent: forwardedUserAgent(request),
+        },
+        {
+          ...opts,
+          serviceAuthorization: buildProxyServiceAuthorization(opts),
+          deliveryAuthorization: opts.messaging
+            ? buildInternalServiceAuthorization(opts)
+            : undefined,
+        },
+      ),
+  };
 }

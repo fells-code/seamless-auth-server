@@ -36,6 +36,7 @@ function createApp() {
   app.use(
     "/auth",
     createSeamlessAuthServer({
+      fetchManifest: false,
       authServerUrl: "https://auth.example.com",
       cookieSecret: COOKIE_SECRET,
       serviceSecret: "service-secret-service-secret-service-secret",

@@ -132,6 +132,21 @@ remain for direct imports.
 - `signSessionCookie(...)` / `resolveCookieSameSite(...)` – cookie format and policy
 - `authFetch(...)` – calls the auth API with the adapter's headers and a tolerant `json()`
 
+**The adapter manifest**
+
+The auth API publishes, at `ADAPTER_MANIFEST_PATH` (`/.well-known/seamless-adapter.json`), which
+token each route takes and which tokens its response issues or clears. Adapters serve every route it
+lists that they have no handler of their own for, so a new API route works without a new release
+of this package.
+
+- `createAdapterManifestSource({ authServerUrl, fetchManifest })` – fetches the manifest once,
+  falling back to the copy bundled with this version (`fetchManifest: false` uses only that copy)
+- `matchManifestRoute(manifest, method, path)` – finds the route and its path parameters
+- `handleManifestRoute(input, opts)` – proxies a matched route: sends the held token it names, stores
+  the session it issues, clears what it clears, and keeps tokens out of cookie-transport bodies
+- `parseAdapterManifest(...)` / `buildManifestPath(...)` – validation and upstream path building
+- `ensureCookies` takes optional `method` and `manifest`, and then loads the cookie the manifest names
+
 **Auth flow handlers**
 
 `loginHandler`, `finishLoginHandler`, `registerHandler`, `finishRegisterHandler`,

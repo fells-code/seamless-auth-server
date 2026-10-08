@@ -33,12 +33,16 @@ import {
   authFetch,
   AuthFetchOptions,
   checkProxyIdentity,
+  createAdapterManifestSource,
+  handleManifestRoute,
+  matchManifestRoute,
   proxyRequest,
   redactSensitiveText,
   SERVICE_TOKEN_AUDIENCE,
   SERVICE_TOKEN_ISSUER,
 } from "@seamless-auth/core";
 import {
+  buildInternalServiceAuthorization,
   buildProxyServiceAuthorization,
   buildServiceAuthorization,
 } from "./internal/buildAuthorization";
@@ -125,6 +129,13 @@ export type SeamlessAuthServerOptions = {
   preAuthCookieName?: string;
   messaging?: SeamlessAuthMessagingOptions;
   resolveClientIp?: ClientIpResolver;
+  /**
+   * Fetch the adapter manifest from the auth API (the default). Routes with no
+   * handler of their own here are proxied as it describes, so a new API route
+   * works without upgrading this package. `false` uses the manifest bundled with
+   * this package version only.
+   */
+  fetchManifest?: boolean;
 };
 
 export interface SeamlessAuthUser {
@@ -224,6 +235,10 @@ export function createSeamlessAuthServer(
   warnOnDevJwksKid(opts.jwksKid);
 
   const r = express.Router();
+  const manifestSource = createAdapterManifestSource({
+    authServerUrl: opts.authServerUrl,
+    fetchManifest: opts.fetchManifest,
+  });
 
   r.use(express.json());
   r.use(cookieParser());
@@ -329,6 +344,7 @@ export function createSeamlessAuthServer(
       authServerIssuer: resolvedOpts.authServerIssuer,
       keyId: resolvedOpts.jwksKid,
       resolveClientIp: resolvedOpts.resolveClientIp,
+      manifestSource,
     }),
   );
 
@@ -761,6 +777,46 @@ export function createSeamlessAuthServer(
   r.delete("/sessions", (req, res) =>
     revokeAllSessions(req, res, resolvedOpts),
   );
+
+  // Last, so a route with a handler of its own always wins.
+  r.use(async (req: Request & { cookiePayload?: any }, res, next) => {
+    const match = matchManifestRoute(
+      await manifestSource.get(),
+      req.method,
+      req.path,
+    );
+
+    if (!match) {
+      next();
+      return;
+    }
+
+    const result = await handleManifestRoute(
+      {
+        ...match,
+        transport: transportOf(req),
+        query: req.query,
+        body: req.body,
+        authorization: req.headers.authorization,
+        cookiePayload: req.cookiePayload,
+        cookies: req.cookies ?? {},
+        forwardedClientIp: buildForwardedClientIp(
+          req,
+          resolvedOpts.resolveClientIp,
+        ),
+        forwardedUserAgent: buildForwardedUserAgent(req),
+      },
+      {
+        ...resolvedOpts,
+        serviceAuthorization: buildProxyServiceAuthorization(resolvedOpts),
+        deliveryAuthorization: resolvedOpts.messaging
+          ? buildInternalServiceAuthorization(resolvedOpts)
+          : undefined,
+      },
+    );
+
+    respond(res, result, resolvedOpts);
+  });
 
   // Express 5 forwards rejected handler promises here. Without this, the
   // built-in handler answers with an HTML stack trace (including absolute

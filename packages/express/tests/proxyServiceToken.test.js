@@ -42,6 +42,7 @@ function createApp(configure) {
   app.use(
     "/auth",
     createSeamlessAuthServer({
+      fetchManifest: false,
       authServerUrl: "https://auth.example.com",
       cookieSecret: COOKIE_SECRET,
       serviceSecret: SERVICE_SECRET,
@@ -186,6 +187,7 @@ describe("proxied service token", () => {
     app.use(
       "/auth",
       createSeamlessAuthServer({
+        fetchManifest: false,
         authServerUrl: "https://auth.example.com",
         cookieSecret: COOKIE_SECRET,
         serviceSecret: SERVICE_SECRET,

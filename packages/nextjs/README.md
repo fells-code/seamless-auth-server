@@ -27,7 +27,7 @@ Mount a catch-all route at `app/auth/[...seamless]/route.ts`:
 ```ts
 import { createSeamlessAuthHandler } from "@seamless-auth/nextjs";
 
-export const { GET, POST, PATCH, DELETE } = createSeamlessAuthHandler({
+export const { GET, POST, PUT, PATCH, DELETE } = createSeamlessAuthHandler({
   authServerUrl: process.env.AUTH_SERVER_URL!,
   audience: process.env.AUTH_SERVER_URL!,
   cookieSecret: process.env.COOKIE_SECRET!,

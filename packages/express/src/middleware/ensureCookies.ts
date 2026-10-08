@@ -1,5 +1,9 @@
 import { Request, Response, NextFunction } from "express";
-import { ensureCookies, EnsureCookiesResult } from "@seamless-auth/core";
+import {
+  type AdapterManifestSource,
+  ensureCookies,
+  EnsureCookiesResult,
+} from "@seamless-auth/core";
 
 import {
   buildForwardedClientIp,
@@ -38,6 +42,8 @@ export interface EnsureCookiesMiddlewareOptions {
   authServerIssuer?: string;
   keyId: string;
   resolveClientIp?: ClientIpResolver;
+  /** Supplies each route's credential. Without it only the built-in table applies. */
+  manifestSource?: AdapterManifestSource;
 }
 
 export function createEnsureCookiesMiddleware(
@@ -61,6 +67,8 @@ export function createEnsureCookiesMiddleware(
       {
         path: req.path,
         cookies: req.cookies ?? {},
+        method: req.method,
+        manifest: await opts.manifestSource?.get(),
       },
       {
         authServerUrl: opts.authServerUrl,
