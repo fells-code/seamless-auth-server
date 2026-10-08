@@ -376,7 +376,8 @@ export const BUNDLED_ADAPTER_MANIFEST: AdapterManifest = {
     {
       "method": "POST",
       "path": "/registration/phone",
-      "credential": "access"
+      "credential": "access",
+      "delivery": true
     },
     {
       "method": "POST",
@@ -387,7 +388,8 @@ export const BUNDLED_ADAPTER_MANIFEST: AdapterManifest = {
       "method": "POST",
       "path": "/registration/register",
       "credential": "none",
-      "issues": "registration"
+      "issues": "registration",
+      "delivery": true
     },
     {
       "method": "DELETE",
