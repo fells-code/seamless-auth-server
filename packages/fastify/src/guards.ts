@@ -5,6 +5,8 @@ import {
   authorizeRoles,
 } from "@seamless-auth/core";
 
+import { requestCookies } from "./internal/requestCookies";
+
 export interface RequireAuthOptions {
   cookieName?: string;
   cookieSecret: string;
@@ -92,7 +94,7 @@ export function requireAuth(opts: RequireAuthOptions) {
     reply: FastifyReply,
   ) {
     const { user, rejection } = await authenticateRequest({
-      token: req.cookies?.[cookieName],
+      token: requestCookies(req)[cookieName],
       cookieSecret,
       authorization: req.headers.authorization,
       bearer,

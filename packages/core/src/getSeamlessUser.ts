@@ -81,8 +81,9 @@ export async function getSeamlessUser<T = SeamlessUser>(
 
 /**
  * `null` means the request carried nothing that verifies. `undefined` keeps the
- * cookie path's historical shape: a verified cookie with no caller-supplied
- * `authorization` still reaches the auth server, which decides for itself.
+ * cookie path's historical shape: a verified cookie that carries no token, and no
+ * caller-supplied `authorization`, still reaches the auth server, which decides for
+ * itself.
  */
 async function resolveUpstreamAuthorization(
   cookies: Record<string, string | undefined>,
@@ -93,7 +94,12 @@ async function resolveUpstreamAuthorization(
 
   if (cookie) {
     const payload = verifyCookieJwt(cookie, opts.cookieSecret);
-    return payload ? opts.authorization : null;
+    if (!payload) return null;
+
+    // A caller outside the adapter's own routes has no cookie payload loaded, so
+    // nothing supplied `authorization`. The verified cookie carries the token.
+    if (opts.authorization) return opts.authorization;
+    return typeof payload.token === "string" ? `Bearer ${payload.token}` : undefined;
   }
 
   if (!opts.bearer) return null;

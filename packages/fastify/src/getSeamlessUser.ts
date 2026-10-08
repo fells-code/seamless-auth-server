@@ -7,13 +7,14 @@ import {
 } from "./internal/buildAuthorization";
 import { buildForwardedClientIp } from "./internal/buildForwardedClientIp";
 import { buildForwardedUserAgent } from "./internal/buildForwardedUserAgent";
+import { requestCookies } from "./internal/requestCookies";
 import type { SeamlessAuthServerOptions } from "./options";
 
 export async function getSeamlessUser(
   req: FastifyRequest,
   opts: SeamlessAuthServerOptions,
 ) {
-  return getSeamlessUserCore(req.cookies ?? {}, {
+  return getSeamlessUserCore(requestCookies(req), {
     authServerUrl: opts.authServerUrl,
     authServerIssuer: opts.authServerIssuer,
     cookieSecret: opts.cookieSecret,
