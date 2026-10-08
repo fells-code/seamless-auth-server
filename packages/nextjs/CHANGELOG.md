@@ -1,5 +1,43 @@
 # @seamless-auth/nextjs
 
+## 0.4.0
+
+### Minor Changes
+
+- 7f2e490: Serve auth API routes from the adapter manifest (#201).
+
+  The auth API publishes which token each route takes and which tokens its response issues or clears at `/.well-known/seamless-adapter.json`. Every adapter now serves any route listed there that it has no handler of its own for, so a new API route works without a new release of these packages. Routes with their own handlers behave as before.
+
+  - Routes that had no passthrough now work: TOTP sign-in (`POST /totp/verify-login`), `POST /registration/phone` and `/registration/phone/verify`, `POST /admin/users/import`, and anything the API adds later.
+  - `@seamless-auth/nextjs` returns a `PUT` handler, so the OAuth provider retirement routes are reachable. Export it from the catch-all route: `export const { GET, POST, PUT, PATCH, DELETE } = createSeamlessAuthHandler(...)`.
+  - Fastify serves manifest routes whatever their path casing, as Express and Next.js already did.
+  - Routes served from the manifest never return `token` or `refreshToken` to the browser in cookie transport.
+  - `ensureCookies` takes optional `method` and `manifest`, and then loads the cookie the manifest names for the route.
+  - Core exports `createAdapterManifestSource`, `matchManifestRoute`, `handleManifestRoute`, `parseAdapterManifest`, `buildManifestPath` and `ADAPTER_MANIFEST_PATH`.
+
+  Each adapter fetches the manifest from the auth API on its first request, waiting up to five seconds, and keeps it for the life of the process. If the API does not serve one (versions before the manifest), it uses the copy bundled with the package and tries again a minute later. Tests that mock `fetch` will see this extra request; pass `fetchManifest: false` to use only the bundled copy.
+
+### Patch Changes
+
+- a16f216: Accept only a session cookie in `requireAuth` and the Next.js session helpers.
+
+  Every adapter cookie is signed with the same secret, including the pre-auth cookie `POST /login` issues for any existing account from its email address alone, and the registration cookie. `authenticateCookie` checked only the signature and `sub`, so one of those cookies presented under the access cookie name passed `requireAuth` (Express and Fastify) and `getSeamlessSession`, `getSeamlessClaims` and `hasSeamlessSession` (Next.js) as that account, without a factor being proven. A refresh cookie passed the same way. Routes the adapter proxies to the auth API were not affected, because the API checks the token's type itself.
+
+  `authenticateCookie` now also requires the cookie to carry an auth API access token (`typ: "access"`). Session cookies issued by earlier versions already carry one, so signed-in users are not signed out. Upgrade if any of your own routes rely on these guards.
+
+- 5274afe: Keep ephemeral tokens out of cookie-transport response bodies (#202).
+
+  The OTP send routes (`POST /otp/generate-email-otp`, `/otp/generate-phone-otp`, `/otp/generate-login-email-otp`, `/otp/generate-login-phone-otp`) returned the ephemeral token the auth API re-mints on every send, and `POST /registration/register` returned the registration token it had just stored in the cookie. Page scripts could read both, which the httpOnly cookie exists to prevent. Under cookie transport these bodies no longer carry `token` or `refreshToken`. Bearer transport is unchanged, because the client holds its own tokens there.
+
+  `requestOtpHandler` takes an optional `transport`. Without it the token is dropped, so a caller serving bearer clients through this handler directly should pass `transport: "bearer"`.
+
+- Updated dependencies [7f2e490]
+- Updated dependencies [a16f216]
+- Updated dependencies [5274afe]
+- Updated dependencies [330c0fc]
+- Updated dependencies [d285ffb]
+  - @seamless-auth/core@0.20.0
+
 ## 0.3.1
 
 ### Patch Changes
