@@ -1,3 +1,6 @@
+// Loads the request type augmentation for anyone importing the package. The
+// .js extension keeps it resolvable under NodeNext as well as bundler.
+import "./types/fastify.js";
 import { seamlessAuth } from "./plugin";
 
 export { seamlessAuth };

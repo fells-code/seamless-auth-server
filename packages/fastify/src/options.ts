@@ -1,7 +1,6 @@
 import type {
   CookieSameSite,
   SeamlessAuthMessagingOptions,
-  SeamlessAuthUser,
 } from "@seamless-auth/core";
 
 import type { ClientIpResolver } from "./internal/buildForwardedClientIp";
@@ -54,12 +53,3 @@ export type ResolvedOptions = SeamlessAuthServerOptions & {
   refreshCookieName: string;
   preAuthCookieName: string;
 };
-
-declare module "fastify" {
-  interface FastifyRequest {
-    /** Set by the plugin's cookie hook once a session cookie has been verified. */
-    cookiePayload?: Record<string, any>;
-    /** Set by `requireAuth`. */
-    user?: SeamlessAuthUser;
-  }
-}
