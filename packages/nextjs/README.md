@@ -31,7 +31,7 @@ export const { GET, POST, PUT, PATCH, DELETE } = createSeamlessAuthHandler({
   authServerUrl: process.env.AUTH_SERVER_URL!,
   audience: process.env.AUTH_SERVER_URL!,
   cookieSecret: process.env.COOKIE_SECRET!,
-  serviceSecret: process.env.SERVICE_SECRET!,
+  serviceSecret: process.env.SEAMLESS_SERVICE_TOKEN!,
   jwksKid: process.env.JWKS_KID,
 });
 ```
@@ -44,7 +44,9 @@ origin:
 ```
 
 `cookieSecret` and `serviceSecret` must be at least 32 characters and the
-`serviceSecret` must match the auth API's. Both are checked when the handler is
+`serviceSecret` must match the auth API's. The auth server reads it from
+`API_SERVICE_TOKEN` and the app from `SEAMLESS_SERVICE_TOKEN`, with the same value.
+Both are checked when the handler is
 created, so a weak secret fails at startup rather than on the first request.
 
 The adapter signs cookies with `jsonwebtoken`, so the route needs the Node.js
@@ -62,7 +64,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const session = await getSeamlessSession(await cookies(), {
     authServerUrl: process.env.AUTH_SERVER_URL!,
     cookieSecret: process.env.COOKIE_SECRET!,
-    serviceSecret: process.env.SERVICE_SECRET!,
+    serviceSecret: process.env.SEAMLESS_SERVICE_TOKEN!,
     jwksKid: process.env.JWKS_KID,
     userAgent: (await headers()).get("user-agent") ?? undefined,
   });
