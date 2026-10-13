@@ -1,4 +1,4 @@
-import type { RouteHandler } from "./handler";
+import type { RouteHandler } from "./handler.js";
 
 export type SeamlessConsoleProxyOptions = {
   authServerUrl: string;

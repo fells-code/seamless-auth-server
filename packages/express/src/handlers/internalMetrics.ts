@@ -13,11 +13,11 @@ import {
 import {
   buildProxyServiceAuthorization,
   buildServiceAuthorization,
-} from "../internal/buildAuthorization";
-import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
-import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
-import { respond } from "../internal/respond";
-import { SeamlessAuthServerOptions } from "../createServer";
+} from "../internal/buildAuthorization.js";
+import { buildForwardedClientIp } from "../internal/buildForwardedClientIp.js";
+import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent.js";
+import { respond } from "../internal/respond.js";
+import { SeamlessAuthServerOptions } from "../createServer.js";
 
 function handle(res: Response, result: any, opts: SeamlessAuthServerOptions) {
   respond(res, result, opts);

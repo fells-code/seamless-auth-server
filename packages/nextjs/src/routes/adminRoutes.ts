@@ -32,13 +32,13 @@ import {
 import {
   buildProxyServiceAuthorization,
   buildServiceAuthorization,
-} from "../internal/buildAuthorization";
+} from "../internal/buildAuthorization.js";
 import {
   forwardedClientIp,
   forwardedUserAgent,
   type AuthContext,
-} from "../internal/context";
-import { param, type Route, type RouteMethod } from "../internal/router";
+} from "../internal/context.js";
+import { param, type Route, type RouteMethod } from "../internal/router.js";
 
 /** Everything each of these handlers needs to reach the auth API. */
 interface CallContext {

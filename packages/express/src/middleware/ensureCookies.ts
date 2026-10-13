@@ -8,12 +8,12 @@ import {
 import {
   buildForwardedClientIp,
   ClientIpResolver,
-} from "../internal/buildForwardedClientIp";
-import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
-import { assertSecrets } from "../internal/validateSecrets";
+} from "../internal/buildForwardedClientIp.js";
+import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent.js";
+import { assertSecrets } from "../internal/validateSecrets.js";
 import { applyCookies, type CookieSameSite } from "@seamless-auth/core";
-import { expressResponseAdapter } from "../internal/respond";
-import { transportOf } from "../internal/transport";
+import { expressResponseAdapter } from "../internal/respond.js";
+import { transportOf } from "../internal/transport.js";
 
 export interface EnsureCookiesMiddlewareOptions {
   authServerUrl: string;

@@ -4,12 +4,12 @@ import {
   listOAuthProvidersHandler,
   startOAuthLoginHandler,
 } from "@seamless-auth/core/handlers/oauthHandlers";
-import { SeamlessAuthServerOptions } from "../createServer";
-import { buildProxyServiceAuthorization } from "../internal/buildAuthorization";
-import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
-import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
-import { respond } from "../internal/respond";
-import { transportOf } from "../internal/transport";
+import { SeamlessAuthServerOptions } from "../createServer.js";
+import { buildProxyServiceAuthorization } from "../internal/buildAuthorization.js";
+import { buildForwardedClientIp } from "../internal/buildForwardedClientIp.js";
+import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent.js";
+import { respond } from "../internal/respond.js";
+import { transportOf } from "../internal/transport.js";
 
 function routeParam(req: Request, name: string): string {
   const value = req.params[name];

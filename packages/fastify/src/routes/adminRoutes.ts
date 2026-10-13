@@ -33,11 +33,11 @@ import {
 import {
   buildProxyServiceAuthorization,
   buildServiceAuthorization,
-} from "../internal/buildAuthorization";
-import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
-import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
-import { respond } from "../internal/respond";
-import type { ResolvedOptions } from "../options";
+} from "../internal/buildAuthorization.js";
+import { buildForwardedClientIp } from "../internal/buildForwardedClientIp.js";
+import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent.js";
+import { respond } from "../internal/respond.js";
+import type { ResolvedOptions } from "../options.js";
 
 /** Everything each of these handlers needs to reach the auth API. */
 interface CallContext {

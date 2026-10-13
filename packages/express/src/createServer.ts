@@ -1,34 +1,34 @@
 import express, { NextFunction, Request, Response, Router } from "express";
 import cookieParser from "cookie-parser";
 
-import { createEnsureCookiesMiddleware } from "./middleware/ensureCookies";
-import { createOriginGuardMiddleware } from "./middleware/originGuard";
-import { respond } from "./internal/respond";
+import { createEnsureCookiesMiddleware } from "./middleware/ensureCookies.js";
+import { createOriginGuardMiddleware } from "./middleware/originGuard.js";
+import { respond } from "./internal/respond.js";
 import type { CookieSameSite } from "@seamless-auth/core";
 import type { SeamlessAuthMessagingOptions } from "@seamless-auth/core";
 
-import { login } from "./handlers/login";
-import { finishLogin } from "./handlers/finishLogin";
-import { register } from "./handlers/register";
-import { requestOtp } from "./handlers/requestOtp";
+import { login } from "./handlers/login.js";
+import { finishLogin } from "./handlers/finishLogin.js";
+import { register } from "./handlers/register.js";
+import { requestOtp } from "./handlers/requestOtp.js";
 import {
   verifyLoginOtp,
   verifyRegistrationOtp,
-} from "./handlers/verifyLoginOtp";
-import { switchOrganization } from "./handlers/switchOrganization";
-import { finishRegister } from "./handlers/finishRegister";
-import { me } from "./handlers/me";
-import { logout } from "./handlers/logout";
-import { deleteAccount } from "./handlers/deleteAccount";
-import { refresh } from "./handlers/refresh";
-import { pollMagicLinkConfirmation } from "./handlers/pollMagicLinkConfirmation";
-import { requestMagicLink } from "./handlers/requestMagicLink";
+} from "./handlers/verifyLoginOtp.js";
+import { switchOrganization } from "./handlers/switchOrganization.js";
+import { finishRegister } from "./handlers/finishRegister.js";
+import { me } from "./handlers/me.js";
+import { logout } from "./handlers/logout.js";
+import { deleteAccount } from "./handlers/deleteAccount.js";
+import { refresh } from "./handlers/refresh.js";
+import { pollMagicLinkConfirmation } from "./handlers/pollMagicLinkConfirmation.js";
+import { requestMagicLink } from "./handlers/requestMagicLink.js";
 import {
   finishOAuthLogin,
   listOAuthProviders,
   startOAuthLogin,
-} from "./handlers/oauth";
-import * as admin from "./handlers/admin";
+} from "./handlers/oauth.js";
+import * as admin from "./handlers/admin.js";
 import {
   authFetch,
   AuthFetchOptions,
@@ -45,24 +45,24 @@ import {
   buildInternalServiceAuthorization,
   buildProxyServiceAuthorization,
   buildServiceAuthorization,
-} from "./internal/buildAuthorization";
+} from "./internal/buildAuthorization.js";
 import {
   assertSecrets,
   DEV_JWKS_KID,
   warnOnDevJwksKid,
-} from "./internal/validateSecrets";
+} from "./internal/validateSecrets.js";
 import {
   buildForwardedClientIp,
   ClientIpResolver,
-} from "./internal/buildForwardedClientIp";
-import { buildForwardedUserAgent } from "./internal/buildForwardedUserAgent";
-import { transportOf } from "./internal/transport";
+} from "./internal/buildForwardedClientIp.js";
+import { buildForwardedUserAgent } from "./internal/buildForwardedUserAgent.js";
+import { transportOf } from "./internal/transport.js";
 import {
   getAvailableRoles,
   getPublicSystemConfig,
   getSystemConfigAdmin,
   updateSystemConfig,
-} from "./handlers/systemConfig";
+} from "./handlers/systemConfig.js";
 import {
   getAuthEventSummary,
   getAuthEventTimeseries,
@@ -72,12 +72,12 @@ import {
   getLoginStats,
   getSecurityAnomalies,
   getSignInMetrics,
-} from "./handlers/internalMetrics";
+} from "./handlers/internalMetrics.js";
 import {
   listSessions,
   revokeAllSessions,
   revokeSession,
-} from "./handlers/sessions";
+} from "./handlers/sessions.js";
 
 type ResolvedSeamlessAuthServerOptions = {
   authServerUrl: string;

@@ -1,5 +1,6 @@
-// Type-checks a consumer against the built dist. Request augmentation that
-// lives only in source (an ambient .d.ts tsc never emits) fails here.
+// Type-checks a consumer against the built dist, with skipLibCheck off so an
+// unresolvable import inside the shipped declarations fails here. The fixture's
+// @ts-expect-error lines fail too if an export degrades to `any`.
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
@@ -26,6 +27,7 @@ describe("@seamless-auth/express consumer types", () => {
             "--noEmit",
             "--strict",
             "--skipLibCheck",
+            "false",
             "--target",
             "ES2022",
             "--module",

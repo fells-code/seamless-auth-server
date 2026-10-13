@@ -1,7 +1,12 @@
 // Resolves "@seamless-auth/express" by name through package.json `exports`, so
 // it sees the built dist exactly as an installed consumer does.
 import express from "express";
-import { requireAuth, requireRole } from "@seamless-auth/express";
+import {
+  createSeamlessAuthServer,
+  getSeamlessUser,
+  requireAuth,
+  requireRole,
+} from "@seamless-auth/express";
 
 const app = express();
 
@@ -16,3 +21,15 @@ app.get(
     res.json({ id, roles, payload });
   },
 );
+
+// Each wrong call below must be a type error. If an export resolves to `any`
+// (an unresolvable import in the shipped .d.ts), the directive is unused and
+// tsc fails.
+// @ts-expect-error requireAuth takes an options object
+requireAuth(42);
+// @ts-expect-error requireRole takes a role name or list
+requireRole(42);
+// @ts-expect-error createSeamlessAuthServer takes an options object
+createSeamlessAuthServer(42);
+// @ts-expect-error getSeamlessUser takes a request and options
+getSeamlessUser(42);

@@ -18,21 +18,21 @@ import {
   redactSensitiveText,
 } from "@seamless-auth/core";
 
-import { createEnsureCookiesHook, mountRelativePath } from "./hooks/ensureCookies";
-import { createOriginGuardHook } from "./hooks/originGuard";
+import { createEnsureCookiesHook, mountRelativePath } from "./hooks/ensureCookies.js";
+import { createOriginGuardHook } from "./hooks/originGuard.js";
 import {
   buildInternalServiceAuthorization,
   buildProxyServiceAuthorization,
   buildServiceAuthorization,
-} from "./internal/buildAuthorization";
-import { buildForwardedClientIp } from "./internal/buildForwardedClientIp";
-import { buildForwardedUserAgent } from "./internal/buildForwardedUserAgent";
-import { respond } from "./internal/respond";
-import { transportOf } from "./internal/transport";
-import type { ResolvedOptions, SeamlessAuthServerOptions } from "./options";
-import { PROXY_ROUTES, resolveUpstreamPath } from "./routes/proxyRoutes";
-import { registerAuthRoutes } from "./routes/authRoutes";
-import { registerAdminRoutes } from "./routes/adminRoutes";
+} from "./internal/buildAuthorization.js";
+import { buildForwardedClientIp } from "./internal/buildForwardedClientIp.js";
+import { buildForwardedUserAgent } from "./internal/buildForwardedUserAgent.js";
+import { respond } from "./internal/respond.js";
+import { transportOf } from "./internal/transport.js";
+import type { ResolvedOptions, SeamlessAuthServerOptions } from "./options.js";
+import { PROXY_ROUTES, resolveUpstreamPath } from "./routes/proxyRoutes.js";
+import { registerAuthRoutes } from "./routes/authRoutes.js";
+import { registerAdminRoutes } from "./routes/adminRoutes.js";
 
 function warnOnDevJwksKid(jwksKid: string | undefined): void {
   if (!jwksKid || jwksKid === DEV_JWKS_KID) {

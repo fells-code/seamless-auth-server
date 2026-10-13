@@ -8,7 +8,7 @@ import {
   type CookieSecurityOptions,
   type ResponseAdapter,
 } from "@seamless-auth/core";
-import { transportOf } from "./transport";
+import { transportOf } from "./transport.js";
 
 /**
  * Fastify half of core's response contract: emit a cookie, clear a cookie, send

@@ -3,10 +3,10 @@ import { getSeamlessUser as getSeamlessUserCore } from "@seamless-auth/core";
 import {
   buildProxyServiceAuthorization,
   buildServiceAuthorization,
-} from "./internal/buildAuthorization";
-import { SeamlessAuthServerOptions } from "./createServer";
-import { buildForwardedClientIp } from "./internal/buildForwardedClientIp";
-import { buildForwardedUserAgent } from "./internal/buildForwardedUserAgent";
+} from "./internal/buildAuthorization.js";
+import { SeamlessAuthServerOptions } from "./createServer.js";
+import { buildForwardedClientIp } from "./internal/buildForwardedClientIp.js";
+import { buildForwardedUserAgent } from "./internal/buildForwardedUserAgent.js";
 
 export async function getSeamlessUser(
   req: Request,

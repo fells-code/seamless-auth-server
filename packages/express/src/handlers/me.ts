@@ -1,13 +1,13 @@
 import { Request, Response } from "express";
 import { meHandler } from "@seamless-auth/core/handlers/me";
-import { respond } from "../internal/respond";
+import { respond } from "../internal/respond.js";
 import {
   buildProxyServiceAuthorization,
   buildServiceAuthorization,
-} from "../internal/buildAuthorization";
-import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
-import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
-import { SeamlessAuthServerOptions } from "../createServer";
+} from "../internal/buildAuthorization.js";
+import { buildForwardedClientIp } from "../internal/buildForwardedClientIp.js";
+import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent.js";
+import { SeamlessAuthServerOptions } from "../createServer.js";
 
 export async function me(
   req: Request & { cookiePayload?: any },

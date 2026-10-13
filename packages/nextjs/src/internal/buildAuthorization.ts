@@ -7,8 +7,8 @@ import {
   SERVICE_TOKEN_ISSUER,
 } from "@seamless-auth/core";
 
-import type { SeamlessAuthHandlerOptions } from "../options";
-import type { AuthContext } from "./context";
+import type { SeamlessAuthHandlerOptions } from "../options.js";
+import type { AuthContext } from "./context.js";
 
 /**
  * The `Authorization` a proxied call presents upstream on the user's behalf.

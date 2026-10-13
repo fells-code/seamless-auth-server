@@ -1,14 +1,14 @@
 import { Request, Response } from "express";
 import { logoutHandler } from "@seamless-auth/core/handlers/logout";
 import type { LogoutScope } from "@seamless-auth/core/handlers/logout";
-import { respond } from "../internal/respond";
-import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
-import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
-import { SeamlessAuthServerOptions } from "../createServer";
+import { respond } from "../internal/respond.js";
+import { buildForwardedClientIp } from "../internal/buildForwardedClientIp.js";
+import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent.js";
+import { SeamlessAuthServerOptions } from "../createServer.js";
 import {
   buildProxyServiceAuthorization,
   buildServiceAuthorization,
-} from "../internal/buildAuthorization";
+} from "../internal/buildAuthorization.js";
 
 export async function logout(
   req: Request,

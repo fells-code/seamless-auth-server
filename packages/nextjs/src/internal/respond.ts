@@ -7,7 +7,7 @@ import {
   type ResponseAdapter,
 } from "@seamless-auth/core";
 
-import type { AuthContext } from "./context";
+import type { AuthContext } from "./context.js";
 
 // Statuses that cannot carry a body. Express and Fastify drop one silently; the
 // `Response` constructor throws instead, which turned the auth API's 204 from

@@ -9,11 +9,11 @@ import {
 import {
   buildProxyServiceAuthorization,
   buildServiceAuthorization,
-} from "../internal/buildAuthorization";
-import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
-import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
-import { respond } from "../internal/respond";
-import { SeamlessAuthServerOptions } from "../createServer";
+} from "../internal/buildAuthorization.js";
+import { buildForwardedClientIp } from "../internal/buildForwardedClientIp.js";
+import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent.js";
+import { respond } from "../internal/respond.js";
+import { SeamlessAuthServerOptions } from "../createServer.js";
 
 // No identity is built for this one. It is called by a signed-out browser, so
 // there is no session to forward, and buildServiceAuthorization would only add a

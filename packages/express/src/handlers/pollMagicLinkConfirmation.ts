@@ -1,15 +1,15 @@
 import { Request, Response } from "express";
 import { pollMagicLinkConfirmationHandler } from "@seamless-auth/core/handlers/pollMagicLinkConfirmationHandler";
-import { respond } from "../internal/respond";
-import { transportOf } from "../internal/transport";
+import { respond } from "../internal/respond.js";
+import { transportOf } from "../internal/transport.js";
 import {
   buildInternalServiceAuthorization,
   buildProxyServiceAuthorization,
   buildServiceAuthorization,
-} from "../internal/buildAuthorization";
-import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
-import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
-import { SeamlessAuthServerOptions } from "../createServer";
+} from "../internal/buildAuthorization.js";
+import { buildForwardedClientIp } from "../internal/buildForwardedClientIp.js";
+import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent.js";
+import { SeamlessAuthServerOptions } from "../createServer.js";
 
 export async function pollMagicLinkConfirmation(
   req: Request & { cookiePayload?: any },

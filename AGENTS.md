@@ -68,6 +68,12 @@ guidance may extend them but must not contradict them.
 
 - pnpm workspace (`pnpm-workspace.yaml`) with packages under `packages/*`.
 - TypeScript libraries built and published via Changesets.
+- Every package compiles with `moduleResolution: "NodeNext"`, so relative
+  imports in `src` need an explicit `.js` extension (`from "./handler.js"`).
+  tsc keeps the specifier in the emitted `.d.ts`, and NodeNext consumers cannot
+  resolve an extensionless one. The build fails with TS2835 if one is missing,
+  and each package's `consumerTypes` test checks the published types under both
+  `bundler` and NodeNext with `skipLibCheck` off.
 - `@seamless-auth/express`, `@seamless-auth/fastify`, and
   `@seamless-auth/nextjs` depend on `@seamless-auth/core`; keep the core free of
   framework-specific code.

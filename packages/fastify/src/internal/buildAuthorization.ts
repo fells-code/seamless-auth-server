@@ -8,8 +8,8 @@ import {
   SERVICE_TOKEN_ISSUER,
 } from "@seamless-auth/core";
 
-import type { SeamlessAuthServerOptions } from "../options";
-import { transportOf } from "./transport";
+import type { SeamlessAuthServerOptions } from "../options.js";
+import { transportOf } from "./transport.js";
 
 /**
  * The `Authorization` a proxied call presents upstream on the user's behalf.
