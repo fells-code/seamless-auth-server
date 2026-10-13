@@ -1,5 +1,11 @@
 # @seamless-auth/core
 
+## 0.20.1
+
+### Patch Changes
+
+- 8ff942d: Depend on `@types/jsonwebtoken` at runtime instead of as a dev dependency. The published declarations import `JwtPayload` from `jsonwebtoken` (for example in `verifyCookieJwt`), so consumers without their own copy got `TS7016` under `skipLibCheck: false` and an `any` payload type otherwise.
+
 ## 0.20.0
 
 ### Minor Changes
