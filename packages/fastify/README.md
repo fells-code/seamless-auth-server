@@ -31,7 +31,7 @@ await app.register(seamlessAuth, {
   authServerUrl: "https://identifier.seamlessauth.com",
   audience: "https://identifier.seamlessauth.com",
   cookieSecret: process.env.COOKIE_SECRET!,
-  serviceSecret: process.env.SERVICE_SECRET!,
+  serviceSecret: process.env.SEAMLESS_SERVICE_TOKEN!,
   jwksKid: "2024-09-main",
 });
 
@@ -43,7 +43,9 @@ hooks scoped to those routes, so the rest of your application is untouched.
 `@fastify/cookie` is registered for you inside the plugin.
 
 `cookieSecret` and `serviceSecret` must be at least 32 characters and the
-`serviceSecret` must match the auth API's. Both are checked at registration, so a
+`serviceSecret` must match the auth API's. The auth server reads it from
+`API_SERVICE_TOKEN` and the app from `SEAMLESS_SERVICE_TOKEN`, with the same value.
+Both are checked at registration, so a
 weak secret fails at startup rather than on the first request.
 
 ## Guarding your own routes

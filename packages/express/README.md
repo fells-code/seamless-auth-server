@@ -64,7 +64,7 @@ app.use(
   createSeamlessAuthServer({
     authServerUrl: process.env.AUTH_SERVER_URL!,
     cookieSecret: process.env.COOKIE_SECRET!,
-    serviceSecret: process.env.SERVICE_SECRET!,
+    serviceSecret: process.env.SEAMLESS_SERVICE_TOKEN!,
     audience: process.env.AUTH_SERVER_URL!,
   }),
 );
@@ -317,7 +317,7 @@ app.use(
   createSeamlessAuthServer({
     authServerUrl: "https://identifier.seamlessauth.com",
     cookieSecret: process.env.COOKIE_SECRET,
-    serviceSecret: process.env.SERVICE_SECRET,
+    serviceSecret: process.env.SEAMLESS_SERVICE_TOKEN,
     audience: "https://identifier.seamlessauth.com",
     // local HTTP dev only, never in a deployed environment
     cookieSecure: false,
@@ -356,7 +356,7 @@ app.use(
   createSeamlessAuthServer({
     authServerUrl: "https://identifier.seamlessauth.com",
     cookieSecret: process.env.COOKIE_SECRET,
-    serviceSecret: process.env.SERVICE_SECRET,
+    serviceSecret: process.env.SEAMLESS_SERVICE_TOKEN,
     audience: "https://identifier.seamlessauth.com",
     allowedOrigins: ["https://app.example.com"],
   }),
@@ -374,6 +374,8 @@ This currently applies to:
 - magic-link email
 
 External delivery is a credentialed request. The adapter mints a short-lived service token from `serviceSecret`, and the auth server withholds the delivery payload if that token does not validate. `serviceSecret` must therefore match the auth server's `API_SERVICE_TOKEN` in every environment, including local development. If it does not, auth-message routes still return a success response but no message is delivered, so the adapter logs a warning whenever it requests external delivery and receives no payload back.
+
+The auth server reads the secret from `API_SERVICE_TOKEN`, and the examples here read it in the app from `SEAMLESS_SERVICE_TOKEN`; both hold the same value.
 
 ---
 
@@ -660,7 +662,7 @@ options once and reuse them.
 const authOptions = {
   authServerUrl: process.env.AUTH_SERVER_URL!,
   cookieSecret: process.env.COOKIE_SECRET!,
-  serviceSecret: process.env.SERVICE_SECRET!,
+  serviceSecret: process.env.SEAMLESS_SERVICE_TOKEN!,
   audience: process.env.AUTH_AUDIENCE!,
 };
 
@@ -740,7 +742,7 @@ whatever your app already uses and pass the values through as options:
 ```bash
 AUTH_SERVER_URL=http://localhost:5312
 COOKIE_SECRET=local-dev-cookie-secret-at-least-32-chars
-SERVICE_SECRET=local-dev-service-secret-at-least-32-chars
+SEAMLESS_SERVICE_TOKEN=local-dev-service-token-at-least-32-chars
 ```
 
 ```ts
@@ -749,7 +751,7 @@ app.use(
   createSeamlessAuthServer({
     authServerUrl: process.env.AUTH_SERVER_URL!,
     cookieSecret: process.env.COOKIE_SECRET!,
-    serviceSecret: process.env.SERVICE_SECRET!,
+    serviceSecret: process.env.SEAMLESS_SERVICE_TOKEN!,
     audience: process.env.AUTH_SERVER_URL!,
     // local HTTP only, never in a deployed environment
     cookieSecure: false,
