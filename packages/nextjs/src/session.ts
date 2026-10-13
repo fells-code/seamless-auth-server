@@ -7,7 +7,7 @@ import {
 } from "@seamless-auth/core";
 import type { MeResponse } from "@seamless-auth/types";
 
-import { buildProxyServiceAuthorization } from "./internal/buildAuthorization";
+import { buildProxyServiceAuthorization } from "./internal/buildAuthorization.js";
 
 /**
  * The read side of a cookie store. Both `await cookies()` from `next/headers`

@@ -3,7 +3,7 @@ import type {
   SeamlessAuthMessagingOptions,
 } from "@seamless-auth/core";
 
-import type { ClientIpResolver } from "./internal/buildForwardedClientIp";
+import type { ClientIpResolver } from "./internal/buildForwardedClientIp.js";
 
 export type SeamlessAuthServerOptions = {
   authServerUrl: string;

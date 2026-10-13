@@ -5,15 +5,15 @@ import {
   createSeamlessAuthServer,
   SeamlessAuthServerOptions,
   SeamlessAuthUser,
-} from "./createServer";
+} from "./createServer.js";
 export { createSeamlessAuthServer };
 export { SeamlessAuthServerOptions, SeamlessAuthUser };
-export { createSeamlessConsoleProxy } from "./consoleProxy";
-export type { SeamlessConsoleProxyOptions } from "./consoleProxy";
-export { requireAuth } from "./middleware/requireAuth";
-export { requireRole } from "./middleware/requireRole";
-export { createEnsureCookiesMiddleware } from "./middleware/ensureCookies";
-export { getSeamlessUser } from "./getSeamlessUser";
+export { createSeamlessConsoleProxy } from "./consoleProxy.js";
+export type { SeamlessConsoleProxyOptions } from "./consoleProxy.js";
+export { requireAuth } from "./middleware/requireAuth.js";
+export { requireRole } from "./middleware/requireRole.js";
+export { createEnsureCookiesMiddleware } from "./middleware/ensureCookies.js";
+export { getSeamlessUser } from "./getSeamlessUser.js";
 export type {
   AuthMessageOverrides,
   AuthMessagingHandlers,

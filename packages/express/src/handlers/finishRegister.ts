@@ -1,13 +1,13 @@
 import { Request, Response } from "express";
 import { finishRegisterHandler } from "@seamless-auth/core/handlers/finishRegister";
-import { respond } from "../internal/respond";
+import { respond } from "../internal/respond.js";
 import {
   buildProxyServiceAuthorization,
   buildServiceAuthorization,
-} from "../internal/buildAuthorization";
-import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
-import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
-import { SeamlessAuthServerOptions } from "../createServer";
+} from "../internal/buildAuthorization.js";
+import { buildForwardedClientIp } from "../internal/buildForwardedClientIp.js";
+import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent.js";
+import { SeamlessAuthServerOptions } from "../createServer.js";
 
 export async function finishRegister(
   req: Request & { cookiePayload?: any },

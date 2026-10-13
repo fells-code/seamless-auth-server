@@ -1,15 +1,15 @@
 import { Request, Response } from "express";
 import { registerHandler } from "@seamless-auth/core/handlers/register";
-import { respond } from "../internal/respond";
-import { transportOf } from "../internal/transport";
-import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
-import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
+import { respond } from "../internal/respond.js";
+import { transportOf } from "../internal/transport.js";
+import { buildForwardedClientIp } from "../internal/buildForwardedClientIp.js";
+import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent.js";
 import {
   buildInternalServiceAuthorization,
   buildProxyServiceAuthorization,
-} from "../internal/buildAuthorization";
+} from "../internal/buildAuthorization.js";
 import { applyExternalDelivery } from "@seamless-auth/core";
-import { SeamlessAuthServerOptions } from "../createServer";
+import { SeamlessAuthServerOptions } from "../createServer.js";
 
 export async function register(
   req: Request,

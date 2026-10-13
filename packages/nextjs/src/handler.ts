@@ -21,7 +21,7 @@ import {
   buildInternalServiceAuthorization,
   buildProxyServiceAuthorization,
   buildServiceAuthorization,
-} from "./internal/buildAuthorization";
+} from "./internal/buildAuthorization.js";
 import {
   BodyError,
   forwardedClientIp,
@@ -32,13 +32,13 @@ import {
   readQuery,
   transportOf,
   type AuthContext,
-} from "./internal/context";
-import { respond, ResponseCollector } from "./internal/respond";
-import { matchRoute, type Route } from "./internal/router";
-import type { ResolvedOptions, SeamlessAuthHandlerOptions } from "./options";
-import { ADMIN_ROUTES } from "./routes/adminRoutes";
-import { AUTH_ROUTES } from "./routes/authRoutes";
-import { PROXY_ROUTES, resolveUpstreamPath } from "./routes/proxyRoutes";
+} from "./internal/context.js";
+import { respond, ResponseCollector } from "./internal/respond.js";
+import { matchRoute, type Route } from "./internal/router.js";
+import type { ResolvedOptions, SeamlessAuthHandlerOptions } from "./options.js";
+import { ADMIN_ROUTES } from "./routes/adminRoutes.js";
+import { AUTH_ROUTES } from "./routes/authRoutes.js";
+import { PROXY_ROUTES, resolveUpstreamPath } from "./routes/proxyRoutes.js";
 
 export type RouteHandler = (request: Request) => Promise<Response>;
 

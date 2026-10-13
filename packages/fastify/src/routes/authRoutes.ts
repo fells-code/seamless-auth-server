@@ -27,12 +27,12 @@ import {
   buildInternalServiceAuthorization,
   buildProxyServiceAuthorization,
   buildServiceAuthorization,
-} from "../internal/buildAuthorization";
-import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
-import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
-import { respond } from "../internal/respond";
-import { transportOf } from "../internal/transport";
-import type { ResolvedOptions } from "../options";
+} from "../internal/buildAuthorization.js";
+import { buildForwardedClientIp } from "../internal/buildForwardedClientIp.js";
+import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent.js";
+import { respond } from "../internal/respond.js";
+import { transportOf } from "../internal/transport.js";
+import type { ResolvedOptions } from "../options.js";
 
 function routeParam(req: FastifyRequest, name: string): string {
   const value = (req.params as Record<string, unknown>)[name];

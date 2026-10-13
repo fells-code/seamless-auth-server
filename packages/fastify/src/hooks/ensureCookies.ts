@@ -8,11 +8,11 @@ import {
   SERVICE_TOKEN_ISSUER,
 } from "@seamless-auth/core";
 
-import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
-import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
-import { fastifyResponseAdapter } from "../internal/respond";
-import { transportOf } from "../internal/transport";
-import type { ResolvedOptions } from "../options";
+import { buildForwardedClientIp } from "../internal/buildForwardedClientIp.js";
+import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent.js";
+import { fastifyResponseAdapter } from "../internal/respond.js";
+import { transportOf } from "../internal/transport.js";
+import type { ResolvedOptions } from "../options.js";
 
 /**
  * Verifies the session cookies on every request into the plugin, refreshing them

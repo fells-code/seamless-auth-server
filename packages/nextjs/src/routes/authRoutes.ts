@@ -26,14 +26,14 @@ import {
   buildInternalServiceAuthorization,
   buildProxyServiceAuthorization,
   buildServiceAuthorization,
-} from "../internal/buildAuthorization";
+} from "../internal/buildAuthorization.js";
 import {
   forwardedClientIp,
   forwardedUserAgent,
   type AuthContext,
-} from "../internal/context";
-import { param, type Route } from "../internal/router";
-import type { ResolvedOptions } from "../options";
+} from "../internal/context.js";
+import { param, type Route } from "../internal/router.js";
+import type { ResolvedOptions } from "../options.js";
 
 function forwarded(ctx: AuthContext, opts: ResolvedOptions) {
   return {

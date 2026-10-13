@@ -1,15 +1,15 @@
 import { Request, Response } from "express";
-import { respond } from "../internal/respond";
+import { respond } from "../internal/respond.js";
 import { requestMagicLinkHandler } from "@seamless-auth/core/handlers/requestMagicLinkHandler";
 import {
   buildInternalServiceAuthorization,
   buildProxyServiceAuthorization,
   buildServiceAuthorization,
-} from "../internal/buildAuthorization";
-import { buildForwardedClientIp } from "../internal/buildForwardedClientIp";
-import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent";
+} from "../internal/buildAuthorization.js";
+import { buildForwardedClientIp } from "../internal/buildForwardedClientIp.js";
+import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent.js";
 import { applyExternalDelivery } from "@seamless-auth/core";
-import { SeamlessAuthServerOptions } from "../createServer";
+import { SeamlessAuthServerOptions } from "../createServer.js";
 
 export async function requestMagicLink(
   req: Request & { cookiePayload?: any; user?: any },

@@ -5,7 +5,7 @@ import {
   authorizeRoles,
 } from "@seamless-auth/core";
 
-import { requestCookies } from "./internal/requestCookies";
+import { requestCookies } from "./internal/requestCookies.js";
 
 export interface RequireAuthOptions {
   cookieName?: string;

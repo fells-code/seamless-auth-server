@@ -1,7 +1,7 @@
 import type { AppliableResult } from "@seamless-auth/core";
 
-import type { ResolvedOptions } from "../options";
-import type { AuthContext } from "./context";
+import type { ResolvedOptions } from "../options.js";
+import type { AuthContext } from "./context.js";
 
 export type RouteMethod = "GET" | "POST" | "PATCH" | "DELETE";
 

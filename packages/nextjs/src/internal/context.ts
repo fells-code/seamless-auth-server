@@ -7,7 +7,7 @@ import {
   type AuthTransport,
 } from "@seamless-auth/core";
 
-import type { ClientIpResolver } from "../options";
+import type { ClientIpResolver } from "../options.js";
 
 /**
  * What a route reads from a request. The Express and Fastify adapters get this
