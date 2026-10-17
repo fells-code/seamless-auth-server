@@ -1,5 +1,15 @@
 # @seamless-auth/fastify
 
+## 0.11.2
+
+### Patch Changes
+
+- 8ff942d: Publish declarations that resolve under `moduleResolution: "NodeNext"` and `"Node16"`. Relative imports in the shipped `.d.ts` files now carry explicit `.js` extensions. Consumers on NodeNext previously could not resolve them, so the exported functions typed as `any` (hidden by `skipLibCheck`). Runtime output is unchanged.
+- f0d50f7: Load the `FastifyRequest` augmentation (`request.user`, `request.cookiePayload`) from the package entry through an import that resolves under `moduleResolution: "NodeNext"`. Consumers on NodeNext previously lost it because the entry reached it only through an extensionless relative import.
+- dd5c0e5: The README examples read the service secret from `SEAMLESS_SERVICE_TOKEN` instead of `SERVICE_SECRET`. The auth server still reads `API_SERVICE_TOKEN`; both hold the same value. The adapters read no environment variables, so nothing changes at runtime.
+- Updated dependencies [8ff942d]
+  - @seamless-auth/core@0.20.1
+
 ## 0.11.1
 
 ### Patch Changes

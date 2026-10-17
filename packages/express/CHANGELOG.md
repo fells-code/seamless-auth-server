@@ -1,5 +1,15 @@
 # @seamless-auth/express
 
+## 0.20.1
+
+### Patch Changes
+
+- 8ff942d: Publish declarations that resolve under `moduleResolution: "NodeNext"` and `"Node16"`. Relative imports in the shipped `.d.ts` files now carry explicit `.js` extensions. Consumers on NodeNext previously could not resolve them, so the exported functions typed as `any` (hidden by `skipLibCheck`). Runtime output is unchanged.
+- f0d50f7: Ship the `Express.Request` augmentation. `req.user` (set by `requireAuth`) and `req.cookiePayload` (set by `createEnsureCookiesMiddleware`) now typecheck in a consumer that imports the package, without declaring the augmentation itself. It previously lived in an ambient `.d.ts` that tsc never copied into `dist`.
+- dd5c0e5: The README examples read the service secret from `SEAMLESS_SERVICE_TOKEN` instead of `SERVICE_SECRET`. The auth server still reads `API_SERVICE_TOKEN`; both hold the same value. The adapters read no environment variables, so nothing changes at runtime.
+- Updated dependencies [8ff942d]
+  - @seamless-auth/core@0.20.1
+
 ## 0.20.0
 
 ### Minor Changes
