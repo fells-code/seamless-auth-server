@@ -9,9 +9,9 @@ import {
   listOAuthProvidersHandler,
   loginHandler,
   logoutHandler,
+  magicLinkVerifyAuthorization,
   meHandler,
   pollMagicLinkConfirmationHandler,
-  proxyRequest,
   refreshHandler,
   registerHandler,
   requestMagicLinkHandler,
@@ -19,6 +19,7 @@ import {
   startOAuthLoginHandler,
   switchOrganizationHandler,
   verifyLoginOtpHandler,
+  verifyMagicLinkHandler,
   verifyRegistrationOtpHandler,
   type LogoutScope,
 } from "@seamless-auth/core";
@@ -30,6 +31,7 @@ import {
 } from "../internal/buildAuthorization.js";
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp.js";
 import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent.js";
+import { requestCookies } from "../internal/requestCookies.js";
 import { respond } from "../internal/respond.js";
 import { transportOf } from "../internal/transport.js";
 import type { ResolvedOptions } from "../options.js";
@@ -274,17 +276,24 @@ export function registerAuthRoutes(
     respond(reply, { ...result, body }, opts);
   });
 
-  // Verified by the link recipient, who holds no session yet, so this forwards
-  // without an identity gate.
+  // Verified by the link recipient, who may hold no session at all, so this
+  // forwards without an identity gate.
   fastify.get("/magic-link/verify/:token", async (req, reply) => {
-    const result = await proxyRequest({
-      authServerUrl: opts.authServerUrl,
-      path: `magic-link/verify/${encodeURIComponent(routeParam(req, "token"))}`,
-      method: "GET",
-      serviceAuthorization: buildProxyServiceAuthorization(opts),
-      forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-      forwardedUserAgent: buildForwardedUserAgent(req),
-    });
+    const result = await verifyMagicLinkHandler(
+      {
+        token: routeParam(req, "token"),
+        authorization: magicLinkVerifyAuthorization({
+          transport: transportOf(req),
+          authorizationHeader: req.headers?.authorization,
+          preAuthCookie: requestCookies(req)[opts.preAuthCookieName],
+          cookieSecret: opts.cookieSecret,
+        }),
+      },
+      {
+        ...common(req),
+        serviceAuthorization: buildProxyServiceAuthorization(opts),
+      },
+    );
 
     respond(reply, result, opts);
   });

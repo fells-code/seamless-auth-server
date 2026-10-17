@@ -105,6 +105,28 @@ describe("origin guard (#104)", () => {
     expect(res.body).not.toEqual(BLOCKED);
   });
 
+  it("rejects a cross-site POST to the magic link confirm step", async () => {
+    const res = await request(createApp())
+      .post("/auth/magic-link/verify/some-token/confirm")
+      .set("Sec-Fetch-Site", "cross-site");
+
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual(BLOCKED);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("accepts a same-origin POST to the magic link confirm step", async () => {
+    const res = await request(createApp())
+      .post("/auth/magic-link/verify/some-token/confirm")
+      .set("Sec-Fetch-Site", "same-origin");
+
+    expect(res.status).toBe(200);
+    expect(global.fetch).toHaveBeenCalledWith(
+      "https://auth.example.com/magic-link/verify/some-token/confirm",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
   it("lets a CORS preflight through", async () => {
     const res = await request(createApp())
       .options("/auth/magic-link")

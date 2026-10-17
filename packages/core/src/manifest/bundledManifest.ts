@@ -3,7 +3,7 @@ import type { AdapterManifest } from "./adapterManifest.js";
 
 export const BUNDLED_ADAPTER_MANIFEST: AdapterManifest = {
   "schemaVersion": 1,
-  "apiVersion": "0.17.0",
+  "apiVersion": "0.18.0",
   "session": {
     "subject": "sub",
     "token": "token",
@@ -255,6 +255,11 @@ export const BUNDLED_ADAPTER_MANIFEST: AdapterManifest = {
     {
       "method": "GET",
       "path": "/magic-link/verify/{token}",
+      "credential": "none"
+    },
+    {
+      "method": "POST",
+      "path": "/magic-link/verify/{token}/confirm",
       "credential": "none"
     },
     {

@@ -187,6 +187,20 @@ describe("cookie requirement routes", () => {
     );
   });
 
+  it("verifies a magic link with a stale pre-auth cookie and sends no credential", async () => {
+    global.fetch.mockResolvedValue(
+      createJsonResponse(200, { message: "Success" }),
+    );
+
+    const res = await request(createApp())
+      .get("/auth/magic-link/verify/token-abc")
+      .set("Cookie", "seamless-ephemeral=not-a-signed-cookie");
+
+    expect(res.status).toBe(200);
+    const [, init] = global.fetch.mock.calls[0];
+    expect(init.headers.Authorization).toBeUndefined();
+  });
+
   it("keeps an injected magic link token in a single path segment (#65)", async () => {
     global.fetch.mockResolvedValue(
       createJsonResponse(200, { message: "Verified" }),
