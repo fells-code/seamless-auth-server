@@ -743,6 +743,159 @@ describe("fastify and express adapters agree", () => {
   });
 });
 
+// Verify forwards the pre-auth credential of the browser that opens the link so
+// the auth API can recognise the device that asked for it. A missing or bad one
+// never turns into a 401: the link itself is the credential.
+describe("both adapters carry the opener's credential on magic link verify", () => {
+  const originalFetch = global.fetch;
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  const CONFIRMATION_REQUIRED = {
+    error: "confirmation_required",
+    message: "Confirm this sign-in on the device that requested it.",
+    requestedFrom: { deviceClass: "macos", requestedAt: "2026-10-16T12:00:00.000Z" },
+  };
+
+  async function verifyThrough(run, scenario, response = upstream(200, { message: "Success" })) {
+    let call;
+
+    global.fetch = jest.fn(async (url, init) => {
+      call = { url: String(url), init };
+      return response;
+    });
+
+    const result = await run({ method: "get", path: "/magic-link/verify/tok-1", ...scenario });
+
+    return { result, call };
+  }
+
+  async function both(scenario, response) {
+    return [
+      await verifyThrough(viaFastify, scenario, response),
+      await verifyThrough(viaExpress, scenario, response),
+    ];
+  }
+
+  it("sends the pre-auth cookie's token as a bearer credential", async () => {
+    for (const { result, call } of await both({
+      cookie: preAuthCookie(),
+      headers: { "user-agent": "Mozilla/5.0 (Macintosh)" },
+    })) {
+      expect(result.status).toBe(200);
+      expect(result.body).toEqual({ message: "Success" });
+      expect(call.url).toBe("https://auth.example.com/magic-link/verify/tok-1");
+      expect(call.init.headers.Authorization).toBe("Bearer pre-auth");
+      expect(call.init.headers["x-seamless-service-token"]).toMatch(/^Bearer /);
+      expect(call.init.headers["x-seamless-client-user-agent"]).toBe(
+        "Mozilla/5.0 (Macintosh)",
+      );
+    }
+  });
+
+  it.each([
+    ["no cookie", undefined],
+    ["a cookie signed with another secret", `seamless-ephemeral=${jwt.sign({ sub: "u", token: "forged" }, "another-secret-another-secret-another", { algorithm: "HS256" })}`],
+    ["a cookie that is not a JWT", "seamless-ephemeral=garbage"],
+    ["a cookie with no token", `seamless-ephemeral=${signed({ sub: "user-123" })}`],
+  ])("sends no credential and still verifies with %s", async (_label, cookie) => {
+    for (const { result, call } of await both({ cookie })) {
+      expect(result.status).toBe(200);
+      expect(call.init.headers.Authorization).toBeUndefined();
+      expect(call.init.headers["x-seamless-service-token"]).toMatch(/^Bearer /);
+    }
+  });
+
+  it("forwards the client's bearer token in bearer transport", async () => {
+    for (const { result, call } of await both({
+      headers: {
+        "x-seamless-auth-transport": "bearer",
+        authorization: "Bearer ephemeral-xyz",
+      },
+    })) {
+      expect(result.status).toBe(200);
+      expect(call.init.headers.Authorization).toBe("Bearer ephemeral-xyz");
+    }
+  });
+
+  it("sends no credential in bearer transport when the client sent none", async () => {
+    for (const { result, call } of await both({
+      headers: { "x-seamless-auth-transport": "bearer" },
+    })) {
+      expect(result.status).toBe(200);
+      expect(call.init.headers.Authorization).toBeUndefined();
+    }
+  });
+
+  it("passes a confirmation request through with where it came from", async () => {
+    const [other, viaE] = await both(
+      { cookie: preAuthCookie() },
+      upstream(409, CONFIRMATION_REQUIRED),
+    );
+
+    expect(other.result.status).toBe(409);
+    expect(other.result.body).toEqual(CONFIRMATION_REQUIRED);
+    expect(other.result).toEqual(viaE.result);
+  });
+
+  it("serves the confirm step from the manifest without a credential", async () => {
+    for (const run of [viaFastify, viaExpress]) {
+      let call;
+      global.fetch = jest.fn(async (url, init) => {
+        call = { url: String(url), init };
+        return upstream(200, { message: "Success" });
+      });
+
+      const result = await run({
+        method: "post",
+        path: "/magic-link/verify/tok-1/confirm",
+        cookie: preAuthCookie(),
+        headers: { "sec-fetch-site": "same-origin" },
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.body).toEqual({ message: "Success" });
+      expect(call.url).toBe("https://auth.example.com/magic-link/verify/tok-1/confirm");
+      expect(call.init.method).toBe("POST");
+      expect(call.init.headers.Authorization).toBeUndefined();
+    }
+  });
+
+  it("passes a spent link's confirm failure through", async () => {
+    for (const run of [viaFastify, viaExpress]) {
+      global.fetch = jest.fn(async () =>
+        upstream(400, { error: "Invalid or expired link" }),
+      );
+
+      const result = await run({
+        method: "post",
+        path: "/magic-link/verify/tok-1/confirm",
+      });
+
+      expect(result.status).toBe(400);
+      expect(result.body).toEqual({ error: "Invalid or expired link" });
+    }
+  });
+
+  it("refuses a cross-site confirm", async () => {
+    for (const run of [viaFastify, viaExpress]) {
+      global.fetch = jest.fn(async () => upstream(200, { message: "Success" }));
+
+      const result = await run({
+        method: "post",
+        path: "/magic-link/verify/tok-1/confirm",
+        headers: { "sec-fetch-site": "cross-site" },
+      });
+
+      expect(result.status).toBe(403);
+      expect(result.body).toEqual({ error: "cross_site_request_blocked" });
+      expect(global.fetch).not.toHaveBeenCalled();
+    }
+  });
+});
+
 function consoleUpstream(status, body, headers = {}) {
   const encoded = Buffer.from(body);
   return {

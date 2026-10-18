@@ -11,4 +11,10 @@ describe("redaction", () => {
       "/magic-link/verify/[REDACTED]?bootstrapToken=[REDACTED]&code=[REDACTED]&salt=[REDACTED]",
     );
   });
+
+  it("redacts the token in the magic link confirm path", () => {
+    expect(redactSensitiveText("POST /magic-link/verify/abc123/confirm")).toBe(
+      "POST /magic-link/verify/[REDACTED]/confirm",
+    );
+  });
 });

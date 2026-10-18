@@ -426,6 +426,22 @@ describe("ensureCookies", () => {
     expect(refreshAccessTokenMock).not.toHaveBeenCalled();
   });
 
+  it("does not gate the magic-link confirm step without a manifest", async () => {
+    const { ensureCookies } = await import("../dist/ensureCookies.js");
+
+    const result = await ensureCookies(
+      {
+        path: "/magic-link/verify/token-abc/confirm",
+        method: "POST",
+        cookies: {},
+      },
+      BASE_OPTS,
+    );
+
+    expect(result).toEqual({ type: "ok" });
+    expect(verifyCookieJwtMock).not.toHaveBeenCalled();
+  });
+
   it("does not gate magic-link verify even with a stale pre-auth cookie (#60)", async () => {
     const { ensureCookies } = await import("../dist/ensureCookies.js");
 
@@ -610,6 +626,8 @@ describe("ensureCookies with a manifest", () => {
       { method: "POST", path: "/registration/phone", credential: "access" },
       { method: "GET", path: "/oauth/providers", credential: "none" },
       { method: "POST", path: "/refresh", credential: "refresh" },
+      { method: "GET", path: "/magic-link/verify/{token}", credential: "none" },
+      { method: "POST", path: "/magic-link/verify/{token}/confirm", credential: "none" },
     ],
   };
 
@@ -676,6 +694,8 @@ describe("ensureCookies with a manifest", () => {
   it.each([
     ["GET", "/oauth/providers"],
     ["POST", "/refresh"],
+    ["GET", "/magic-link/verify/token-abc"],
+    ["POST", "/magic-link/verify/token-abc/confirm"],
   ])("requires nothing for %s %s", async (method, path) => {
     const { ensureCookies } = await import("../dist/ensureCookies.js");
 

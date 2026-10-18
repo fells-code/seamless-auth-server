@@ -23,6 +23,7 @@ import { deleteAccount } from "./handlers/deleteAccount.js";
 import { refresh } from "./handlers/refresh.js";
 import { pollMagicLinkConfirmation } from "./handlers/pollMagicLinkConfirmation.js";
 import { requestMagicLink } from "./handlers/requestMagicLink.js";
+import { verifyMagicLink } from "./handlers/verifyMagicLink.js";
 import {
   finishOAuthLogin,
   listOAuthProviders,
@@ -30,7 +31,6 @@ import {
 } from "./handlers/oauth.js";
 import * as admin from "./handlers/admin.js";
 import {
-  authFetch,
   AuthFetchOptions,
   checkProxyIdentity,
   createAdapterManifestSource,
@@ -509,23 +509,9 @@ export function createSeamlessAuthServer(
     proxyWithIdentity("users/credentials", "access", "DELETE"),
   );
   r.post("/magic-link", (req, res) => requestMagicLink(req, res, resolvedOpts));
-  r.get("/magic-link/verify/:token", async (req, res) => {
-    const upstream = await authFetch(
-      `${resolvedOpts.authServerUrl}/magic-link/verify/${encodeURIComponent(routeParam(req, "token"))}`,
-      {
-        method: "GET",
-        serviceAuthorization: buildProxyServiceAuthorization(resolvedOpts),
-        forwardedClientIp: buildForwardedClientIp(
-          req,
-          resolvedOpts.resolveClientIp,
-        ),
-        forwardedUserAgent: buildForwardedUserAgent(req),
-      },
-    );
-
-    const data = await upstream.json();
-    res.status(upstream.status).json(data);
-  });
+  r.get("/magic-link/verify/:token", (req, res) =>
+    verifyMagicLink(req, res, routeParam(req, "token"), resolvedOpts),
+  );
   r.get("/magic-link/check", (req, res) =>
     pollMagicLinkConfirmation(req, res, resolvedOpts),
   );

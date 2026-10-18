@@ -19,6 +19,7 @@ const manifest = {
     { method: "POST", path: "/admin/users/import", credential: "access" },
     { method: "POST", path: "/webauthn/login/start", credential: "preAuth" },
     { method: "GET", path: "/magic-link/verify/{token}", credential: "none" },
+    { method: "POST", path: "/magic-link/verify/{token}/confirm", credential: "none" },
   ],
 };
 
@@ -98,6 +99,22 @@ describe("matchManifestRoute", () => {
       expect(matchManifestRoute(manifest, "GET", `/admin/users/${segment}`)).toBeUndefined();
     },
   );
+
+  it("tells the confirm step apart from verify by method and segment count", () => {
+    expect(matchManifestRoute(manifest, "POST", "/magic-link/verify/tok/confirm")).toEqual({
+      route: manifest.routes[4],
+      params: { token: "tok" },
+    });
+    expect(matchManifestRoute(manifest, "GET", "/magic-link/verify/tok/confirm")).toBeUndefined();
+    expect(matchManifestRoute(manifest, "POST", "/magic-link/verify/tok")).toBeUndefined();
+  });
+
+  it("bundles the confirm step as a route that needs no credential", () => {
+    expect(
+      matchManifestRoute(BUNDLED_ADAPTER_MANIFEST, "POST", "/magic-link/verify/tok/confirm")
+        ?.route,
+    ).toEqual({ method: "POST", path: "/magic-link/verify/{token}/confirm", credential: "none" });
+  });
 
   it("does not match a malformed percent-encoding", () => {
     expect(matchManifestRoute(manifest, "GET", "/magic-link/verify/%E0%A4%A")).toBeUndefined();

@@ -199,6 +199,13 @@ Routes include:
 - `DELETE /auth/users/delete` to delete the signed-in user's own account. It answers with the auth
   API's body and clears the session cookies the way `/logout` does; the SDK's `deleteUser()` calls it
 - `POST /auth/magic-link` to request a magic-link email
+- `GET /auth/magic-link/verify/:token` to open a magic link. It sends the browser's pre-auth
+  session along when it has one, so the auth API can recognise the device that asked for the link.
+  A browser without one is still answered: opened on another device, the link is not used up and
+  the answer is `409 { "error": "confirmation_required", "message", "requestedFrom": { "deviceClass",
+  "requestedAt" } }`, so the page can ask the person to approve the sign-in
+- `POST /auth/magic-link/verify/:token/confirm` to approve that sign-in. The token in the path is
+  the only credential it needs
 - `POST /auth/otp/generate-phone-otp`, `-email-otp`, and their `-login-` variants to send an OTP
 
 `GET /auth/logout` and `GET /auth/magic-link` were removed, and the four
@@ -339,7 +346,9 @@ cross-site state-changing requests with `403 { "error":
   Same-origin single-page-app calls send `same-origin` or `same-site` and pass
   with no allowlist.
 - Safe methods are never gated, so `GET /magic-link/verify/:token` and the CORS
-  preflight (`OPTIONS`) are unaffected.
+  preflight (`OPTIONS`) are unaffected. `POST /magic-link/verify/:token/confirm`
+  is a state change and is guarded like any other, so serve the page that calls
+  it from your own site.
 - A caller that sends neither `Origin` nor `Sec-Fetch-Site`, such as a
   server-to-server request, passes.
 

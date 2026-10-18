@@ -8,9 +8,9 @@ import {
   listOAuthProvidersHandler,
   loginHandler,
   logoutHandler,
+  magicLinkVerifyAuthorization,
   meHandler,
   pollMagicLinkConfirmationHandler,
-  proxyRequest,
   refreshHandler,
   registerHandler,
   requestMagicLinkHandler,
@@ -18,6 +18,7 @@ import {
   startOAuthLoginHandler,
   switchOrganizationHandler,
   verifyLoginOtpHandler,
+  verifyMagicLinkHandler,
   verifyRegistrationOtpHandler,
   type LogoutScope,
 } from "@seamless-auth/core";
@@ -292,19 +293,28 @@ export const AUTH_ROUTES: Route[] = [
       };
     },
   },
-  // Verified by the link recipient, who holds no session yet, so this forwards
-  // without an identity gate.
+  // Verified by the link recipient, who may hold no session at all, so this
+  // forwards without an identity gate.
   {
     method: "GET",
     path: "/magic-link/verify/:token",
     run: (ctx, opts) =>
-      proxyRequest({
-        authServerUrl: opts.authServerUrl,
-        path: `magic-link/verify/${encodeURIComponent(param(ctx, "token"))}`,
-        method: "GET",
-        serviceAuthorization: buildProxyServiceAuthorization(opts),
-        ...forwarded(ctx, opts),
-      }),
+      verifyMagicLinkHandler(
+        {
+          token: param(ctx, "token"),
+          authorization: magicLinkVerifyAuthorization({
+            transport: ctx.transport,
+            authorizationHeader:
+              ctx.request.headers.get("authorization") ?? undefined,
+            preAuthCookie: ctx.cookies[opts.preAuthCookieName],
+            cookieSecret: opts.cookieSecret,
+          }),
+        },
+        {
+          ...common(ctx, opts),
+          serviceAuthorization: buildProxyServiceAuthorization(opts),
+        },
+      ),
   },
   {
     method: "GET",

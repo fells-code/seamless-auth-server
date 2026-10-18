@@ -155,6 +155,11 @@ of this package.
 `pollMagicLinkConfirmationHandler`, `switchOrganizationHandler`,
 `listOAuthProvidersHandler`, `startOAuthLoginHandler`, `finishOAuthLoginHandler`.
 
+`verifyMagicLinkHandler` takes an optional `authorization`, the pre-auth credential of the
+browser opening the link. `magicLinkVerifyAuthorization` builds it from the signed pre-auth
+cookie (cookie transport) or the client's `Authorization` header (bearer transport), and yields
+nothing rather than failing when there is none or it does not verify.
+
 **Admin and operations handlers**
 
 User, session, auth-event, metrics, and system-config handlers, for example
