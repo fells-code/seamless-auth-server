@@ -1,5 +1,13 @@
 # @seamless-auth/nextjs
 
+## 0.5.1
+
+### Patch Changes
+
+- a4ef23f: Depend on `@seamless-auth/types` 0.29.0, which adds the optional OAuth state `binding` to the start response and callback request schemas. Apps now resolve a single copy of the types package alongside the client SDKs.
+- Updated dependencies [a4ef23f]
+  - @seamless-auth/core@0.21.1
+
 ## 0.5.0
 
 ### Minor Changes
