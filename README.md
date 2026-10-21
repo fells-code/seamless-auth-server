@@ -322,5 +322,9 @@ The documentation covers:
 
 This repository is licensed under the Apache-2.0 license.
 
+Project governance, including the
+[Seamless Auth License Pledge](https://github.com/fells-code/.github/blob/main/GOVERNANCE.md#the-seamless-auth-license-pledge),
+is in the fells-code [GOVERNANCE.md](https://github.com/fells-code/.github/blob/main/GOVERNANCE.md).
+
 Individual packages may include additional notices or licenses where appropriate.
 Refer to each package directory for details.
