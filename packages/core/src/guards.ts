@@ -56,9 +56,12 @@ function normalizeOrigin(value: string): string {
  * `Strict` cookie is not sent on one, so the check is inert there.
  *
  * `Sec-Fetch-Site` is the primary signal: current browsers send it and page
- * JavaScript cannot forge it. When it is absent the `Origin` is matched against
- * `allowedOrigins`, but only when the adopter opted in, so nothing regresses for
- * callers that predate the guard.
+ * JavaScript cannot forge it. `cross-site` is refused and `same-origin` passes.
+ * `same-site` also covers a sibling subdomain, so when the adopter configured
+ * `allowedOrigins` the `Origin` must be on it as well; without the allowlist a
+ * same-site request passes, as it always has. When `Sec-Fetch-Site` is absent
+ * the `Origin` is matched against `allowedOrigins`, again only when the adopter
+ * opted in, so nothing regresses for callers that predate the guard.
  */
 export function checkOrigin(
   input: OriginCheckInput,
@@ -75,9 +78,20 @@ export function checkOrigin(
   };
 
   if (input.secFetchSite !== undefined) {
-    return input.secFetchSite.toLowerCase() === "cross-site"
-      ? rejection
-      : undefined;
+    const site = input.secFetchSite.toLowerCase();
+
+    if (site === "cross-site") {
+      return rejection;
+    }
+
+    if (site !== "same-site" || !input.allowedOrigins) {
+      return undefined;
+    }
+
+    return input.origin !== undefined &&
+      isAllowedOrigin(input.origin, input.allowedOrigins)
+      ? undefined
+      : rejection;
   }
 
   // No `Origin` and no `Sec-Fetch-Site` is a same-origin or non-browser
@@ -98,11 +112,15 @@ export function checkOrigin(
     return undefined;
   }
 
-  const allowed = new Set(
-    input.allowedOrigins.map(normalizeOrigin).filter(Boolean),
-  );
+  return isAllowedOrigin(input.origin, input.allowedOrigins)
+    ? undefined
+    : rejection;
+}
 
-  return allowed.has(normalizeOrigin(input.origin)) ? undefined : rejection;
+function isAllowedOrigin(origin: string, allowedOrigins: string[]): boolean {
+  const allowed = new Set(allowedOrigins.map(normalizeOrigin).filter(Boolean));
+
+  return allowed.has(normalizeOrigin(origin));
 }
 
 export interface CookieAuthInput {

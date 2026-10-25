@@ -344,7 +344,8 @@ cross-site state-changing requests with `403 { "error":
   send and page JavaScript cannot forge. A non-safe request (anything other than
   `GET`, `HEAD`, or `OPTIONS`) is rejected when that header is `cross-site`.
   Same-origin single-page-app calls send `same-origin` or `same-site` and pass
-  with no allowlist.
+  with no allowlist; with `allowedOrigins` set, a `same-site` call must also
+  come from a listed `Origin`.
 - Safe methods are never gated, so `GET /magic-link/verify/:token` and the CORS
   preflight (`OPTIONS`) are unaffected. `POST /magic-link/verify/:token/confirm`
   is a state change and is guarded like any other, so serve the page that calls
@@ -352,12 +353,16 @@ cross-site state-changing requests with `403 { "error":
 - A caller that sends neither `Origin` nor `Sec-Fetch-Site`, such as a
   server-to-server request, passes.
 
-`allowedOrigins` is an opt-in fallback for older browsers that do not send
-`Sec-Fetch-Site`. It is consulted only when that header is absent: the request
-`Origin` must appear in the list, otherwise the request is rejected. When
-`Sec-Fetch-Site` is absent and `allowedOrigins` is unset, the request passes, so
-setting it is never required. Set it if you support browsers old enough to lack
-`Sec-Fetch-Site` and want the `Origin` check for them:
+`allowedOrigins` is an opt-in `Origin` allowlist. When it is set, the request
+`Origin` must appear in the list for a state-changing request that is
+`same-site`, and for one from an older browser that sends no `Sec-Fetch-Site`;
+otherwise the request is rejected. `same-site` covers every subdomain of your
+registrable domain, so without the list a page on a sibling subdomain can send
+a request that carries a `SameSite=None` cookie. A `same-origin` request always
+passes. When `allowedOrigins` is unset the guard behaves as before (a
+`same-site` request passes, as does one with no `Sec-Fetch-Site`), so setting it
+is never required. Set it when you do not trust every subdomain of your site, or
+support browsers old enough to lack `Sec-Fetch-Site`:
 
 ```ts
 app.use(

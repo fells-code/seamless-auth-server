@@ -738,6 +738,33 @@ describe("next.js and express adapters agree", () => {
     );
   });
 
+  it.each([
+    ["same-site", "https://evil.example.com", 403],
+    ["same-site", undefined, 403],
+    ["same-site", "https://app.example.com", 200],
+    ["same-origin", "https://other.example.com", 200],
+    ["cross-site", "https://app.example.com", 403],
+  ])(
+    "with allowedOrigins, Sec-Fetch-Site %s from %s answers %i on both",
+    async (site, origin, status) => {
+      const scenario = {
+        method: "post",
+        path: "/users/update",
+        cookie: accessCookie(),
+        payload: { email: "a@b.c" },
+        headers: { "sec-fetch-site": site, ...(origin ? { origin } : {}) },
+        options: { allowedOrigins: ["https://app.example.com"] },
+      };
+      const { next, express: expressResult } = await bothAdapters(
+        scenario,
+        upstream(200, {}),
+      );
+
+      expect(next.status).toBe(status);
+      expect(expressResult.status).toBe(status);
+    },
+  );
+
   it("blocks a cross-site state change the same way", async () => {
     global.fetch = jest.fn(async () => upstream(200, {}));
 

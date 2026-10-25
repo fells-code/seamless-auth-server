@@ -177,4 +177,57 @@ describe("origin guard (#104)", () => {
       expect(res.body).not.toEqual(BLOCKED);
     });
   });
+
+  // A sibling subdomain is same-site, so with SameSite=None cookies the header
+  // alone cannot tell it from the app (#230).
+  describe("Sec-Fetch-Site present with allowedOrigins", () => {
+    const allowlisted = () =>
+      createApp({ allowedOrigins: ["https://app.example.com"] });
+
+    it("rejects a same-site request from an Origin not on the list", async () => {
+      const res = await request(allowlisted())
+        .post("/auth/magic-link")
+        .set("Sec-Fetch-Site", "same-site")
+        .set("Origin", "https://evil.example.com");
+
+      expect(res.status).toBe(403);
+      expect(res.body).toEqual(BLOCKED);
+    });
+
+    it("rejects a same-site request with no Origin", async () => {
+      const res = await request(allowlisted())
+        .post("/auth/magic-link")
+        .set("Sec-Fetch-Site", "same-site");
+
+      expect(res.status).toBe(403);
+      expect(res.body).toEqual(BLOCKED);
+    });
+
+    it("accepts a same-site request from a listed Origin", async () => {
+      const res = await request(allowlisted())
+        .post("/auth/magic-link")
+        .set("Sec-Fetch-Site", "same-site")
+        .set("Origin", "https://APP.example.com");
+
+      expect(res.status).not.toBe(403);
+    });
+
+    it("accepts a same-origin request whatever the list says", async () => {
+      const res = await request(allowlisted())
+        .post("/auth/magic-link")
+        .set("Sec-Fetch-Site", "same-origin")
+        .set("Origin", "https://auth-adapter.example.com");
+
+      expect(res.status).not.toBe(403);
+    });
+
+    it("still rejects cross-site from a listed Origin", async () => {
+      const res = await request(allowlisted())
+        .post("/auth/magic-link")
+        .set("Sec-Fetch-Site", "cross-site")
+        .set("Origin", "https://app.example.com");
+
+      expect(res.status).toBe(403);
+    });
+  });
 });

@@ -173,7 +173,7 @@ into the dashboard work: the upstream answers them with the SPA shell.
 | `cookieDomain` | none | Domain attribute for the auth cookies |
 | `cookieSecure` | `true` | Set `false` only for local HTTP development |
 | `cookieSameSite` | `none` when secure, else `lax` | SameSite policy |
-| `allowedOrigins` | none | Origin allowlist for browsers without `Sec-Fetch-Site` |
+| `allowedOrigins` | none | Origin allowlist for state-changing requests that are `same-site` or come from browsers without `Sec-Fetch-Site` |
 | `accessCookieName` | `seamless-access` | Session cookie name |
 | `registrationCookieName` | `seamless-ephemeral` | Registration cookie name |
 | `refreshCookieName` | `seamless-refresh` | Refresh cookie name |
