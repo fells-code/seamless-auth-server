@@ -959,6 +959,14 @@ function consoleUpstream(status, body, headers = {}) {
   };
 }
 
+const SECURITY_HEADERS = ["content-security-policy", "x-frame-options", "x-content-type-options"];
+
+function pickHeaders(read) {
+  return Object.fromEntries(
+    SECURITY_HEADERS.map((name) => [name, read(name)]).filter(([, v]) => v !== undefined),
+  );
+}
+
 function fetchedUrls() {
   return global.fetch.mock.calls.map(([url]) => url.toString());
 }
@@ -983,6 +991,7 @@ async function viaFastifyConsole({ method, path, headers }) {
       body: parseBody(res.body),
       contentType: res.headers["content-type"],
       cacheControl: res.headers["cache-control"],
+      security: pickHeaders((name) => res.headers[name]),
     };
   } finally {
     await app.close();
@@ -1008,6 +1017,7 @@ async function viaExpressConsole({ method, path, headers }) {
     body: parseBody(res.text),
     contentType: res.headers["content-type"],
     cacheControl: res.headers["cache-control"],
+    security: pickHeaders((name) => res.headers[name]),
   };
 }
 
@@ -1101,6 +1111,39 @@ describe("fastify and express console proxies agree", () => {
     expect(fastify.contentType).toBe(expressResult.contentType);
     expect(fastify.cacheControl).toBe(expressResult.cacheControl);
     expect(fastify.urls).toEqual(expressResult.urls);
+  });
+
+  it.each([
+    [
+      "keeps the API's framing and sniffing headers",
+      {
+        "content-security-policy": "default-src 'self'; frame-ancestors 'none'",
+        "x-frame-options": "SAMEORIGIN",
+        "x-content-type-options": "nosniff",
+      },
+      {
+        "content-security-policy": "default-src 'self'; frame-ancestors 'none'",
+        "x-frame-options": "SAMEORIGIN",
+        "x-content-type-options": "nosniff",
+      },
+    ],
+    [
+      "refuses framing and sniffing when the API sends neither header",
+      {},
+      { "x-frame-options": "DENY", "x-content-type-options": "nosniff" },
+    ],
+  ])("%s", async (_label, upstreamHeaders, expected) => {
+    const { fastify, express: expressResult } = await bothConsoleAdapters(
+      { method: "get", path: "/console/settings" },
+      async () =>
+        consoleUpstream(200, "<!doctype html>", {
+          "content-type": "text/html; charset=utf-8",
+          ...upstreamHeaders,
+        }),
+    );
+
+    expect(fastify.security).toEqual(expected);
+    expect(expressResult.security).toEqual(expected);
   });
 
   // The two frameworks normalize dot-segments at different points, so the status

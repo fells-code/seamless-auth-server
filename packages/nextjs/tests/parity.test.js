@@ -959,6 +959,14 @@ function consoleUpstream(status, body, headers = {}) {
   return new Response(body, { status, headers });
 }
 
+const SECURITY_HEADERS = ["content-security-policy", "x-frame-options", "x-content-type-options"];
+
+function pickHeaders(read) {
+  return Object.fromEntries(
+    SECURITY_HEADERS.map((name) => [name, read(name)]).filter(([, v]) => v !== undefined),
+  );
+}
+
 function fetchedUrls() {
   return global.fetch.mock.calls.map(([url]) => url.toString());
 }
@@ -979,6 +987,7 @@ async function viaNextConsole({ method, path }) {
     body: parseBody(await res.text()),
     contentType: res.headers.get("content-type") ?? undefined,
     cacheControl: res.headers.get("cache-control") ?? undefined,
+    security: pickHeaders((name) => res.headers.get(name) ?? undefined),
   };
 }
 
@@ -996,6 +1005,7 @@ async function viaExpressConsole({ method, path }) {
     body: parseBody(res.text),
     contentType: res.headers["content-type"],
     cacheControl: res.headers["cache-control"],
+    security: pickHeaders((name) => res.headers[name]),
   };
 }
 
@@ -1086,6 +1096,39 @@ describe("next.js and express console proxies agree", () => {
     expect(next.contentType).toBe(expressResult.contentType);
     expect(next.cacheControl).toBe(expressResult.cacheControl);
     expect(next.urls).toEqual(expressResult.urls);
+  });
+
+  it.each([
+    [
+      "keeps the API's framing and sniffing headers",
+      {
+        "content-security-policy": "default-src 'self'; frame-ancestors 'none'",
+        "x-frame-options": "SAMEORIGIN",
+        "x-content-type-options": "nosniff",
+      },
+      {
+        "content-security-policy": "default-src 'self'; frame-ancestors 'none'",
+        "x-frame-options": "SAMEORIGIN",
+        "x-content-type-options": "nosniff",
+      },
+    ],
+    [
+      "refuses framing and sniffing when the API sends neither header",
+      {},
+      { "x-frame-options": "DENY", "x-content-type-options": "nosniff" },
+    ],
+  ])("%s", async (_label, upstreamHeaders, expected) => {
+    const { next, express: expressResult } = await bothConsoleAdapters(
+      { method: "get", path: "/console/settings" },
+      async () =>
+        consoleUpstream(200, "<!doctype html>", {
+          "content-type": "text/html; charset=utf-8",
+          ...upstreamHeaders,
+        }),
+    );
+
+    expect(next.security).toEqual(expected);
+    expect(expressResult.security).toEqual(expected);
   });
 
   // Express and the URL parser normalize dot-segments at different points, so

@@ -10,7 +10,17 @@ const FORWARDED_RESPONSE_HEADERS = [
   "cache-control",
   "etag",
   "last-modified",
+  "content-security-policy",
+  "x-frame-options",
+  "x-content-type-options",
 ];
+
+// The console runs with an admin session on the app's origin, so it must not be
+// framed or sniffed even when the API leaves these off.
+const FALLBACK_RESPONSE_HEADERS: Record<string, string> = {
+  "x-frame-options": "DENY",
+  "x-content-type-options": "nosniff",
+};
 
 // The console is read-only static hosting, but the route has to claim the other
 // methods too so they answer 405 rather than falling through to a 404 that says
@@ -169,6 +179,12 @@ export const seamlessConsoleProxy: FastifyPluginAsync<
     for (const header of FORWARDED_RESPONSE_HEADERS) {
       const value = response.headers.get(header);
       if (value !== null) {
+        reply.header(header, value);
+      }
+    }
+
+    for (const [header, value] of Object.entries(FALLBACK_RESPONSE_HEADERS)) {
+      if (!reply.hasHeader(header)) {
         reply.header(header, value);
       }
     }
