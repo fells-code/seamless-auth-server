@@ -3,7 +3,7 @@ import type { AdapterManifest } from "./adapterManifest.js";
 
 export const BUNDLED_ADAPTER_MANIFEST: AdapterManifest = {
   "schemaVersion": 1,
-  "apiVersion": "0.19.2",
+  "apiVersion": "0.19.4",
   "session": {
     "subject": "sub",
     "token": "token",
@@ -373,6 +373,60 @@ export const BUNDLED_ADAPTER_MANIFEST: AdapterManifest = {
       "issues": "session"
     },
     {
+      "method": "GET",
+      "path": "/recovery-codes",
+      "credential": "access"
+    },
+    {
+      "method": "POST",
+      "path": "/recovery-codes",
+      "credential": "access"
+    },
+    {
+      "method": "POST",
+      "path": "/recovery-codes/redeem",
+      "credential": "preAuth",
+      "issues": "session"
+    },
+    {
+      "method": "POST",
+      "path": "/recovery/cancel",
+      "credential": "none"
+    },
+    {
+      "method": "POST",
+      "path": "/recovery/complete",
+      "credential": "preAuth",
+      "issues": "session"
+    },
+    {
+      "method": "GET",
+      "path": "/recovery/requests",
+      "credential": "access"
+    },
+    {
+      "method": "DELETE",
+      "path": "/recovery/requests/{id}",
+      "credential": "access"
+    },
+    {
+      "method": "POST",
+      "path": "/recovery/start",
+      "credential": "preAuth",
+      "delivery": true
+    },
+    {
+      "method": "GET",
+      "path": "/recovery/status",
+      "credential": "preAuth"
+    },
+    {
+      "method": "POST",
+      "path": "/recovery/verify",
+      "credential": "preAuth",
+      "notices": true
+    },
+    {
       "method": "POST",
       "path": "/refresh",
       "credential": "refresh",
@@ -454,6 +508,41 @@ export const BUNDLED_ADAPTER_MANIFEST: AdapterManifest = {
     {
       "method": "PATCH",
       "path": "/system-config/oauth-providers/{id}",
+      "credential": "access"
+    },
+    {
+      "method": "GET",
+      "path": "/system-config/policy",
+      "credential": "access"
+    },
+    {
+      "method": "DELETE",
+      "path": "/system-config/policy/draft",
+      "credential": "access"
+    },
+    {
+      "method": "PUT",
+      "path": "/system-config/policy/draft",
+      "credential": "access"
+    },
+    {
+      "method": "POST",
+      "path": "/system-config/policy/dry-run",
+      "credential": "access"
+    },
+    {
+      "method": "POST",
+      "path": "/system-config/policy/publish",
+      "credential": "access"
+    },
+    {
+      "method": "POST",
+      "path": "/system-config/policy/rollback",
+      "credential": "access"
+    },
+    {
+      "method": "GET",
+      "path": "/system-config/policy/versions",
       "credential": "access"
     },
     {

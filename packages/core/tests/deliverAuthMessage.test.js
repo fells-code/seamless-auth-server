@@ -3,8 +3,12 @@
 // a new adapter would call it.
 import { jest } from "@jest/globals";
 
-const { applyExternalDelivery, deliverAuthMessage, stripDelivery } =
-  await import("../dist/deliverAuthMessage.js");
+const {
+  applyExternalDelivery,
+  deliverableNoticeKinds,
+  deliverAuthMessage,
+  stripDelivery,
+} = await import("../dist/deliverAuthMessage.js");
 
 function emailTransport() {
   return {
@@ -233,6 +237,118 @@ describe("deliverAuthMessage", () => {
     await deliverAuthMessage({ email }, undefined);
 
     expect(email.send).not.toHaveBeenCalled();
+  });
+});
+
+describe("account recovery deliveries", () => {
+  const emailNotice = {
+    kind: "account_notice_email",
+    notice: "account_recovery_opened",
+    to: "owner@acme.test",
+    subject: "Account recovery requested",
+    text: "Cancel it: https://app.acme.test/recovery/cancel#t",
+    cancelUrl: "https://app.acme.test/recovery/cancel#t",
+  };
+
+  it("words a recovery code as one, by email and by SMS", async () => {
+    const email = emailTransport();
+    const sms = smsTransport();
+    const messaging = { email, sms, defaults: { appName: "Acme" } };
+
+    await deliverAuthMessage(messaging, {
+      kind: "otp_email",
+      to: "owner@acme.test",
+      token: "123456",
+      purpose: "account_recovery",
+    });
+    await deliverAuthMessage(messaging, {
+      kind: "otp_sms",
+      to: "+15555550100",
+      token: "123456",
+      purpose: "account_recovery",
+    });
+
+    expect(email.send.mock.calls[0][0]).toMatchObject({
+      subject: "Acme - Account recovery code",
+      text: expect.stringContaining("recover your Acme account"),
+    });
+    expect(sms.send.mock.calls[0][0].body).toContain("recover your Acme account");
+  });
+
+  it("passes the purpose to a handler", async () => {
+    const sendOtpEmail = jest.fn(async () => ({}));
+
+    await deliverAuthMessage(
+      { handlers: { sendOtpEmail } },
+      { kind: "otp_email", to: "owner@acme.test", token: "1", purpose: "account_recovery" },
+    );
+
+    expect(sendOtpEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ purpose: "account_recovery" }),
+    );
+  });
+
+  it("sends an account notice as the API wrote it, in plain text", async () => {
+    const email = emailTransport();
+    const sms = smsTransport();
+
+    await deliverAuthMessage({ email, defaults: { emailFrom: "no-reply@acme.test" } }, emailNotice);
+    await deliverAuthMessage(
+      { sms },
+      { kind: "account_notice_sms", notice: "recovery_code_used", to: "+15555550100", text: "Used." },
+    );
+
+    expect(email.send.mock.calls[0][0]).toEqual({
+      to: "owner@acme.test",
+      from: "no-reply@acme.test",
+      subject: "Account recovery requested",
+      text: emailNotice.text,
+    });
+    expect(sms.send.mock.calls[0][0]).toEqual({ to: "+15555550100", body: "Used." });
+  });
+
+  it("prefers a notice handler, and lets an override reshape the message", async () => {
+    const sendAccountNoticeEmail = jest.fn(async () => ({}));
+    const email = emailTransport();
+
+    await deliverAuthMessage({ email, handlers: { sendAccountNoticeEmail } }, emailNotice);
+    await deliverAuthMessage(
+      {
+        email,
+        overrides: {
+          accountNoticeEmail: (input, defaults) => ({ ...defaults, subject: input.notice }),
+        },
+      },
+      emailNotice,
+    );
+
+    expect(sendAccountNoticeEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ notice: "account_recovery_opened", cancelUrl: emailNotice.cancelUrl }),
+    );
+    expect(email.send).toHaveBeenCalledTimes(1);
+    expect(email.send.mock.calls[0][0].subject).toBe("account_recovery_opened");
+  });
+
+  it("throws when a notice has no way to go out", async () => {
+    await expect(deliverAuthMessage({ sms: smsTransport() }, emailNotice)).rejects.toThrow(
+      "Missing email transport",
+    );
+    await expect(
+      deliverAuthMessage({ email: emailTransport() }, { ...emailNotice, kind: "account_notice_sms" }),
+    ).rejects.toThrow("Missing SMS transport");
+  });
+
+  it("lists only the notice kinds the configuration can send", () => {
+    expect(deliverableNoticeKinds(undefined)).toEqual([]);
+    expect(deliverableNoticeKinds({})).toEqual([]);
+    expect(deliverableNoticeKinds({ email: emailTransport() })).toEqual(["account_notice_email"]);
+    expect(
+      deliverableNoticeKinds({ handlers: { sendAccountNoticeSms: async () => ({}) } }),
+    ).toEqual(["account_notice_sms"]);
+    expect(deliverableNoticeKinds({ email: emailTransport(), sms: smsTransport() })).toEqual([
+      "account_notice_email",
+      "account_notice_sms",
+    ]);
   });
 });
 

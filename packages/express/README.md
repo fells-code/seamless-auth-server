@@ -379,8 +379,21 @@ When `messaging` is provided, `@seamless-auth/express` requests external-deliver
 This currently applies to:
 
 - OTP email
-- OTP SMS
+- OTP SMS (both carry `purpose: "account_recovery"` for an account recovery code, and the
+  default wording says so)
 - magic-link email
+- account notices (`account_notice_email`, `account_notice_sms`) on routes the API's manifest
+  marks `notices: true`, today `POST /recovery/verify`
+
+Account notices tell the owner about something that happened to the account, such as account
+recovery being requested, and can carry a `cancelUrl`. That link holds a credential, so it goes
+only to the notice's recipient and is never logged. The adapter lists the notice kinds it can
+send in `x-seamless-auth-delivery-kinds` (email when `email` or `handlers.sendAccountNoticeEmail`
+is set, SMS likewise), and the auth API sends the rest itself. The API counts a returned notice
+as the owner having been told, so if none of them goes out the adapter cancels the recovery
+request with the link's token and answers `503 recovery_notice_failed`, as the API would.
+Customize them with `handlers.sendAccountNoticeEmail` / `sendAccountNoticeSms` or
+`overrides.accountNoticeEmail` / `accountNoticeSms`; the default sends the API's text as is.
 
 External delivery is a credentialed request. The adapter mints a short-lived service token from `serviceSecret`, and the auth server withholds the delivery payload if that token does not validate. `serviceSecret` must therefore match the auth server's `API_SERVICE_TOKEN` in every environment, including local development. If it does not, auth-message routes still return a success response but no message is delivered, so the adapter logs a warning whenever it requests external delivery and receives no payload back.
 
@@ -600,8 +613,16 @@ app.get("/api/profile", guard, (req, res) => {
   authServerUrl?: string;  // with audience, enables bearer access tokens
   audience?: string;       // expected `aud` on a bearer token: the auth server's ISSUER
   authServerIssuer?: string; // expected `iss` on a bearer token (defaults to authServerUrl)
+  allowRecoverySession?: boolean; // accept a recovery session (default false)
 }
 ```
+
+A recovery session comes from account recovery or a recovery code, and its access token carries
+`recovery: true`. It can only enroll a new passkey or authenticator app, so the guard refuses it
+with `403 { "error": "enrollment_required" }` unless `allowRecoverySession` is set. Set it only on
+routes that drive that enrollment. Once a factor is enrolled the auth API lifts the restriction,
+and the next `POST /auth/refresh` issues an access token without the claim; the React SDK
+refreshes after enrollment for you.
 
 With `authServerIssuer` set, pass the same value as `audience`: the auth API sets both `iss` and
 `aud` to its `ISSUER`.

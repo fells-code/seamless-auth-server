@@ -85,3 +85,35 @@ describe("requireAuth (smoke)", () => {
   });
 });
 
+describe("requireAuth and recovery sessions", () => {
+  const secret = "cookie-secret-cookie-secret-cookie-secret";
+  const recovery = jwt.sign(
+    { sub: "user-1", typ: "access", recovery: true },
+    "upstream-signing-key",
+  );
+  const token = jwt.sign({ sub: "user-1", token: recovery }, secret, { expiresIn: "1h" });
+
+  function app(options) {
+    const server = express();
+    server.use(cookieParser());
+    server.use(requireAuth({ cookieName: "access", cookieSecret: secret, ...options }));
+    server.get("/protected", (req, res) => res.json({ user: req.user }));
+    return server;
+  }
+
+  it("refuses a recovery session with enrollment_required by default", async () => {
+    const res = await request(app()).get("/protected").set("Cookie", [`access=${token}`]);
+
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ error: "enrollment_required" });
+  });
+
+  it("accepts it on a route that allows recovery sessions", async () => {
+    const res = await request(app({ allowRecoverySession: true }))
+      .get("/protected")
+      .set("Cookie", [`access=${token}`]);
+
+    expect(res.status).toBe(200);
+    expect(res.body.user.id).toBe("user-1");
+  });
+});

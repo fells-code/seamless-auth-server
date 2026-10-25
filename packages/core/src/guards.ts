@@ -109,6 +109,28 @@ export interface CookieAuthInput {
   /** The raw access cookie, or `undefined` when the request carried none. */
   token?: string;
   cookieSecret: string;
+  /**
+   * Accept a recovery session: one issued by account recovery or a recovery code,
+   * which can only enroll a new passkey or authenticator app until it does. Off by
+   * default, so a half-recovered account is not treated as signed in. Turn it on only
+   * for the routes that drive that enrollment.
+   */
+  allowRecoverySession?: boolean;
+}
+
+const RECOVERY_SESSION_REJECTION: GuardRejection = {
+  status: 403,
+  errorCode: "enrollment_required",
+};
+
+function isRecoveryToken(token: unknown): boolean {
+  if (typeof token !== "string") return false;
+
+  try {
+    return decodeJwt(token).recovery === true;
+  } catch {
+    return false;
+  }
 }
 
 export type CookieAuthResult =
@@ -163,6 +185,10 @@ export function authenticateCookie(input: CookieAuthInput): CookieAuthResult {
     };
   }
 
+  if (!input.allowRecoverySession && isRecoveryToken(payload.token)) {
+    return { rejection: RECOVERY_SESSION_REJECTION };
+  }
+
   return {
     user: {
       id: payload.sub,
@@ -185,6 +211,8 @@ export interface BearerAuthInput extends AuthServerIssuerOption {
    * `authServerIssuer`, which defaults to `authServerUrl`.
    */
   audience: string;
+  /** As on `CookieAuthInput`. */
+  allowRecoverySession?: boolean;
 }
 
 export type AuthResult = CookieAuthResult;
@@ -230,6 +258,10 @@ export async function authenticateBearer(
     return {
       rejection: { status: 401, errorCode: "Invalid or expired session" },
     };
+  }
+
+  if (!input.allowRecoverySession && claims.recovery === true) {
+    return { rejection: RECOVERY_SESSION_REJECTION };
   }
 
   return {
@@ -284,6 +316,7 @@ export async function authenticateRequest(
 
   return authenticateBearer({
     authorization: input.authorization,
+    allowRecoverySession: input.allowRecoverySession,
     ...input.bearer,
   });
 }

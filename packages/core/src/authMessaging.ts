@@ -11,7 +11,9 @@
  * which carry provider implementations, and the adopter-facing configuration.
  */
 export type {
+  AccountNoticeName,
   AuthDeliveryInstruction,
+  DeliveryPurpose,
   DeliveryResult,
   EmailMessage,
   MessagingChannel,
@@ -22,6 +24,8 @@ export type {
 } from "@seamless-auth/types";
 
 import type {
+  AccountNoticeName,
+  DeliveryPurpose,
   DeliveryResult,
   EmailMessage,
   SendMagicLinkEmailInput,
@@ -35,6 +39,33 @@ export interface SendEnrollmentInviteEmailInput {
   signInUrl: string;
   from?: string;
   subject?: string;
+}
+
+/**
+ * An owner notice the auth API asked this server to send, such as "account recovery
+ * was requested". `text` is ready to send. `cancelUrl` carries a credential: send it
+ * only to `to`, and never log it.
+ */
+export interface SendAccountNoticeEmailInput {
+  notice: AccountNoticeName;
+  to: string;
+  subject: string;
+  text: string;
+  cancelUrl?: string;
+  from?: string;
+}
+
+export interface SendAccountNoticeSmsInput {
+  notice: AccountNoticeName;
+  to: string;
+  text: string;
+  cancelUrl?: string;
+  from?: string;
+}
+
+/** Why a code was sent, when it is not an ordinary sign-in or verification code. */
+export interface OtpPurpose {
+  purpose?: DeliveryPurpose;
 }
 
 export interface EmailTransport {
@@ -53,12 +84,12 @@ export interface AuthMessageOverrideContext {
 
 export interface AuthMessageOverrides {
   otpEmail?: (
-    input: SendOtpEmailInput,
+    input: SendOtpEmailInput & OtpPurpose,
     defaults: EmailMessage,
     context: AuthMessageOverrideContext,
   ) => EmailMessage;
   otpSms?: (
-    input: SendOtpSmsInput,
+    input: SendOtpSmsInput & OtpPurpose,
     defaults: SmsMessage,
     context: AuthMessageOverrideContext,
   ) => SmsMessage;
@@ -72,15 +103,29 @@ export interface AuthMessageOverrides {
     defaults: EmailMessage,
     context: AuthMessageOverrideContext,
   ) => EmailMessage;
+  accountNoticeEmail?: (
+    input: SendAccountNoticeEmailInput,
+    defaults: EmailMessage,
+    context: AuthMessageOverrideContext,
+  ) => EmailMessage;
+  accountNoticeSms?: (
+    input: SendAccountNoticeSmsInput,
+    defaults: SmsMessage,
+    context: AuthMessageOverrideContext,
+  ) => SmsMessage;
 }
 
 export interface AuthMessagingHandlers {
-  sendOtpEmail(input: SendOtpEmailInput): Promise<DeliveryResult>;
-  sendOtpSms(input: SendOtpSmsInput): Promise<DeliveryResult>;
+  sendOtpEmail(input: SendOtpEmailInput & OtpPurpose): Promise<DeliveryResult>;
+  sendOtpSms(input: SendOtpSmsInput & OtpPurpose): Promise<DeliveryResult>;
   sendMagicLinkEmail(input: SendMagicLinkEmailInput): Promise<DeliveryResult>;
   sendEnrollmentInviteEmail?(
     input: SendEnrollmentInviteEmailInput,
   ): Promise<DeliveryResult>;
+  sendAccountNoticeEmail?(
+    input: SendAccountNoticeEmailInput,
+  ): Promise<DeliveryResult>;
+  sendAccountNoticeSms?(input: SendAccountNoticeSmsInput): Promise<DeliveryResult>;
 }
 
 export interface SeamlessAuthMessagingOptions {

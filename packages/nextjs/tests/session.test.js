@@ -192,6 +192,19 @@ describe("session helpers", () => {
     });
   });
 
+  it("getSeamlessClaims treats a recovery session as signed out unless allowed", () => {
+    const recovery = jwt.sign(
+      { sub: "user-123", typ: "access", recovery: true },
+      "upstream-signing-key",
+    );
+    const cookies = jar({ "seamless-access": signed({ ...ACCESS, token: recovery }) });
+
+    expect(getSeamlessClaims(cookies, OPTIONS)).toBeNull();
+    expect(
+      getSeamlessClaims(cookies, { ...OPTIONS, allowRecoverySession: true }),
+    ).toMatchObject({ id: "user-123" });
+  });
+
   it("getSeamlessClaims refuses a pre-auth cookie presented as the session", () => {
     const ephemeral = jwt.sign({ sub: "user-123", typ: "ephemeral" }, "upstream-signing-key");
 

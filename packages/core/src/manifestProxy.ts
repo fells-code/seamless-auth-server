@@ -1,10 +1,19 @@
 import type { AppliableResult, SessionCookie } from "./applyResult.js";
 import { authFetch } from "./authFetch.js";
+import { getSeamlessLogger } from "./logger.js";
 import type { AuthServerIssuerOption } from "./authServerIssuer.js";
 import type { SeamlessAuthMessagingOptions } from "./authMessaging.js";
-import { EXTERNAL_DELIVERY_HEADERS } from "./apiContract.js";
+import {
+  AUTH_DELIVERY_KINDS_HEADER,
+  EXTERNAL_DELIVERY_HEADERS,
+} from "./apiContract.js";
 import { withoutTokens } from "./bodyTokens.js";
-import { applyExternalDelivery } from "./deliverAuthMessage.js";
+import {
+  applyExternalDelivery,
+  deliverableNoticeKinds,
+  deliverAuthMessage,
+} from "./deliverAuthMessage.js";
+import type { AuthDeliveryInstruction } from "./authMessaging.js";
 import {
   type AdapterHeld,
   type AdapterManifestRoute,
@@ -135,6 +144,64 @@ function isJson(contentType: string | null | undefined) {
  * A response only issues cookies when it actually carries a session: an OTP
  * verify on a phone-first signup step, for example, succeeds without one.
  */
+/**
+ * Sends the owner notices the auth API handed back and drops them from the body: they
+ * can carry a cancel link that only the account owner may see.
+ *
+ * The API counted them as the owner being told, so if none goes out the request they
+ * announce is cancelled with the token in its link, and the caller gets the refusal the
+ * API gives when it cannot notify the owner itself.
+ */
+async function deliverNotices(
+  data: unknown,
+  opts: ManifestProxyOptions,
+): Promise<{ data: unknown; refused?: AppliableResult }> {
+  if (!data || typeof data !== "object" || !("deliveries" in data)) {
+    return { data };
+  }
+
+  const { deliveries, ...rest } = data as { deliveries?: unknown };
+  const items = Array.isArray(deliveries)
+    ? (deliveries as AuthDeliveryInstruction[])
+    : [];
+  let sent = 0;
+
+  for (const delivery of items) {
+    try {
+      await deliverAuthMessage(opts.messaging, delivery);
+      sent += 1;
+    } catch (error) {
+      getSeamlessLogger().error(
+        `[SeamlessAuth] An account notice (${delivery.kind}) could not be sent: ${
+          error instanceof Error ? error.name : "unknown error"
+        }.`,
+      );
+    }
+  }
+
+  if (items.length === 0 || sent > 0) {
+    return { data: rest };
+  }
+
+  const cancelToken = items
+    .map((item) => ("cancelUrl" in item ? item.cancelUrl : undefined))
+    .map((url) => url?.split("#")[1])
+    .find(Boolean);
+
+  if (cancelToken) {
+    await authFetch(`${opts.authServerUrl}/recovery/cancel`, {
+      method: "POST",
+      serviceAuthorization: opts.serviceAuthorization,
+      body: { cancelToken },
+    });
+  }
+
+  return {
+    data: rest,
+    refused: { status: 503, errorCode: "recovery_notice_failed" },
+  };
+}
+
 export async function handleManifestRoute(
   input: ManifestProxyInput,
   opts: ManifestProxyOptions,
@@ -170,6 +237,10 @@ export async function handleManifestRoute(
         : `Bearer ${input.cookiePayload?.token}`;
 
   const externalDelivery = Boolean(route.delivery && opts.messaging);
+  // Without a kind it can send, the request goes out as before and the API sends the
+  // notices itself.
+  const noticeKinds = route.notices ? deliverableNoticeKinds(opts.messaging) : [];
+  const ownsDelivery = externalDelivery || noticeKinds.length > 0;
 
   const upstream = await authFetch(
     buildUpstreamUrl(
@@ -180,12 +251,21 @@ export async function handleManifestRoute(
     {
       method: route.method,
       authorization,
-      serviceAuthorization: externalDelivery
+      serviceAuthorization: ownsDelivery
         ? opts.deliveryAuthorization
         : opts.serviceAuthorization,
       forwardedClientIp: input.forwardedClientIp,
       forwardedUserAgent: input.forwardedUserAgent,
-      ...(externalDelivery ? { headers: { ...EXTERNAL_DELIVERY_HEADERS } } : {}),
+      ...(ownsDelivery
+        ? {
+            headers: {
+              ...EXTERNAL_DELIVERY_HEADERS,
+              ...(noticeKinds.length > 0
+                ? { [AUTH_DELIVERY_KINDS_HEADER]: noticeKinds.join(",") }
+                : {}),
+            },
+          }
+        : {}),
       ...(route.method === "GET" ? {} : { body: input.body }),
     },
   );
@@ -209,6 +289,16 @@ export async function handleManifestRoute(
 
   if (externalDelivery) {
     data = await applyExternalDelivery(opts.messaging, data);
+  }
+
+  if (noticeKinds.length > 0) {
+    const notices = await deliverNotices(data, opts);
+
+    if (notices.refused) {
+      return notices.refused;
+    }
+
+    data = notices.data;
   }
 
   const clearCookies = route.clears

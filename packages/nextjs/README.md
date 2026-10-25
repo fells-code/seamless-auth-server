@@ -96,6 +96,14 @@ session through the auth routes as usual.
 For the same reason, do not call your own `/auth/users/me` from the server with
 the browser's cookies forwarded.
 
+A recovery session, from account recovery or a recovery code, carries `recovery:
+true` and can only enroll a new passkey or authenticator app. `getSeamlessSession`
+and `getSeamlessClaims` treat it as signed out unless you pass
+`allowRecoverySession: true`, so do that only on the pages that drive the
+enrollment. `hasSeamlessSession` still reports it, since the session can use the
+auth routes to enroll. Once a factor is enrolled, the next refresh drops the claim;
+the React SDK refreshes after enrollment for you.
+
 ## Protect routes in `proxy.ts`
 
 ```ts
