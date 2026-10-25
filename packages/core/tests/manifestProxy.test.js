@@ -3,6 +3,8 @@ import { jest } from "@jest/globals";
 const authFetchMock = jest.fn();
 const verifySignedAuthResponseMock = jest.fn();
 const applyExternalDeliveryMock = jest.fn();
+const deliverAuthMessageMock = jest.fn();
+const deliverableNoticeKindsMock = jest.fn();
 
 jest.unstable_mockModule("../dist/authFetch.js", () => ({
   authFetch: authFetchMock,
@@ -12,6 +14,8 @@ jest.unstable_mockModule("../dist/verifySignedAuthResponse.js", () => ({
 }));
 jest.unstable_mockModule("../dist/deliverAuthMessage.js", () => ({
   applyExternalDelivery: applyExternalDeliveryMock,
+  deliverAuthMessage: deliverAuthMessageMock,
+  deliverableNoticeKinds: deliverableNoticeKindsMock,
 }));
 
 const { handleManifestRoute } = await import("../dist/manifestProxy.js");
@@ -70,6 +74,9 @@ beforeEach(() => {
   verifySignedAuthResponseMock.mockReset();
   verifySignedAuthResponseMock.mockResolvedValue({ typ: "access", sub: "user-1", sid: "s-1" });
   applyExternalDeliveryMock.mockReset();
+  deliverAuthMessageMock.mockReset();
+  deliverableNoticeKindsMock.mockReset();
+  deliverableNoticeKindsMock.mockReturnValue([]);
 });
 
 describe("handleManifestRoute", () => {
@@ -383,6 +390,118 @@ describe("handleManifestRoute", () => {
       });
       expect(authFetchMock.mock.calls[0][1]).not.toHaveProperty("headers");
       expect(applyExternalDeliveryMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("notice routes", () => {
+    const route = {
+      method: "POST",
+      path: "/recovery/verify",
+      credential: "preAuth",
+      notices: true,
+    };
+    const preAuth = {
+      cookiePayload: { sub: "user-1", token: "pre-auth" },
+      cookies: { "seamless-ephemeral": "signed" },
+    };
+    const messaging = { email: { send: jest.fn() }, sms: { send: jest.fn() } };
+    const emailNotice = {
+      kind: "account_notice_email",
+      notice: "account_recovery_opened",
+      to: "owner@example.com",
+      subject: "Recovery requested",
+      text: "Cancel it: https://app.test/recovery/cancel#cancel-token",
+      cancelUrl: "https://app.test/recovery/cancel#cancel-token",
+    };
+    const smsNotice = {
+      kind: "account_notice_sms",
+      notice: "account_recovery_opened",
+      to: "+15555550100",
+      text: "Cancel it: https://app.test/recovery/cancel#cancel-token",
+      cancelUrl: "https://app.test/recovery/cancel#cancel-token",
+    };
+    const status = { state: "pending", requestedAt: "t0", completesAt: "t1" };
+
+    it("names the kinds it can send, delivers every notice and strips them", async () => {
+      deliverableNoticeKindsMock.mockReturnValue([
+        "account_notice_email",
+        "account_notice_sms",
+      ]);
+      authFetchMock.mockResolvedValue(
+        upstream(200, { ...status, deliveries: [emailNotice, smsNotice] }),
+      );
+
+      const result = await handleManifestRoute(input(route, preAuth), {
+        ...OPTIONS,
+        messaging,
+      });
+
+      expect(authFetchMock.mock.calls[0][1]).toMatchObject({
+        serviceAuthorization: "Bearer delivery-token",
+        headers: {
+          "x-seamless-auth-delivery-mode": "external",
+          "x-seamless-auth-delivery-kinds": "account_notice_email,account_notice_sms",
+        },
+      });
+      expect(deliverAuthMessageMock).toHaveBeenCalledWith(messaging, emailNotice);
+      expect(deliverAuthMessageMock).toHaveBeenCalledWith(messaging, smsNotice);
+      expect(result).toEqual({ status: 200, body: status });
+    });
+
+    it("leaves delivery to the auth API when it can send no notice kind", async () => {
+      authFetchMock.mockResolvedValue(upstream(200, status));
+
+      const result = await handleManifestRoute(input(route, preAuth), OPTIONS);
+
+      expect(authFetchMock.mock.calls[0][1]).toMatchObject({
+        serviceAuthorization: "Bearer proxy-token",
+      });
+      expect(authFetchMock.mock.calls[0][1]).not.toHaveProperty("headers");
+      expect(result.body).toEqual(status);
+    });
+
+    it("keeps the request open when one notice still goes out", async () => {
+      deliverableNoticeKindsMock.mockReturnValue([
+        "account_notice_email",
+        "account_notice_sms",
+      ]);
+      deliverAuthMessageMock
+        .mockRejectedValueOnce(new Error("smtp down"))
+        .mockResolvedValueOnce(undefined);
+      authFetchMock.mockResolvedValue(
+        upstream(200, { ...status, deliveries: [emailNotice, smsNotice] }),
+      );
+
+      const result = await handleManifestRoute(input(route, preAuth), {
+        ...OPTIONS,
+        messaging,
+      });
+
+      expect(result).toEqual({ status: 200, body: status });
+      expect(authFetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("cancels the request and refuses when no notice goes out", async () => {
+      deliverableNoticeKindsMock.mockReturnValue(["account_notice_email"]);
+      deliverAuthMessageMock.mockRejectedValue(new Error("smtp down"));
+      authFetchMock
+        .mockResolvedValueOnce(upstream(200, { ...status, deliveries: [emailNotice] }))
+        .mockResolvedValueOnce(upstream(200, { message: "cancelled" }));
+
+      const result = await handleManifestRoute(input(route, preAuth), {
+        ...OPTIONS,
+        messaging,
+      });
+
+      expect(result).toEqual({ status: 503, errorCode: "recovery_notice_failed" });
+      expect(authFetchMock.mock.calls[1]).toEqual([
+        "https://auth.test/recovery/cancel",
+        {
+          method: "POST",
+          serviceAuthorization: "Bearer proxy-token",
+          body: { cancelToken: "cancel-token" },
+        },
+      ]);
     });
   });
 });

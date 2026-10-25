@@ -92,6 +92,13 @@ routes, and a bearer client refreshes through `POST /auth/refresh` itself. Role
 checks understand scoped names, so `admin` grants everything under it and
 `admin:write` grants `admin:read`.
 
+A recovery session, from account recovery or a recovery code, carries `recovery:
+true` on its access token and can only enroll a new passkey or authenticator app.
+`requireAuth` refuses it with `403 { "error": "enrollment_required" }` unless
+`allowRecoverySession: true` is set, so set that only on the routes that drive the
+enrollment. Once a factor is enrolled, the next `POST /auth/refresh` issues an
+access token without the claim; the React SDK refreshes after enrollment for you.
+
 For the hydrated profile rather than the token payload, `getSeamlessUser(request, options)`
 fetches it from the auth API and returns `SeamlessUser | null`. It resolves a cookie
 session or a bearer access token, and returns `null` without calling the auth API when
@@ -127,6 +134,16 @@ await app.register(seamlessAuth, {
 
 Delivery payloads carry one-time codes and links. They are stripped from the
 response before it reaches the browser.
+
+The same transports also send account notices (`account_notice_email`,
+`account_notice_sms`) on routes the API's manifest marks `notices: true`, today
+`POST /recovery/verify`: the notice that account recovery was requested, with a
+cancel link that goes only to the account owner and is never logged. A recovery
+code arrives with `purpose: "account_recovery"` and is worded as one. Customize
+notices with `handlers.sendAccountNoticeEmail` / `sendAccountNoticeSms` or
+`overrides.accountNoticeEmail` / `accountNoticeSms`. If no notice can be sent, the
+adapter cancels the recovery request and answers `503 recovery_notice_failed`,
+as the auth API does, so recovery never runs without the owner being told.
 
 ## Serving the admin console
 

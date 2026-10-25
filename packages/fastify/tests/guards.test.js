@@ -531,3 +531,28 @@ describe("routes outside the plugin, with no cookie plugin of their own", () => 
     expect(meCalls[0].headers.Authorization).toBe(`Bearer ${INNER}`);
   });
 });
+
+describe("requireAuth (fastify) and recovery sessions", () => {
+  const recovery = jwt.sign(
+    { sub: "user-1", typ: "access", recovery: true },
+    "upstream-signing-key",
+  );
+  const header = { cookie: `seamless-access=${signedCookie({ sub: "user-1", token: recovery })}` };
+
+  it("refuses a recovery session with enrollment_required by default", async () => {
+    const res = await get(await buildApp({ cookieSecret: COOKIE_SECRET }), header);
+
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ error: "enrollment_required" });
+  });
+
+  it("accepts it when the guard allows recovery sessions", async () => {
+    const res = await get(
+      await buildApp({ cookieSecret: COOKIE_SECRET, allowRecoverySession: true }),
+      header,
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body.user).toMatchObject({ id: "user-1" });
+  });
+});

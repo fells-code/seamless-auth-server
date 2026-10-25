@@ -29,6 +29,8 @@ export interface AdapterManifestRoute {
   /** Cookie transport only: the body fields passed to the browser. */
   body?: { pick: string[] };
   delivery?: true;
+  /** Owner notices come back as `deliveries` when the request names their kinds. */
+  notices?: true;
 }
 
 export interface AdapterManifest {
@@ -69,7 +71,8 @@ function isRoute(value: unknown): value is AdapterManifestRoute {
       (typeof route.body === "object" &&
         route.body !== null &&
         Array.isArray((route.body as { pick?: unknown }).pick))) &&
-    (route.delivery === undefined || route.delivery === true)
+    (route.delivery === undefined || route.delivery === true) &&
+    (route.notices === undefined || route.notices === true)
   );
 }
 

@@ -41,6 +41,10 @@ function buildOtpEmailMessage(
   messaging: SeamlessAuthMessagingOptions,
 ): EmailMessage {
   const appName = messaging.defaults?.appName ?? "Seamless Auth";
+  const recovery = input.purpose === "account_recovery";
+  const subject = recovery
+    ? `${appName} - Account recovery code`
+    : `${appName} - Verify your email`;
 
   return applyEmailOverride(
     messaging.overrides?.otpEmail,
@@ -48,15 +52,24 @@ function buildOtpEmailMessage(
       to: input.to,
       token: input.token,
       from: messaging.defaults?.emailFrom,
-      subject: `${appName} - Verify your email`,
+      subject,
+      ...(input.purpose ? { purpose: input.purpose } : {}),
     },
-    {
-      to: input.to,
-      from: messaging.defaults?.emailFrom,
-      subject: `${appName} - Verify your email`,
-      text: `Verify your account with ${appName}.\n\nYour verification code is: ${input.token}\n\nIf you did not request this code, you can safely ignore this message.`,
-      html: `<div><h1>Verify your account with ${appName}</h1><p>Please use the verification code below:</p><p><strong>${input.token}</strong></p><p>If you did not request this code, you can safely ignore this message.</p></div>`,
-    },
+    recovery
+      ? {
+          to: input.to,
+          from: messaging.defaults?.emailFrom,
+          subject,
+          text: `Someone asked to recover your ${appName} account.\n\nYour account recovery code is: ${input.token}\n\nIf this was not you, do not share this code with anyone. Recovery signs out every session on the account.`,
+          html: `<div><h1>Account recovery for ${appName}</h1><p>Someone asked to recover your account. Your account recovery code is:</p><p><strong>${input.token}</strong></p><p>If this was not you, do not share this code with anyone. Recovery signs out every session on the account.</p></div>`,
+        }
+      : {
+          to: input.to,
+          from: messaging.defaults?.emailFrom,
+          subject,
+          text: `Verify your account with ${appName}.\n\nYour verification code is: ${input.token}\n\nIf you did not request this code, you can safely ignore this message.`,
+          html: `<div><h1>Verify your account with ${appName}</h1><p>Please use the verification code below:</p><p><strong>${input.token}</strong></p><p>If you did not request this code, you can safely ignore this message.</p></div>`,
+        },
     appName,
   );
 }
@@ -73,11 +86,15 @@ function buildOtpSmsMessage(
       to: input.to,
       token: input.token,
       from: messaging.defaults?.smsFrom,
+      ...(input.purpose ? { purpose: input.purpose } : {}),
     },
     {
       to: input.to,
       from: messaging.defaults?.smsFrom,
-      body: `Your ${appName} verification code is: ${input.token}. No one will ever ask you for this code. Do not share it.`,
+      body:
+        input.purpose === "account_recovery"
+          ? `Someone asked to recover your ${appName} account. Your account recovery code is: ${input.token}. If this was not you, do not share it.`
+          : `Your ${appName} verification code is: ${input.token}. No one will ever ask you for this code. Do not share it.`,
     },
     appName,
   );
@@ -134,6 +151,59 @@ function buildEnrollmentInviteMessage(
   );
 }
 
+function buildAccountNoticeEmail(
+  input: Extract<AuthDeliveryInstruction, { kind: "account_notice_email" }>,
+  messaging: SeamlessAuthMessagingOptions,
+): EmailMessage {
+  const { kind: _kind, ...notice } = input;
+  const from = messaging.defaults?.emailFrom;
+
+  // Plain text only: the API writes the wording, and none of it is markup.
+  return applyEmailOverride(
+    messaging.overrides?.accountNoticeEmail,
+    { ...notice, from },
+    { to: input.to, from, subject: input.subject, text: input.text },
+    messaging.defaults?.appName,
+  );
+}
+
+function buildAccountNoticeSms(
+  input: Extract<AuthDeliveryInstruction, { kind: "account_notice_sms" }>,
+  messaging: SeamlessAuthMessagingOptions,
+): SmsMessage {
+  const { kind: _kind, ...notice } = input;
+  const from = messaging.defaults?.smsFrom;
+
+  return applySmsOverride(
+    messaging.overrides?.accountNoticeSms,
+    { ...notice, from },
+    { to: input.to, from, body: input.text },
+    messaging.defaults?.appName,
+  );
+}
+
+/**
+ * The account notice kinds this configuration can send, for the auth API's
+ * `x-seamless-auth-delivery-kinds` header. The API counts a returned notice as the
+ * owner having been told, so a kind is only listed when it will really go out.
+ */
+export function deliverableNoticeKinds(
+  messaging: SeamlessAuthMessagingOptions | undefined,
+): Array<"account_notice_email" | "account_notice_sms"> {
+  if (!messaging) return [];
+
+  const kinds: Array<"account_notice_email" | "account_notice_sms"> = [];
+
+  if (messaging.handlers?.sendAccountNoticeEmail || messaging.email) {
+    kinds.push("account_notice_email");
+  }
+  if (messaging.handlers?.sendAccountNoticeSms || messaging.sms) {
+    kinds.push("account_notice_sms");
+  }
+
+  return kinds;
+}
+
 export async function deliverAuthMessage(
   messaging: SeamlessAuthMessagingOptions | undefined,
   delivery: AuthDeliveryInstruction | undefined,
@@ -149,6 +219,7 @@ export async function deliverAuthMessage(
           to: delivery.to,
           token: delivery.token,
           from: messaging.defaults?.emailFrom,
+          ...(delivery.purpose ? { purpose: delivery.purpose } : {}),
         });
         return;
       }
@@ -166,6 +237,7 @@ export async function deliverAuthMessage(
           to: delivery.to,
           token: delivery.token,
           from: messaging.defaults?.smsFrom,
+          ...(delivery.purpose ? { purpose: delivery.purpose } : {}),
         });
         return;
       }
@@ -215,6 +287,42 @@ export async function deliverAuthMessage(
         buildEnrollmentInviteMessage(delivery, messaging),
       );
       return;
+
+    case "account_notice_email": {
+      if (messaging.handlers?.sendAccountNoticeEmail) {
+        const { kind: _kind, ...notice } = delivery;
+        await messaging.handlers.sendAccountNoticeEmail({
+          ...notice,
+          from: messaging.defaults?.emailFrom,
+        });
+        return;
+      }
+
+      if (!messaging.email) {
+        throw new Error("Missing email transport for account notice delivery.");
+      }
+
+      await messaging.email.send(buildAccountNoticeEmail(delivery, messaging));
+      return;
+    }
+
+    case "account_notice_sms": {
+      if (messaging.handlers?.sendAccountNoticeSms) {
+        const { kind: _kind, ...notice } = delivery;
+        await messaging.handlers.sendAccountNoticeSms({
+          ...notice,
+          from: messaging.defaults?.smsFrom,
+        });
+        return;
+      }
+
+      if (!messaging.sms) {
+        throw new Error("Missing SMS transport for account notice delivery.");
+      }
+
+      await messaging.sms.send(buildAccountNoticeSms(delivery, messaging));
+      return;
+    }
 
     default: {
       // A new kind in @seamless-auth/types fails the build here. At runtime an
