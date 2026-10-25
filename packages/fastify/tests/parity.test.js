@@ -525,6 +525,30 @@ describe("fastify and express adapters agree", () => {
     expect(fastify).toEqual(expressResult);
   });
 
+  it("answers an upstream redirect as a 502 rather than following it", async () => {
+    const scenario = {
+      method: "post",
+      path: "/users/update",
+      cookie: accessCookie(),
+      payload: { email: "a@b.c" },
+    };
+    const { fastify, express: expressResult } = await bothAdapters(
+      scenario,
+      new Response(null, {
+        status: 302,
+        headers: { location: "https://elsewhere.example.com/users/update" },
+      }),
+    );
+
+    for (const result of [fastify, expressResult]) {
+      expect(result.status).toBe(502);
+      expect(result.body).toEqual({ error: "upstream_redirect" });
+    }
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch.mock.calls[0][1].redirect).toBe("manual");
+    expect(fastify).toEqual(expressResult);
+  });
+
   it("sends no identity upstream for the public system config", async () => {
     // One explicit user agent for both, since light-my-request sends a default
     // and supertest sends none, and that difference would show up as a header

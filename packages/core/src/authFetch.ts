@@ -2,6 +2,8 @@
  * Copyright © 2026 Fells Code, LLC
  * Licensed under the Apache License, Version 2.0
  */
+import { getSeamlessLogger } from "./logger.js";
+
 export interface AuthFetchOptions {
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   headers?: Record<string, string>;
@@ -31,13 +33,47 @@ export async function authFetch(
       : {}),
   };
 
+  // Following a redirect would resend the service token and the forwarded
+  // client headers to wherever a misconfigured proxy in front of the API points.
   const response = await fetch(url, {
     method: options.method,
     headers,
     body: options.body ? JSON.stringify(options.body) : undefined,
+    redirect: "manual",
   });
 
+  if (isRedirect(response)) {
+    getSeamlessLogger().error(
+      `[SeamlessAuth] The auth API at ${originOf(url)} answered a ${options.method} with a redirect (HTTP ${response.status}), which is not followed.`,
+    );
+    return makeJsonTolerant(
+      new Response(JSON.stringify({ error: UPSTREAM_REDIRECT_ERROR_CODE }), {
+        status: 502,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  }
+
   return makeJsonTolerant(response);
+}
+
+/** The error code a request gets when the auth API answered it with a redirect. */
+export const UPSTREAM_REDIRECT_ERROR_CODE = "upstream_redirect";
+
+function isRedirect(response: Response): boolean {
+  return (
+    response.type === "opaqueredirect" ||
+    (response.status >= 300 && response.status < 400 && response.status !== 304)
+  );
+}
+
+// The path can carry a credential, such as a magic link token.
+function originOf(url: string): string {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return "<invalid url>";
+  }
 }
 
 // Upstream responses aren't always JSON, and native Response.json() throws on the ones

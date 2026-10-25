@@ -172,6 +172,20 @@ describe("createAdapterManifestSource", () => {
     expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 
+  it("does not follow a redirect to another manifest", async () => {
+    global.fetch = jest.fn(
+      async () =>
+        new Response(null, {
+          status: 302,
+          headers: { location: "https://elsewhere.test/manifest.json" },
+        }),
+    );
+    const source = createAdapterManifestSource({ authServerUrl: "https://auth.test" });
+
+    await expect(source.get()).resolves.toBe(BUNDLED_ADAPTER_MANIFEST);
+    expect(global.fetch.mock.calls[0][1].redirect).toBe("manual");
+  });
+
   it("retries after the wait", async () => {
     global.fetch = jest
       .fn()

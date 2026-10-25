@@ -491,6 +491,30 @@ describe("next.js and express adapters agree", () => {
     expect(next).toEqual(expressResult);
   });
 
+  it("answers an upstream redirect as a 502 rather than following it", async () => {
+    const scenario = {
+      method: "post",
+      path: "/users/update",
+      cookie: accessCookie(),
+      payload: { email: "a@b.c" },
+    };
+    const { next, express: expressResult } = await bothAdapters(
+      scenario,
+      new Response(null, {
+        status: 302,
+        headers: { location: "https://elsewhere.example.com/users/update" },
+      }),
+    );
+
+    for (const result of [next, expressResult]) {
+      expect(result.status).toBe(502);
+      expect(result.body).toEqual({ error: "upstream_redirect" });
+    }
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch.mock.calls[0][1].redirect).toBe("manual");
+    expect(next).toEqual(expressResult);
+  });
+
   it("sends no identity upstream for the public system config", async () => {
     // One explicit user agent for both, so a default one side sends and the
     // other does not cannot show up as a header only one adapter forwards.

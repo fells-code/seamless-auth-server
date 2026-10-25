@@ -228,6 +228,7 @@ export function createAdapterManifestSource(
     try {
       const response = await fetch(`${opts.authServerUrl}${ADAPTER_MANIFEST_PATH}`, {
         headers: { accept: "application/json" },
+        redirect: "manual",
         signal: AbortSignal.timeout(opts.timeoutMs ?? DEFAULT_TIMEOUT_MS),
       });
 

@@ -1,4 +1,5 @@
 import { jest } from "@jest/globals";
+import http from "node:http";
 
 describe("authFetch", () => {
   const originalFetch = global.fetch;
@@ -115,4 +116,56 @@ describe("authFetch", () => {
 
     await expect(res.json()).resolves.toBeUndefined();
   });
+
+  it("asks fetch not to follow redirects", async () => {
+    const { authFetch } = await import("../dist/authFetch.js");
+
+    await authFetch("https://auth.example.com/users/me", { method: "GET" });
+
+    expect(global.fetch.mock.calls[0][1].redirect).toBe("manual");
+  });
+});
+
+describe("authFetch against a redirecting upstream", () => {
+  const servers = [];
+
+  async function listen(handler) {
+    const server = http.createServer(handler);
+    await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+    servers.push(server);
+    return `http://127.0.0.1:${server.address().port}`;
+  }
+
+  afterEach(async () => {
+    await Promise.all(
+      servers.splice(0).map((s) => new Promise((resolve) => s.close(resolve))),
+    );
+  });
+
+  it.each([301, 302, 307, 308])(
+    "answers %i as a 502 without resending the credentials",
+    async (status) => {
+      const { authFetch, UPSTREAM_REDIRECT_ERROR_CODE } = await import(
+        "../dist/authFetch.js"
+      );
+      const elsewhere = jest.fn((_req, res) => res.end("{}"));
+      const target = await listen(elsewhere);
+      const api = await listen((_req, res) => {
+        res.writeHead(status, { location: `${target}/stolen` });
+        res.end();
+      });
+
+      const response = await authFetch(`${api}/admin/users`, {
+        method: "POST",
+        body: { userId: "u1" },
+        authorization: "Bearer user-access-token",
+        serviceAuthorization: "service-token",
+      });
+
+      expect(response.status).toBe(502);
+      expect(response.ok).toBe(false);
+      expect(await response.json()).toEqual({ error: UPSTREAM_REDIRECT_ERROR_CODE });
+      expect(elsewhere).not.toHaveBeenCalled();
+    },
+  );
 });
