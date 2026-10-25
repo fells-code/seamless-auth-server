@@ -350,7 +350,9 @@ export async function ensureCookies(
   input: EnsureCookiesInput,
   opts: EnsureCookiesOptions,
 ): Promise<EnsureCookiesResult> {
-  assertSecrets(opts);
+  // The adapter refused a placeholder at startup, where it knows whether it
+  // runs in local mode; these options do not say.
+  assertSecrets(opts, { allowPlaceholder: true });
 
   const requirement = cookieRequirement(input);
 

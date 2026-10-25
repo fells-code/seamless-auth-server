@@ -127,8 +127,9 @@ describe("requireAuth with bearer tokens (express)", () => {
 
   it("still honours the cookie, and prefers it over a bearer header", async () => {
     const server = nextServer();
-    mockAuthServer(server);
-    const cookie = jwt.sign({ sub: "cookie-user", token: INNER }, COOKIE_SECRET, {
+    const meCalls = mockAuthServer(server);
+    const inner = await accessToken(server, { sub: "cookie-user" });
+    const cookie = jwt.sign({ sub: "cookie-user", token: inner }, COOKIE_SECRET, {
       expiresIn: "1h",
     });
 
@@ -141,7 +142,68 @@ describe("requireAuth with bearer tokens (express)", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.user.id).toBe("cookie-user");
-    expect(global.fetch).not.toHaveBeenCalled();
+    expect(res.body.user.token).toBe(inner);
+    expect(meCalls).toHaveLength(0);
+  });
+
+  // The cookie secret alone signs a cookie, so with JWKS available the inner
+  // token is held to the auth API's key set too (#231).
+  describe("verifying the cookie's inner access token", () => {
+    function cookieFor(payload) {
+      return `seamless-access=${jwt.sign(payload, COOKIE_SECRET, { expiresIn: "1h" })}`;
+    }
+
+    it("refuses a cookie whose inner token the auth API did not sign", async () => {
+      const server = nextServer();
+      mockAuthServer(server);
+
+      const res = await request(
+        buildApp({ cookieSecret: COOKIE_SECRET, authServerUrl: server, audience: server }),
+      )
+        .get("/protected")
+        .set("Cookie", [cookieFor({ sub: "user-1", roles: ["admin"], token: INNER })]);
+
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({ error: "Invalid or expired session" });
+    });
+
+    it("refuses a cookie naming a different subject than its inner token", async () => {
+      const server = nextServer();
+      mockAuthServer(server);
+      const inner = await accessToken(server, { sub: "someone-else" });
+
+      const res = await request(
+        buildApp({ cookieSecret: COOKIE_SECRET, authServerUrl: server, audience: server }),
+      )
+        .get("/protected")
+        .set("Cookie", [cookieFor({ sub: "user-1", token: inner })]);
+
+      expect(res.status).toBe(401);
+    });
+
+    it("takes the roles from the verified token, not the cookie", async () => {
+      const server = nextServer();
+      mockAuthServer(server);
+      const inner = await accessToken(server, { sub: "user-1", roles: ["athlete"] });
+
+      const res = await request(
+        buildApp({ cookieSecret: COOKIE_SECRET, authServerUrl: server, audience: server }),
+      )
+        .get("/protected")
+        .set("Cookie", [cookieFor({ sub: "user-1", roles: ["admin"], token: inner })]);
+
+      expect(res.status).toBe(200);
+      expect(res.body.user.roles).toEqual(["athlete"]);
+    });
+
+    it("only decodes the inner token when the guard has no JWKS to check against", async () => {
+      const res = await request(buildApp({ cookieSecret: COOKIE_SECRET }))
+        .get("/protected")
+        .set("Cookie", [cookieFor({ sub: "user-1", roles: ["admin"], token: INNER })]);
+
+      expect(res.status).toBe(200);
+      expect(res.body.user.roles).toEqual(["admin"]);
+    });
   });
 
   it("mentions both credentials in the warning when neither is sent", async () => {

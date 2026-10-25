@@ -164,19 +164,53 @@ describe("requireAuth (fastify)", () => {
 
   it("prefers the cookie over a bearer header", async () => {
     const server = nextServer();
-    mockAuthServer(server);
+    const meCalls = mockAuthServer(server);
+    const inner = await accessToken(server, { sub: "cookie-user" });
 
     const res = await get(
       await buildApp({ cookieSecret: COOKIE_SECRET, authServerUrl: server, audience: server }),
       {
-        cookie: `seamless-access=${signedCookie({ sub: "cookie-user", token: INNER })}`,
+        cookie: `seamless-access=${signedCookie({ sub: "cookie-user", token: inner })}`,
         authorization: `Bearer ${await accessToken(server)}`,
       },
     );
 
     expect(res.status).toBe(200);
     expect(res.body.user.id).toBe("cookie-user");
-    expect(global.fetch).not.toHaveBeenCalled();
+    expect(meCalls).toHaveLength(0);
+  });
+
+  // The cookie secret alone signs a cookie, so with JWKS available the inner
+  // token is held to the auth API's key set too (#231).
+  it("refuses a cookie whose inner token the auth API did not sign", async () => {
+    const server = nextServer();
+    mockAuthServer(server);
+
+    const res = await get(
+      await buildApp({ cookieSecret: COOKIE_SECRET, authServerUrl: server, audience: server }),
+      {
+        cookie: `seamless-access=${signedCookie({ sub: "user-1", roles: ["admin"], token: INNER })}`,
+      },
+    );
+
+    expect(res.status).toBe(401);
+    expect(res.body).toEqual({ error: "Invalid or expired session" });
+  });
+
+  it("takes a cookie session's roles from its verified inner token", async () => {
+    const server = nextServer();
+    mockAuthServer(server);
+    const inner = await accessToken(server, { sub: "user-1", roles: ["athlete"] });
+
+    const res = await get(
+      await buildApp({ cookieSecret: COOKIE_SECRET, authServerUrl: server, audience: server }),
+      {
+        cookie: `seamless-access=${signedCookie({ sub: "user-1", roles: ["admin"], token: inner })}`,
+      },
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body.user.roles).toEqual(["athlete"]);
   });
 
   it("feeds requireRole from a bearer session", async () => {

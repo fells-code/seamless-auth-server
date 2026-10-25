@@ -818,6 +818,24 @@ describe("fastify and express adapters agree", () => {
   });
 });
 
+describe("both adapters refuse a placeholder secret at startup", () => {
+  it.each([
+    ["cookieSecret", "dev-only-cookie-signing-key-replace-me"],
+    ["serviceSecret", "GRAB_FROM_SEAMLESS_AUTH_PORTAL_DEV"],
+  ])("%s", async (name, value) => {
+    await expect(buildFastify({ [name]: value })).rejects.toThrow(/published placeholder/);
+    expect(() => buildExpress({ [name]: value })).toThrow(/published placeholder/);
+  });
+
+  it("accepts one in insecure local mode", async () => {
+    const local = { cookieSecure: false, cookieSecret: "dev-only-cookie-signing-key-replace-me" };
+
+    const app = await buildFastify(local);
+    await app.close();
+    expect(() => buildExpress(local)).not.toThrow();
+  });
+});
+
 // Verify forwards the pre-auth credential of the browser that opens the link so
 // the auth API can recognise the device that asked for it. A missing or bad one
 // never turns into a 401: the link itself is the credential.

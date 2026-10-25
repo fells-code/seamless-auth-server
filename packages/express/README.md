@@ -250,7 +250,12 @@ otherwise `createSeamlessAuthServer` (and `createEnsureCookiesMiddleware`) throw
 is mounted. A short secret can be brute forced offline, which would let an attacker forge cookie
 sessions and service tokens.
 
-The same check applies to `requireAuth({ cookieSecret })`, which throws when the guard is
+A known placeholder is refused the same way: `dev-only-cookie-signing-key-replace-me`,
+`GRAB_FROM_SEAMLESS_AUTH_PORTAL_DEV`, or any value containing `replace-me`. Anyone who has read the
+example can forge sessions with one. The router accepts a placeholder only with
+`cookieSecure: false`, the local HTTP development mode.
+
+The length check also applies to `requireAuth({ cookieSecret })`, which throws when the guard is
 constructed, and to `getSeamlessUser`, which validates through `@seamless-auth/core`.
 
 Generate secrets with a CSPRNG, for example `openssl rand -base64 48`, and supply them through the
@@ -612,7 +617,9 @@ With `authServerIssuer` set, pass the same value as `audience`: the auth API set
 `aud` to its `ISSUER`.
 
 `authServerUrl` and `audience` must be given together. Leave both out and the guard accepts
-cookies only, which is what every earlier version did.
+cookies only, which is what every earlier version did. With them configured, the guard also
+verifies the access token inside the cookie against the auth API's JWKS and takes the session's
+roles from it, so a cookie signed with `cookieSecret` alone cannot carry claims of its own.
 
 **`req.user` shape (`SeamlessAuthUser`)**
 

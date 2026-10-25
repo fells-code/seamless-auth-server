@@ -161,7 +161,9 @@ export function holdsAccessToken(token: unknown): boolean {
  * there.
  */
 export function authenticateCookie(input: CookieAuthInput): CookieAuthResult {
-  assertSecretStrength("requireAuth: cookieSecret", input.cookieSecret);
+  assertSecretStrength("requireAuth: cookieSecret", input.cookieSecret, {
+    allowPlaceholder: true,
+  });
 
   if (!input.token) {
     return {
@@ -282,15 +284,24 @@ export interface RequestAuthInput extends CookieAuthInput {
  * stale cookie should see the session rejected rather than fall through to a
  * header it never meant to send. Bearer is only consulted when there is no
  * cookie at all and the adopter has opted in.
+ *
+ * With `bearer` configured, a cookie's inner access token is also verified
+ * against the auth API's key set, and its roles come from that token.
  */
 export async function authenticateRequest(
   input: RequestAuthInput,
 ): Promise<AuthResult> {
   if (input.token || !input.bearer) {
-    return authenticateCookie(input);
+    const result = authenticateCookie(input);
+
+    return result.user && input.bearer
+      ? verifyCookieAccessToken(result.user, input.bearer)
+      : result;
   }
 
-  assertSecretStrength("requireAuth: cookieSecret", input.cookieSecret);
+  assertSecretStrength("requireAuth: cookieSecret", input.cookieSecret, {
+    allowPlaceholder: true,
+  });
 
   if (!extractBearerToken(input.authorization)) {
     return {
@@ -304,6 +315,33 @@ export async function authenticateRequest(
     authorization: input.authorization,
     ...input.bearer,
   });
+}
+
+// The cookie secret alone can sign a cookie. Holding the inner token to the
+// auth API's key set means a forged cookie cannot carry claims of its own.
+async function verifyCookieAccessToken(
+  user: SeamlessAuthUser,
+  verify: NonNullable<RequestAuthInput["bearer"]>,
+): Promise<AuthResult> {
+  const claims = await verifyAccessToken(
+    user.token as string,
+    verify.authServerUrl,
+    verify.audience,
+    verify.authServerIssuer,
+  );
+
+  if (!claims || claims.sub !== user.id) {
+    return {
+      rejection: { status: 401, errorCode: "Invalid or expired session" },
+    };
+  }
+
+  return {
+    user: {
+      ...user,
+      roles: Array.isArray(claims.roles) ? claims.roles : user.roles,
+    },
+  };
 }
 
 /**

@@ -60,7 +60,9 @@ export async function getSeamlessUser<T = SeamlessUser>(
   cookies: Record<string, string | undefined>,
   opts: GetSeamlessUserOptions,
 ): Promise<T | null> {
-  assertSecretStrength("cookieSecret", opts.cookieSecret);
+  assertSecretStrength("cookieSecret", opts.cookieSecret, {
+    allowPlaceholder: true,
+  });
 
   const authorization = await resolveUpstreamAuthorization(cookies, opts);
   if (authorization === null) return null;

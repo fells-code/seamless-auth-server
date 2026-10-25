@@ -46,7 +46,10 @@ hooks scoped to those routes, so the rest of your application is untouched.
 `serviceSecret` must match the auth API's. The auth server reads it from
 `API_SERVICE_TOKEN` and the app from `SEAMLESS_SERVICE_TOKEN`, with the same value.
 Both are checked at registration, so a
-weak secret fails at startup rather than on the first request.
+weak secret fails at startup rather than on the first request. A known
+placeholder (`dev-only-cookie-signing-key-replace-me`,
+`GRAB_FROM_SEAMLESS_AUTH_PORTAL_DEV`, or anything containing `replace-me`) is
+refused too, unless `cookieSecure` is `false` for local HTTP development.
 
 ## Guarding your own routes
 

@@ -829,6 +829,25 @@ describe("both adapters forward a magic link destination", () => {
   });
 });
 
+describe("both adapters refuse a placeholder secret at startup", () => {
+  it.each([
+    ["cookieSecret", "dev-only-cookie-signing-key-replace-me"],
+    ["serviceSecret", "GRAB_FROM_SEAMLESS_AUTH_PORTAL_DEV"],
+  ])("%s", (name, value) => {
+    expect(() => createSeamlessAuthHandler({ ...OPTIONS, [name]: value })).toThrow(
+      /published placeholder/,
+    );
+    expect(() => buildExpress({ [name]: value })).toThrow(/published placeholder/);
+  });
+
+  it("accepts one in insecure local mode", () => {
+    const local = { cookieSecure: false, cookieSecret: "dev-only-cookie-signing-key-replace-me" };
+
+    expect(() => createSeamlessAuthHandler({ ...OPTIONS, ...local })).not.toThrow();
+    expect(() => buildExpress(local)).not.toThrow();
+  });
+});
+
 // Verify forwards the pre-auth credential of the browser that opens the link so
 // the auth API can recognise the device that asked for it. A missing or bad one
 // never turns into a 401: the link itself is the credential.

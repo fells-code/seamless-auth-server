@@ -145,3 +145,55 @@ describe("core entry points enforce secret strength", () => {
     ).rejects.toThrow(/serviceSecret must be at least/);
   });
 });
+
+describe("placeholder secrets", () => {
+  const PLACEHOLDERS = [
+    "dev-only-cookie-signing-key-replace-me",
+    "GRAB_FROM_SEAMLESS_AUTH_PORTAL_DEV",
+    "my-own-long-secret-value-REPLACE-ME-please",
+  ];
+
+  it.each(PLACEHOLDERS)("assertSecretStrength refuses %s", (value) => {
+    expect(() => assertSecretStrength("cookieSecret", value)).toThrow(
+      /cookieSecret is a published placeholder value/,
+    );
+  });
+
+  it.each(PLACEHOLDERS)("assertSecretStrength accepts %s when allowed", (value) => {
+    expect(() =>
+      assertSecretStrength("cookieSecret", value, { allowPlaceholder: true }),
+    ).not.toThrow();
+  });
+
+  it.each([
+    ["cookieSecret", { cookieSecret: PLACEHOLDERS[0], serviceSecret: STRONG_SERVICE_SECRET }],
+    ["serviceSecret", { cookieSecret: STRONG_COOKIE_SECRET, serviceSecret: PLACEHOLDERS[1] }],
+  ])("assertSecrets refuses a placeholder %s", (name, secrets) => {
+    expect(() => assertSecrets(secrets)).toThrow(
+      new RegExp(`${name} is a published placeholder value`),
+    );
+    expect(() => assertSecrets({ ...secrets, cookieSecure: true })).toThrow(
+      /published placeholder/,
+    );
+  });
+
+  it("assertSecrets accepts a placeholder in insecure local mode", () => {
+    expect(() =>
+      assertSecrets({
+        cookieSecret: PLACEHOLDERS[0],
+        serviceSecret: PLACEHOLDERS[1],
+        cookieSecure: false,
+      }),
+    ).not.toThrow();
+  });
+
+  it("still refuses a short secret in insecure local mode", () => {
+    expect(() =>
+      assertSecrets({
+        cookieSecret: "replace-me",
+        serviceSecret: STRONG_SERVICE_SECRET,
+        cookieSecure: false,
+      }),
+    ).toThrow(/at least 32 characters/);
+  });
+});
