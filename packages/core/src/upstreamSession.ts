@@ -47,6 +47,9 @@ export function withoutSessionMaterial<T extends UpstreamSessionResponse>(data: 
   return rest;
 }
 
+/** The `typ` claim the auth API signs into the tokens it returns. */
+export type UpstreamTokenType = "access" | "ephemeral";
+
 export interface VerifiedUpstreamSession {
   /** The `sid` claim, when the access token carries one. */
   sessionId?: string;
@@ -65,6 +68,8 @@ export async function verifyUpstreamSession(
   authServerUrl: string,
   audience: string,
   authServerIssuer?: string,
+  /** `ephemeral` for the pre-auth and registration tokens a sign-in flow carries. */
+  expectedType: UpstreamTokenType = "access",
 ): Promise<VerifiedUpstreamSession> {
   const verified = await verifySignedAuthResponse(
     data.token,
@@ -75,6 +80,14 @@ export async function verifyUpstreamSession(
 
   if (!verified) {
     throw new Error("Invalid signed response from Auth Server");
+  }
+
+  // Access and ephemeral tokens share the key, issuer and audience, so only
+  // `typ` stops an ephemeral token from becoming a session cookie.
+  if (verified.typ !== expectedType) {
+    throw new Error(
+      `Auth Server response did not carry an ${expectedType} token`,
+    );
   }
 
   if (verified.sub !== data.sub) {

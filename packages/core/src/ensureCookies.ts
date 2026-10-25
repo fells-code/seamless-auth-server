@@ -1,3 +1,4 @@
+import { holdsAccessToken } from "./guards.js";
 import { verifyCookieJwt } from "./verifyCookieJwt.js";
 import type { ResultFailure } from "./result.js";
 import { refreshAccessToken } from "./refreshAccessToken.js";
@@ -414,7 +415,13 @@ export async function ensureCookies(
       };
     }
 
-    const token = typeof payload.token === "string" ? payload.token : undefined;
+    // Every adapter cookie is signed with the same secret, so the signature
+    // does not tell a pre-auth cookie from a session. The token type does.
+    const token =
+      typeof payload.token === "string" &&
+      (cookieName !== opts.accessCookieName || holdsAccessToken(payload.token))
+        ? payload.token
+        : undefined;
 
     if (required && !token && cookieName === opts.accessCookieName) {
       const refreshed = await refreshRequiredCookie(

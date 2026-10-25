@@ -125,7 +125,7 @@ export type CookieAuthResult =
  * against the auth API's key set before the adapter signed it into the cookie,
  * so its claims are read here without verifying it again.
  */
-function holdsAccessToken(token: unknown): boolean {
+export function holdsAccessToken(token: unknown): boolean {
   if (typeof token !== "string") return false;
 
   try {

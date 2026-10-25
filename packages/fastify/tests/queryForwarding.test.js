@@ -4,6 +4,9 @@ import jwt from "jsonwebtoken";
 
 const { default: seamlessAuth } = await import("../dist/index.js");
 
+// Unsigned: the adapter only reads the inner token's type, the auth API verifies it.
+const ACCESS_TOKEN = `e30.${Buffer.from(JSON.stringify({ typ: "access" })).toString("base64url")}.sig`;
+
 const COOKIE_SECRET = "cookie-secret-cookie-secret-cookie-secret";
 
 function accessCookie() {
@@ -12,7 +15,7 @@ function accessCookie() {
       sub: "user-123",
       roles: ["admin"],
       sessionId: "s-1",
-      token: "access-token",
+      token: ACCESS_TOKEN,
     },
     COOKIE_SECRET,
     { algorithm: "HS256", expiresIn: "300s" },

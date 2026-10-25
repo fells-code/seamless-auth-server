@@ -81,6 +81,7 @@ describe("oauthHandlers", () => {
       }),
     );
     verifySignedAuthResponseMock.mockResolvedValue({
+      typ: "access",
       sub: "user-123",
       sid: "session-123",
     });

@@ -3,6 +3,9 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import request from "supertest";
 
+// Unsigned: the adapter only reads the inner token's type, the auth API verifies it.
+const ACCESS_TOKEN = `e30.${Buffer.from(JSON.stringify({ typ: "access" })).toString("base64url")}.sig`;
+
 const { default: createSeamlessAuthServer, getSeamlessUser } = await import(
   "../dist/index.js"
 );
@@ -24,7 +27,7 @@ function createAccessCookie(subject = "admin-123") {
       sub: subject,
       roles: ["admin"],
       sessionId: "session-123",
-      token: "access-token",
+      token: ACCESS_TOKEN,
     },
     "cookie-secret-cookie-secret-cookie-secret",
     {

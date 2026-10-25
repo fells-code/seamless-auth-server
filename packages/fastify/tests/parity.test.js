@@ -13,6 +13,9 @@ const { default: seamlessAuth, seamlessConsoleProxy } =
 const { default: createSeamlessAuthServer, createSeamlessConsoleProxy } =
   await import("../../express/dist/index.js");
 
+// Unsigned: the adapter only reads the inner token's type, the auth API verifies it.
+const ACCESS_TOKEN = `e30.${Buffer.from(JSON.stringify({ typ: "access" })).toString("base64url")}.sig`;
+
 const COOKIE_SECRET = "cookie-secret-cookie-secret-cookie-secret";
 const SERVICE_SECRET = "service-secret-service-secret-service-secret";
 
@@ -57,7 +60,7 @@ function signed(payload, ttl = "300s") {
 }
 
 const accessCookie = () =>
-  `seamless-access=${signed({ sub: "user-123", roles: ["admin"], sessionId: "s-1", token: "access-token" })}`;
+  `seamless-access=${signed({ sub: "user-123", roles: ["admin"], sessionId: "s-1", token: ACCESS_TOKEN })}`;
 const preAuthCookie = () =>
   `seamless-ephemeral=${signed({ sub: "user-123", token: "pre-auth" })}`;
 
@@ -496,6 +499,27 @@ describe("fastify and express adapters agree", () => {
           cookie.startsWith("seamless-ephemeral=<signed>"),
         ),
       ).toBe(false);
+    }
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(fastify).toEqual(expressResult);
+  });
+
+  // Every adapter cookie is signed with the same secret, so a pre-auth token
+  // copied into the access cookie verifies as a cookie. Its type does not.
+  it("refuses an access cookie that carries a pre-auth token", async () => {
+    const ephemeral = `e30.${Buffer.from(JSON.stringify({ typ: "ephemeral" })).toString("base64url")}.sig`;
+    const scenario = {
+      method: "get",
+      path: "/users/me",
+      cookie: `seamless-access=${signed({ sub: "user-123", roles: ["admin"], token: ephemeral })}`,
+    };
+    const { fastify, express: expressResult } = await bothAdapters(
+      scenario,
+      upstream(200, { user: { id: "user-123" } }),
+    );
+
+    for (const result of [fastify, expressResult]) {
+      expect(result.status).toBe(401);
     }
     expect(global.fetch).not.toHaveBeenCalled();
     expect(fastify).toEqual(expressResult);
@@ -1313,7 +1337,7 @@ describe("fastify and express agree on routes served from the manifest", () => {
 
     for (const calls of [result.fastifyCalls, result.expressCalls]) {
       const [, init] = calls.find(([url]) => String(url).endsWith("/registration/phone"));
-      expect(init.headers.Authorization).toBe("Bearer access-token");
+      expect(init.headers.Authorization).toBe(`Bearer ${ACCESS_TOKEN}`);
     }
   });
 

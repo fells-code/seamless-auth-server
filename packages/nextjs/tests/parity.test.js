@@ -15,6 +15,9 @@ const {
   createSeamlessConsoleProxy: createExpressConsoleProxy,
 } = await import("../../express/dist/index.js");
 
+// Unsigned: the adapter only reads the inner token's type, the auth API verifies it.
+const ACCESS_TOKEN = `e30.${Buffer.from(JSON.stringify({ typ: "access" })).toString("base64url")}.sig`;
+
 const COOKIE_SECRET = "cookie-secret-cookie-secret-cookie-secret";
 const SERVICE_SECRET = "service-secret-service-secret-service-secret";
 
@@ -59,7 +62,7 @@ function signed(payload, ttl = "300s") {
 }
 
 const accessCookie = () =>
-  `seamless-access=${signed({ sub: "user-123", roles: ["admin"], sessionId: "s-1", token: "access-token" })}`;
+  `seamless-access=${signed({ sub: "user-123", roles: ["admin"], sessionId: "s-1", token: ACCESS_TOKEN })}`;
 const preAuthCookie = () =>
   `seamless-ephemeral=${signed({ sub: "user-123", token: "pre-auth" })}`;
 
@@ -467,6 +470,27 @@ describe("next.js and express adapters agree", () => {
   // stale cookie in the path of the one call a signed-out client has to make.
   // Asserted with a valid cookie present so a future refactor cannot quietly
   // start attaching one.
+  // Every adapter cookie is signed with the same secret, so a pre-auth token
+  // copied into the access cookie verifies as a cookie. Its type does not.
+  it("refuses an access cookie that carries a pre-auth token", async () => {
+    const ephemeral = `e30.${Buffer.from(JSON.stringify({ typ: "ephemeral" })).toString("base64url")}.sig`;
+    const scenario = {
+      method: "get",
+      path: "/users/me",
+      cookie: `seamless-access=${signed({ sub: "user-123", roles: ["admin"], token: ephemeral })}`,
+    };
+    const { next, express: expressResult } = await bothAdapters(
+      scenario,
+      upstream(200, { user: { id: "user-123" } }),
+    );
+
+    for (const result of [next, expressResult]) {
+      expect(result.status).toBe(401);
+    }
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(next).toEqual(expressResult);
+  });
+
   it("sends no identity upstream for the public system config", async () => {
     // One explicit user agent for both, so a default one side sends and the
     // other does not cannot show up as a header only one adapter forwards.

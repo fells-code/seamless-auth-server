@@ -7,6 +7,9 @@ import { exportJWK, generateKeyPair, SignJWT } from "jose";
 
 const { createSeamlessAuthHandler } = await import("../dist/index.js");
 
+// Unsigned: the adapter only reads the inner token's type, the auth API verifies it.
+const ACCESS_TOKEN = `e30.${Buffer.from(JSON.stringify({ typ: "access" })).toString("base64url")}.sig`;
+
 const COOKIE_SECRET = "cookie-secret-cookie-secret-cookie-secret";
 const SERVICE_SECRET = "service-secret-service-secret-service-secret";
 
@@ -45,7 +48,7 @@ const signed = (payload, ttl = "300s") =>
   jwt.sign(payload, COOKIE_SECRET, { algorithm: "HS256", expiresIn: ttl });
 
 const accessCookie = () =>
-  `seamless-access=${signed({ sub: "user-123", token: "access-token" })}`;
+  `seamless-access=${signed({ sub: "user-123", token: ACCESS_TOKEN })}`;
 const refreshCookie = () =>
   `seamless-refresh=${signed({ sub: "user-123", refreshToken: "opaque" }, "3600s")}`;
 

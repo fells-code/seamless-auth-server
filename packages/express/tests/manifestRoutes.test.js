@@ -6,6 +6,9 @@ import request from "supertest";
 
 const { default: createSeamlessAuthServer } = await import("../dist/index.js");
 
+// Unsigned: the adapter only reads the inner token's type, the auth API verifies it.
+const ACCESS_TOKEN = `e30.${Buffer.from(JSON.stringify({ typ: "access" })).toString("base64url")}.sig`;
+
 const AUTH = "https://auth.example.com";
 const COOKIE_SECRET = "cookie-secret-cookie-secret-cookie-secret";
 
@@ -19,7 +22,7 @@ beforeAll(async () => {
 });
 
 function signAccessToken(sub = "user-1") {
-  return new SignJWT({ sub, sid: "session-1" })
+  return new SignJWT({ sub, sid: "session-1", typ: "access" })
     .setProtectedHeader({ alg: "RS256", kid: "k1" })
     .setIssuer(AUTH)
     .setAudience(AUTH)
@@ -156,7 +159,7 @@ describe("routes proxied from the adapter manifest", () => {
     });
 
     const app = createApp();
-    const accessCookie = cookie("seamless-access", { sub: "user-1", token: "access-token" });
+    const accessCookie = cookie("seamless-access", { sub: "user-1", token: ACCESS_TOKEN });
 
     for (let i = 0; i < 2; i++) {
       const res = await request(app)
@@ -169,7 +172,7 @@ describe("routes proxied from the adapter manifest", () => {
 
     expect(upstreamCalls("/.well-known/seamless-adapter.json")).toHaveLength(1);
     expect(upstreamCalls("/brand-new/a%20b")[0][1].headers.Authorization).toBe(
-      "Bearer access-token",
+      `Bearer ${ACCESS_TOKEN}`,
     );
   });
 
@@ -181,7 +184,7 @@ describe("routes proxied from the adapter manifest", () => {
 
     const res = await request(createApp({ fetchManifest: false }))
       .get("/auth/users/me")
-      .set("Cookie", cookie("seamless-access", { sub: "user-1", token: "access-token" }));
+      .set("Cookie", cookie("seamless-access", { sub: "user-1", token: ACCESS_TOKEN }));
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ user: { id: "user-1" }, credentials: [] });
