@@ -1,3 +1,4 @@
+import { encodePathParam } from "../pathParam.js";
 import type { AuthServerIssuerOption } from "../authServerIssuer.js";
 import { authFetch } from "../authFetch.js";
 import { sessionResult } from "../upstreamSession.js";
@@ -54,7 +55,7 @@ export async function startOAuthLoginHandler(
   opts: Pick<OAuthHandlerOptions, "authServerUrl">,
 ) {
   const up = await authFetch(
-    `${opts.authServerUrl}/oauth/${encodeURIComponent(input.providerId!)}/start`,
+    `${opts.authServerUrl}/oauth/${encodePathParam(input.providerId!)}/start`,
     {
       method: "POST",
       body: input.body,
@@ -77,7 +78,7 @@ export async function finishOAuthLoginHandler(
   opts: OAuthHandlerOptions,
 ): Promise<OAuthHandlerResult> {
   const up = await authFetch(
-    `${opts.authServerUrl}/oauth/${encodeURIComponent(input.providerId!)}/callback`,
+    `${opts.authServerUrl}/oauth/${encodePathParam(input.providerId!)}/callback`,
     {
       method: "POST",
       body: input.body,

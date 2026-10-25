@@ -1,3 +1,4 @@
+import { encodePathParam } from "../pathParam.js";
 import { authFetch } from "../authFetch.js";
 import type { ResultFailure } from "../result.js";
 import { readUpstreamFailure } from "../upstreamError.js";
@@ -47,7 +48,7 @@ export const listSessionsHandler = (opts: BaseOpts) =>
   request("GET", "/sessions", opts);
 
 export const revokeSessionHandler = (id: string, opts: BaseOpts) =>
-  request("DELETE", `/sessions/${encodeURIComponent(id)}`, opts);
+  request("DELETE", `/sessions/${encodePathParam(id)}`, opts);
 
 export const revokeAllSessionsHandler = (opts: BaseOpts) =>
   request("DELETE", "/sessions", opts);

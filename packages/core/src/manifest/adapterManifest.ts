@@ -1,4 +1,5 @@
 import { getSeamlessLogger } from "../logger.js";
+import { isDotSegment } from "../pathParam.js";
 import { BUNDLED_ADAPTER_MANIFEST } from "./bundledManifest.js";
 
 /**
@@ -149,7 +150,7 @@ export function matchManifestRoute(
 
         // Re-encoded, a dot segment survives as a literal `..` that fetch then
         // resolves, sending the held token to a different upstream path.
-        if (value === "." || value === "..") {
+        if (isDotSegment(value)) {
           matched = false;
           break;
         }

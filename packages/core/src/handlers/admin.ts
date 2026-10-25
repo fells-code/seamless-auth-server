@@ -1,3 +1,4 @@
+import { encodePathParam } from "../pathParam.js";
 import { authFetch } from "../authFetch.js";
 import { buildUpstreamUrl, type QueryInput } from "../proxyRequest.js";
 import type { ResultFailure } from "../result.js";
@@ -66,13 +67,13 @@ export const deleteUserHandler = (opts: WithBody) =>
   request("DELETE", "/admin/users", opts);
 
 export const updateUserHandler = (userId: string, opts: WithBody) =>
-  request("PATCH", `/admin/users/${encodeURIComponent(userId)}`, opts);
+  request("PATCH", `/admin/users/${encodePathParam(userId)}`, opts);
 
 export const getUserDetailHandler = (userId: string, opts: BaseOpts) =>
-  request("GET", `/admin/users/${encodeURIComponent(userId)}`, opts);
+  request("GET", `/admin/users/${encodePathParam(userId)}`, opts);
 
 export const getUserAnomaliesHandler = (userId: string, opts: BaseOpts) =>
-  request("GET", `/admin/users/${encodeURIComponent(userId)}/anomalies`, opts);
+  request("GET", `/admin/users/${encodePathParam(userId)}/anomalies`, opts);
 
 export const getAuthEventsHandler = (opts: WithQuery) =>
   request("GET", "/admin/auth-events", opts);
@@ -84,15 +85,15 @@ export const listAllSessionsHandler = (opts: WithQuery) =>
   request("GET", "/admin/sessions", opts);
 
 export const listUserSessionsHandler = (userId: string, opts: BaseOpts) =>
-  request("GET", `/admin/sessions/${encodeURIComponent(userId)}`, opts);
+  request("GET", `/admin/sessions/${encodePathParam(userId)}`, opts);
 
 export const revokeUserSessionHandler = (id: string, opts: BaseOpts) =>
-  request("DELETE", `/admin/sessions/by-id/${encodeURIComponent(id)}`, opts);
+  request("DELETE", `/admin/sessions/by-id/${encodePathParam(id)}`, opts);
 
 export const revokeAllUserSessionsHandler = (userId: string, opts: BaseOpts) =>
   request(
     "DELETE",
-    `/admin/sessions/${encodeURIComponent(userId)}/revoke-all`,
+    `/admin/sessions/${encodePathParam(userId)}/revoke-all`,
     opts,
   );
 
@@ -102,6 +103,6 @@ export const recoverUserForDeviceReplacementHandler = (
 ) =>
   request(
     "POST",
-    `/admin/users/${encodeURIComponent(userId)}/recovery/device-replacement`,
+    `/admin/users/${encodePathParam(userId)}/recovery/device-replacement`,
     opts,
   );

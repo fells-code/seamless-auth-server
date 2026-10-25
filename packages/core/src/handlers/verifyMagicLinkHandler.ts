@@ -1,3 +1,4 @@
+import { encodePathParam } from "../pathParam.js";
 import { authFetch } from "../authFetch.js";
 import { readPassthroughFailure } from "../upstreamError.js";
 import type { ResultFailure } from "../result.js";
@@ -68,7 +69,7 @@ export async function verifyMagicLinkHandler(
   opts: VerifyMagicLinkOptions,
 ): Promise<VerifyMagicLinkResult> {
   const up = await authFetch(
-    `${opts.authServerUrl}/magic-link/verify/${encodeURIComponent(input.token)}`,
+    `${opts.authServerUrl}/magic-link/verify/${encodePathParam(input.token)}`,
     {
       method: "GET",
       authorization: input.authorization,
