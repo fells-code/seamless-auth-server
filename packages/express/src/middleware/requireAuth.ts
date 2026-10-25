@@ -25,6 +25,12 @@ export interface RequireAuthOptions {
    * `audience`.
    */
   authServerIssuer?: string;
+  /**
+   * Accept a recovery session (`recovery: true` on the access token), which can only
+   * enroll a new passkey or authenticator app. Off by default, so such a session gets
+   * 403 `enrollment_required`; turn it on only for routes that drive that enrollment.
+   */
+  allowRecoverySession?: boolean;
 }
 
 /**
@@ -66,6 +72,7 @@ export function requireAuth(opts: RequireAuthOptions) {
     authServerUrl,
     audience,
     authServerIssuer,
+    allowRecoverySession,
   } = opts;
 
   // Eagerly, so a weak secret fails at setup rather than on the first request.
@@ -98,6 +105,7 @@ export function requireAuth(opts: RequireAuthOptions) {
       cookieSecret,
       authorization: req.headers.authorization,
       bearer,
+      allowRecoverySession,
     });
 
     if (rejection) {

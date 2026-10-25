@@ -33,6 +33,12 @@ export interface SeamlessSessionOptions {
   refreshCookieName?: string;
   /** The browser's user agent, for the auth API to record instead of this server's. */
   userAgent?: string;
+  /**
+   * Accept a recovery session (`recovery: true` on the access token), which can only
+   * enroll a new passkey or authenticator app. Off by default, so the helpers treat it
+   * as signed out; turn it on only where the page drives that enrollment.
+   */
+  allowRecoverySession?: boolean;
 }
 
 /**
@@ -61,11 +67,15 @@ function accessCookie(
  */
 export function getSeamlessClaims(
   cookies: CookieReader,
-  opts: Pick<SeamlessSessionOptions, "cookieSecret" | "accessCookieName">,
+  opts: Pick<
+    SeamlessSessionOptions,
+    "cookieSecret" | "accessCookieName" | "allowRecoverySession"
+  >,
 ): SeamlessClaims | null {
   const { user } = authenticateCookie({
     token: accessCookie(cookies, opts),
     cookieSecret: opts.cookieSecret,
+    allowRecoverySession: opts.allowRecoverySession,
   });
 
   if (!user) {
@@ -117,6 +127,7 @@ export async function getSeamlessSession(
   const { user } = authenticateCookie({
     token: accessCookie(cookies, opts),
     cookieSecret: opts.cookieSecret,
+    allowRecoverySession: opts.allowRecoverySession,
   });
 
   if (typeof user?.token !== "string") {

@@ -12,6 +12,8 @@ import { createServiceToken } from "./createServiceToken.js";
  */
 export const AUTH_DELIVERY_MODE_HEADER = "x-seamless-auth-delivery-mode";
 export const EXTERNAL_DELIVERY_MODE = "external";
+/** Lists the delivery kinds this server can send that an older adapter would not know. */
+export const AUTH_DELIVERY_KINDS_HEADER = "x-seamless-auth-delivery-kinds";
 
 /** Headers that request external delivery, spreadable into an `authFetch` call. */
 export const EXTERNAL_DELIVERY_HEADERS: Readonly<Record<string, string>> =
