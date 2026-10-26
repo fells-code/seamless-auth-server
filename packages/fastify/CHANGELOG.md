@@ -1,5 +1,70 @@
 # @seamless-auth/fastify
 
+## 0.13.0
+
+### Minor Changes
+
+- 0e554e3: Check `Origin` against `allowedOrigins` even when `Sec-Fetch-Site` is present. A `same-site`
+  request also covers sibling subdomains, so with `SameSite=None` cookies the header alone let any
+  subdomain drive a state change. When `allowedOrigins` is configured, a state-changing `same-site`
+  request must now carry an `Origin` on the list (a missing `Origin` is refused). `same-origin`
+  requests always pass and `cross-site` requests are always refused.
+
+  This tightens behavior for adopters who set `allowedOrigins`: list every origin that calls the
+  adapter from a sibling subdomain. With `allowedOrigins` unset the default is unchanged, and a
+  `same-site` request passes as before.
+
+- 0e554e3: Refuse known placeholder secrets at startup. `assertSecretStrength` now refuses
+  `dev-only-cookie-signing-key-replace-me`, `GRAB_FROM_SEAMLESS_AUTH_PORTAL_DEV`, and any value
+  containing `replace-me`, which were long enough to pass the length check. Every adapter refuses one
+  for `cookieSecret` or `serviceSecret` when it starts, unless it runs in its insecure local mode
+  (`cookieSecure: false`). `assertSecretStrength` takes a new `{ allowPlaceholder }` option and
+  `assertSecrets` reads `cookieSecure`; core also exports `isPlaceholderSecret` and
+  `KNOWN_PLACEHOLDER_SECRETS`.
+
+  `requireAuth` (and `authenticateRequest`) configured with `authServerUrl` and `audience` now also
+  verifies the access token inside the cookie against the auth API's JWKS, and takes the session's
+  roles from it, so a cookie forged with the cookie secret alone cannot carry claims of its own.
+  Without that configuration the guard decodes the inner token as before.
+
+- 5ebc6a2: Support for the auth server's v0.20 account recovery, built on `@seamless-auth/types` 0.31.0.
+
+  - **Recovery sessions are refused by default.** An access token from account recovery or a recovery code carries `recovery: true` and can only enroll a new passkey or authenticator app. `requireAuth` (Express, Fastify) answers it with `403 { "error": "enrollment_required" }`, and the Next.js `getSeamlessSession` and `getSeamlessClaims` treat it as signed out, unless `allowRecoverySession: true` is passed. Set it only where the app drives that enrollment. After enrolling, a refresh issues a token without the claim.
+  - **Account notices.** On routes the auth server's manifest marks `notices: true` (today `POST /recovery/verify`), an adapter with `messaging` names the notice kinds it can send in `x-seamless-auth-delivery-kinds` and delivers the `account_notice_email` / `account_notice_sms` items the server returns. These items are its "recovery opened" notice with a cancel link, which goes only to the owner and is never logged. If none goes out, the adapter cancels the request with that link's token and answers `503 recovery_notice_failed`, so recovery never runs without the owner being told. New `handlers.sendAccountNoticeEmail` / `sendAccountNoticeSms` and `overrides.accountNoticeEmail` / `accountNoticeSms`; the default sends the server's text as plain text.
+  - An OTP sent for account recovery (`purpose: "account_recovery"`) is worded as a recovery code, and the purpose is passed to custom OTP handlers and overrides.
+  - The bundled fallback manifest now includes the v0.20 routes, including the recovery, recovery code and staged policy routes.
+
+### Patch Changes
+
+- 0e554e3: Check the token type before trusting a token. `ensureCookies` now refuses an access cookie whose
+  inner token is not an access token (`typ: "access"`), as `requireAuth` already did, so a signed
+  pre-auth cookie copied into the access slot is answered 401. `verifyUpstreamSession` refuses a
+  response whose token has the wrong `typ`: an access token for session flows, and an ephemeral
+  token for `/login` and the manifest's pre-auth and registration routes (new optional
+  `expectedType` argument). Core also exports `holdsAccessToken`.
+- 0e554e3: Keep the API's framing and content-type headers on the console proxy. The proxy now forwards
+  `Content-Security-Policy`, `X-Frame-Options` and `X-Content-Type-Options` from the API, and when
+  the API sends neither of the last two it sets `X-Frame-Options: DENY` and
+  `X-Content-Type-Options: nosniff` (unless the application already set them), so the admin console
+  served on the app origin cannot be framed.
+- 0e554e3: Do not follow redirects on upstream requests. `authFetch` now sends every auth API request with
+  `redirect: "manual"` and answers a 3xx as a 502 with `{ "error": "upstream_redirect" }`, so a
+  misconfigured proxy in front of the API can no longer get the service token and forwarded client
+  headers resent to another origin. The adapter manifest fetch no longer follows redirects either,
+  and falls back to the bundled copy instead.
+- 0e554e3: Refuse empty, `.` and `..` route params on the hand-written passthroughs and core handlers with
+  a 400 `bad_request`, as the manifest proxy already did. A decoded `%2e%2e` param previously stayed
+  literal after encoding and moved the upstream path. Core exports `encodePathParam` and
+  `InvalidPathParamError` for the shared rule.
+- Updated dependencies [0e554e3]
+- Updated dependencies [0e554e3]
+- Updated dependencies [0e554e3]
+- Updated dependencies [0e554e3]
+- Updated dependencies [0e554e3]
+- Updated dependencies [98bd4e6]
+- Updated dependencies [5ebc6a2]
+  - @seamless-auth/core@0.22.0
+
 ## 0.12.0
 
 ### Minor Changes
