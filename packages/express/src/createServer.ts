@@ -34,6 +34,7 @@ import {
   AuthFetchOptions,
   checkProxyIdentity,
   createAdapterManifestSource,
+  encodePathParam,
   handleManifestRoute,
   matchManifestRoute,
   proxyRequest,
@@ -422,7 +423,7 @@ export function createSeamlessAuthServer(
     "/organizations/:organizationId",
     proxyWithIdentity(
       (req) =>
-        `organizations/${encodeURIComponent(routeParam(req, "organizationId"))}`,
+        `organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}`,
       "access",
       "GET",
     ),
@@ -431,7 +432,7 @@ export function createSeamlessAuthServer(
     "/organizations/:organizationId",
     proxyWithIdentity(
       (req) =>
-        `organizations/${encodeURIComponent(routeParam(req, "organizationId"))}`,
+        `organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}`,
       "access",
       "PATCH",
     ),
@@ -443,7 +444,7 @@ export function createSeamlessAuthServer(
     "/organizations/:organizationId/members",
     proxyWithIdentity(
       (req) =>
-        `organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/members`,
+        `organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}/members`,
       "access",
       "GET",
     ),
@@ -452,7 +453,7 @@ export function createSeamlessAuthServer(
     "/organizations/:organizationId/members",
     proxyWithIdentity(
       (req) =>
-        `organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/members`,
+        `organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}/members`,
       "access",
     ),
   );
@@ -460,7 +461,7 @@ export function createSeamlessAuthServer(
     "/organizations/:organizationId/members/:userId",
     proxyWithIdentity(
       (req) =>
-        `organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/members/${encodeURIComponent(routeParam(req, "userId"))}`,
+        `organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}/members/${encodePathParam(routeParam(req, "userId"), "userId")}`,
       "access",
       "PATCH",
     ),
@@ -469,7 +470,7 @@ export function createSeamlessAuthServer(
     "/organizations/:organizationId/members/:userId",
     proxyWithIdentity(
       (req) =>
-        `organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/members/${encodeURIComponent(routeParam(req, "userId"))}`,
+        `organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}/members/${encodePathParam(routeParam(req, "userId"), "userId")}`,
       "access",
       "DELETE",
     ),
@@ -544,7 +545,7 @@ export function createSeamlessAuthServer(
     "/system-config/oauth-providers/:id",
     proxyWithIdentity(
       (req) =>
-        `system-config/oauth-providers/${encodeURIComponent(routeParam(req, "id"))}`,
+        `system-config/oauth-providers/${encodePathParam(routeParam(req, "id"), "id")}`,
       "access",
       "PATCH",
     ),
@@ -553,7 +554,7 @@ export function createSeamlessAuthServer(
     "/system-config/oauth-providers/:id",
     proxyWithIdentity(
       (req) =>
-        `system-config/oauth-providers/${encodeURIComponent(routeParam(req, "id"))}`,
+        `system-config/oauth-providers/${encodePathParam(routeParam(req, "id"), "id")}`,
       "access",
       "DELETE",
     ),
@@ -630,7 +631,7 @@ export function createSeamlessAuthServer(
     "/admin/organizations/:organizationId",
     proxyWithIdentity(
       (req) =>
-        `admin/organizations/${encodeURIComponent(routeParam(req, "organizationId"))}`,
+        `admin/organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}`,
       "access",
       "GET",
     ),
@@ -639,7 +640,7 @@ export function createSeamlessAuthServer(
     "/admin/organizations/:organizationId",
     proxyWithIdentity(
       (req) =>
-        `admin/organizations/${encodeURIComponent(routeParam(req, "organizationId"))}`,
+        `admin/organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}`,
       "access",
       "PATCH",
     ),
@@ -648,7 +649,7 @@ export function createSeamlessAuthServer(
     "/admin/organizations/:organizationId",
     proxyWithIdentity(
       (req) =>
-        `admin/organizations/${encodeURIComponent(routeParam(req, "organizationId"))}`,
+        `admin/organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}`,
       "access",
       "DELETE",
     ),
@@ -657,7 +658,7 @@ export function createSeamlessAuthServer(
     "/admin/organizations/:organizationId/members",
     proxyWithIdentity(
       (req) =>
-        `admin/organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/members`,
+        `admin/organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}/members`,
       "access",
       "GET",
     ),
@@ -666,7 +667,7 @@ export function createSeamlessAuthServer(
     "/admin/organizations/:organizationId/members",
     proxyWithIdentity(
       (req) =>
-        `admin/organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/members`,
+        `admin/organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}/members`,
       "access",
     ),
   );
@@ -674,7 +675,7 @@ export function createSeamlessAuthServer(
     "/admin/organizations/:organizationId/members/:userId",
     proxyWithIdentity(
       (req) =>
-        `admin/organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/members/${encodeURIComponent(routeParam(req, "userId"))}`,
+        `admin/organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}/members/${encodePathParam(routeParam(req, "userId"), "userId")}`,
       "access",
       "PATCH",
     ),
@@ -683,7 +684,7 @@ export function createSeamlessAuthServer(
     "/admin/organizations/:organizationId/members/:userId",
     proxyWithIdentity(
       (req) =>
-        `admin/organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/members/${encodeURIComponent(routeParam(req, "userId"))}`,
+        `admin/organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}/members/${encodePathParam(routeParam(req, "userId"), "userId")}`,
       "access",
       "DELETE",
     ),
@@ -692,7 +693,7 @@ export function createSeamlessAuthServer(
     "/admin/organizations/:organizationId/oauth-providers/:providerId/retirement",
     proxyWithIdentity(
       (req) =>
-        `admin/organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/oauth-providers/${encodeURIComponent(routeParam(req, "providerId"))}/retirement`,
+        `admin/organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}/oauth-providers/${encodePathParam(routeParam(req, "providerId"), "providerId")}/retirement`,
       "access",
       "PUT",
     ),
@@ -701,7 +702,7 @@ export function createSeamlessAuthServer(
     "/admin/organizations/:organizationId/oauth-providers/:providerId/retirement",
     proxyWithIdentity(
       (req) =>
-        `admin/organizations/${encodeURIComponent(routeParam(req, "organizationId"))}/oauth-providers/${encodeURIComponent(routeParam(req, "providerId"))}/retirement`,
+        `admin/organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}/oauth-providers/${encodePathParam(routeParam(req, "providerId"), "providerId")}/retirement`,
       "access",
       "DELETE",
     ),

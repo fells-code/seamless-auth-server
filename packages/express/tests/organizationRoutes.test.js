@@ -5,6 +5,9 @@ import request from "supertest";
 
 const { default: createSeamlessAuthServer } = await import("../dist/index.js");
 
+// Unsigned: the adapter only reads the inner token's type, the auth API verifies it.
+const ACCESS_TOKEN = `e30.${Buffer.from(JSON.stringify({ typ: "access" })).toString("base64url")}.sig`;
+
 function createJsonResponse(status, body) {
   return {
     ok: status >= 200 && status < 300,
@@ -19,7 +22,7 @@ function createAccessCookie(subject = "user-123") {
       sub: subject,
       roles: ["admin"],
       sessionId: "session-123",
-      token: "access-token",
+      token: ACCESS_TOKEN,
     },
     "cookie-secret-cookie-secret-cookie-secret",
     {
@@ -82,8 +85,8 @@ describe("organization proxy routes", () => {
       expect.objectContaining({
         method: "GET",
         headers: expect.objectContaining({
-          Authorization: "Bearer access-token",
-          "x-seamless-service-token": expect.not.stringContaining("access-token"),
+          Authorization: `Bearer ${ACCESS_TOKEN}`,
+          "x-seamless-service-token": expect.not.stringContaining(ACCESS_TOKEN),
         }),
       }),
     );
@@ -126,7 +129,7 @@ describe("organization proxy routes", () => {
       expect.objectContaining({
         method: "DELETE",
         headers: expect.objectContaining({
-          Authorization: "Bearer access-token",
+          Authorization: `Bearer ${ACCESS_TOKEN}`,
         }),
       }),
     );
@@ -196,7 +199,7 @@ describe("organization proxy routes", () => {
         expect.objectContaining({
           method,
           headers: expect.objectContaining({
-            Authorization: "Bearer access-token",
+            Authorization: `Bearer ${ACCESS_TOKEN}`,
           }),
         }),
       );

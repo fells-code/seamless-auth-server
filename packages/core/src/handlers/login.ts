@@ -73,6 +73,7 @@ export async function loginHandler(
     opts.authServerUrl,
     opts.audience,
     opts.authServerIssuer,
+    "ephemeral",
   );
 
   // The ephemeral token is what carries the flow forward, and a bearer client

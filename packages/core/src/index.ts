@@ -26,6 +26,7 @@ export {
 export * from "./apiContract.js";
 export * from "./transport.js";
 export * from "./applyResult.js";
+export * from "./pathParam.js";
 export * from "./proxyRequest.js";
 export * from "./result.js";
 export * from "./upstreamSession.js";

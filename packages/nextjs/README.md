@@ -48,6 +48,9 @@ origin:
 `API_SERVICE_TOKEN` and the app from `SEAMLESS_SERVICE_TOKEN`, with the same value.
 Both are checked when the handler is
 created, so a weak secret fails at startup rather than on the first request.
+A known placeholder (`dev-only-cookie-signing-key-replace-me`,
+`GRAB_FROM_SEAMLESS_AUTH_PORTAL_DEV`, or anything containing `replace-me`) is
+refused too, unless `cookieSecure` is `false` for local HTTP development.
 
 The adapter signs cookies with `jsonwebtoken`, so the route needs the Node.js
 runtime. That is the default; do not set `export const runtime = "edge"`.
@@ -200,7 +203,7 @@ adapters, plus `basePath`.
 | `cookieDomain` | none | Domain attribute for the auth cookies |
 | `cookieSecure` | `true` | Set `false` only for local HTTP development |
 | `cookieSameSite` | `none` when secure, else `lax` | SameSite policy |
-| `allowedOrigins` | none | Origin allowlist for browsers without `Sec-Fetch-Site` |
+| `allowedOrigins` | none | Origin allowlist for state-changing requests that are `same-site` or come from browsers without `Sec-Fetch-Site` |
 | `accessCookieName` | `seamless-access` | Session cookie name |
 | `registrationCookieName` | `seamless-ephemeral` | Registration cookie name |
 | `refreshCookieName` | `seamless-refresh` | Refresh cookie name |

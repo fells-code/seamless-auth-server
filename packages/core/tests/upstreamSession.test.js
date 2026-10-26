@@ -35,6 +35,7 @@ beforeEach(() => verifySignedAuthResponseMock.mockReset());
 describe("verifyUpstreamSession", () => {
   it("returns the session id from the sid claim", async () => {
     verifySignedAuthResponseMock.mockResolvedValue({
+      typ: "access",
       sub: "user-1",
       sid: "s-1",
     });
@@ -45,13 +46,13 @@ describe("verifyUpstreamSession", () => {
   });
 
   it("omits the session id when the claim is absent or not a string", async () => {
-    verifySignedAuthResponseMock.mockResolvedValue({ sub: "user-1" });
+    verifySignedAuthResponseMock.mockResolvedValue({ typ: "access", sub: "user-1" });
     expect(
       (await verifyUpstreamSession(SESSION, "https://auth.test", "aud"))
         .sessionId,
     ).toBeUndefined();
 
-    verifySignedAuthResponseMock.mockResolvedValue({ sub: "user-1", sid: 7 });
+    verifySignedAuthResponseMock.mockResolvedValue({ typ: "access", sub: "user-1", sid: 7 });
     expect(
       (await verifyUpstreamSession(SESSION, "https://auth.test", "aud"))
         .sessionId,
@@ -68,8 +69,36 @@ describe("verifyUpstreamSession", () => {
     ).rejects.toThrow("Invalid signed response from Auth Server");
   });
 
+  it("refuses an ephemeral token where an access token is expected", async () => {
+    verifySignedAuthResponseMock.mockResolvedValue({ typ: "ephemeral", sub: "user-1" });
+
+    await expect(
+      verifyUpstreamSession(SESSION, "https://auth.test", "aud"),
+    ).rejects.toThrow("did not carry an access token");
+  });
+
+  it("refuses a token with no type", async () => {
+    verifySignedAuthResponseMock.mockResolvedValue({ sub: "user-1" });
+
+    await expect(
+      verifyUpstreamSession(SESSION, "https://auth.test", "aud"),
+    ).rejects.toThrow("did not carry an access token");
+  });
+
+  it("checks for an ephemeral token when asked to", async () => {
+    verifySignedAuthResponseMock.mockResolvedValue({ typ: "ephemeral", sub: "user-1" });
+    await expect(
+      verifyUpstreamSession(SESSION, "https://auth.test", "aud", undefined, "ephemeral"),
+    ).resolves.toEqual({ sessionId: undefined });
+
+    verifySignedAuthResponseMock.mockResolvedValue({ typ: "access", sub: "user-1" });
+    await expect(
+      verifyUpstreamSession(SESSION, "https://auth.test", "aud", undefined, "ephemeral"),
+    ).rejects.toThrow("did not carry an ephemeral token");
+  });
+
   it("throws when the token describes a different subject", async () => {
-    verifySignedAuthResponseMock.mockResolvedValue({ sub: "someone-else" });
+    verifySignedAuthResponseMock.mockResolvedValue({ typ: "access", sub: "someone-else" });
 
     await expect(
       verifyUpstreamSession(SESSION, "https://auth.test", "aud"),
@@ -77,7 +106,7 @@ describe("verifyUpstreamSession", () => {
   });
 
   it("verifies against the configured server and audience", async () => {
-    verifySignedAuthResponseMock.mockResolvedValue({ sub: "user-1" });
+    verifySignedAuthResponseMock.mockResolvedValue({ typ: "access", sub: "user-1" });
 
     await verifyUpstreamSession(SESSION, "https://auth.test", "the-audience");
 
@@ -90,7 +119,7 @@ describe("verifyUpstreamSession", () => {
   });
 
   it("passes a configured auth server issuer through to verification", async () => {
-    verifySignedAuthResponseMock.mockResolvedValue({ sub: "user-1" });
+    verifySignedAuthResponseMock.mockResolvedValue({ typ: "access", sub: "user-1" });
 
     await verifyUpstreamSession(
       SESSION,
@@ -111,6 +140,7 @@ describe("verifyUpstreamSession", () => {
 describe("issueSessionCookies", () => {
   it("builds the access and refresh cookies", async () => {
     verifySignedAuthResponseMock.mockResolvedValue({
+      typ: "access",
       sub: "user-1",
       sid: "s-1",
     });
@@ -140,7 +170,7 @@ describe("issueSessionCookies", () => {
   });
 
   it("omits the session id key entirely when there is no sid", async () => {
-    verifySignedAuthResponseMock.mockResolvedValue({ sub: "user-1" });
+    verifySignedAuthResponseMock.mockResolvedValue({ typ: "access", sub: "user-1" });
 
     const [access] = await issueSessionCookies(SESSION, OPTIONS);
 
@@ -150,7 +180,7 @@ describe("issueSessionCookies", () => {
   // The refresh path writes `organizationId: null` on every reissue, so a
   // session that omitted it disagreed with itself after one refresh.
   it("always carries an organization id, null when there is none", async () => {
-    verifySignedAuthResponseMock.mockResolvedValue({ sub: "user-1" });
+    verifySignedAuthResponseMock.mockResolvedValue({ typ: "access", sub: "user-1" });
 
     const [access] = await issueSessionCookies(
       { ...SESSION, organizationId: undefined },
@@ -161,7 +191,7 @@ describe("issueSessionCookies", () => {
   });
 
   it("issues only the access cookie when no refresh cookie is named", async () => {
-    verifySignedAuthResponseMock.mockResolvedValue({ sub: "user-1" });
+    verifySignedAuthResponseMock.mockResolvedValue({ typ: "access", sub: "user-1" });
 
     const cookies = await issueSessionCookies(SESSION, {
       ...OPTIONS,
@@ -173,7 +203,7 @@ describe("issueSessionCookies", () => {
   });
 
   it("verifies against the configured auth server issuer", async () => {
-    verifySignedAuthResponseMock.mockResolvedValue({ sub: "user-1" });
+    verifySignedAuthResponseMock.mockResolvedValue({ typ: "access", sub: "user-1" });
 
     await issueSessionCookies(SESSION, {
       ...OPTIONS,

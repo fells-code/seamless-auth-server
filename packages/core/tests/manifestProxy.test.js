@@ -20,6 +20,9 @@ jest.unstable_mockModule("../dist/deliverAuthMessage.js", () => ({
 
 const { handleManifestRoute } = await import("../dist/manifestProxy.js");
 
+// Unsigned: the adapter only reads the inner token's type, the auth API verifies it.
+const ACCESS_TOKEN = `e30.${Buffer.from(JSON.stringify({ typ: "access" })).toString("base64url")}.sig`;
+
 const OPTIONS = {
   authServerUrl: "https://auth.test",
   audience: "https://auth.test",
@@ -35,7 +38,7 @@ const OPTIONS = {
 const SESSION = {
   message: "Success",
   sub: "user-1",
-  token: "access-token",
+  token: ACCESS_TOKEN,
   refreshToken: "refresh-token",
   ttl: 300,
   refreshTtl: 3600,
@@ -62,14 +65,14 @@ function input(route, overrides = {}) {
 }
 
 const ACCESS_COOKIES = {
-  cookiePayload: { sub: "user-1", token: "access-token" },
+  cookiePayload: { sub: "user-1", token: ACCESS_TOKEN },
   cookies: { "seamless-access": "signed" },
 };
 
 beforeEach(() => {
   authFetchMock.mockReset();
   verifySignedAuthResponseMock.mockReset();
-  verifySignedAuthResponseMock.mockResolvedValue({ sub: "user-1", sid: "s-1" });
+  verifySignedAuthResponseMock.mockResolvedValue({ typ: "access", sub: "user-1", sid: "s-1" });
   applyExternalDeliveryMock.mockReset();
   deliverAuthMessageMock.mockReset();
   deliverableNoticeKindsMock.mockReset();
@@ -92,7 +95,7 @@ describe("handleManifestRoute", () => {
       "https://auth.test/admin/users/a%2Fb?limit=5",
       expect.objectContaining({
         method: "GET",
-        authorization: "Bearer access-token",
+        authorization: `Bearer ${ACCESS_TOKEN}`,
         serviceAuthorization: "Bearer proxy-token",
       }),
     );
@@ -193,7 +196,7 @@ describe("handleManifestRoute", () => {
       expect(result.setCookies[0].value).toMatchObject({
         sub: "user-1",
         sessionId: "s-1",
-        token: "access-token",
+        token: ACCESS_TOKEN,
       });
     });
 
@@ -247,6 +250,7 @@ describe("handleManifestRoute", () => {
     });
 
     it("stores an ephemeral token under the route's cookie", async () => {
+      verifySignedAuthResponseMock.mockResolvedValue({ typ: "ephemeral", sub: "user-1" });
       authFetchMock.mockResolvedValue(
         upstream(200, { message: "ok", sub: "user-1", token: "reg-token", ttl: 300 }),
       );
@@ -274,6 +278,7 @@ describe("handleManifestRoute", () => {
   });
 
   it("passes only picked fields to the browser", async () => {
+    verifySignedAuthResponseMock.mockResolvedValue({ typ: "ephemeral", sub: "user-1" });
     authFetchMock.mockResolvedValue(
       upstream(200, {
         message: "Success",

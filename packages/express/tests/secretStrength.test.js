@@ -37,6 +37,30 @@ function middlewareOptions(overrides = {}) {
 }
 
 describe("secret strength validation", () => {
+  it.each([
+    ["cookieSecret", "dev-only-cookie-signing-key-replace-me"],
+    ["serviceSecret", "GRAB_FROM_SEAMLESS_AUTH_PORTAL_DEV"],
+  ])("refuses a placeholder %s at startup", (name, value) => {
+    expect(() => createSeamlessAuthServer(serverOptions({ [name]: value }))).toThrow(
+      new RegExp(`${name} is a published placeholder value`),
+    );
+    expect(() =>
+      createEnsureCookiesMiddleware(middlewareOptions({ [name]: value })),
+    ).toThrow(/published placeholder/);
+  });
+
+  it("accepts a placeholder with cookieSecure: false, for local HTTP development", () => {
+    const local = {
+      cookieSecure: false,
+      cookieSecret: "dev-only-cookie-signing-key-replace-me",
+      serviceSecret: "GRAB_FROM_SEAMLESS_AUTH_PORTAL_DEV",
+    };
+
+    expect(() => createSeamlessAuthServer(serverOptions(local))).not.toThrow();
+    expect(() => createEnsureCookiesMiddleware(middlewareOptions(local))).not.toThrow();
+    expect(() => requireAuth({ cookieSecret: local.cookieSecret })).not.toThrow();
+  });
+
   it("accepts secrets at or above the minimum length", () => {
     expect(() => createSeamlessAuthServer(serverOptions())).not.toThrow();
     expect(() =>

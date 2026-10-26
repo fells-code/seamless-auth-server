@@ -122,7 +122,9 @@ export async function getSeamlessSession(
   cookies: CookieReader,
   opts: SeamlessSessionOptions,
 ): Promise<SeamlessSession | null> {
-  assertSecretStrength("cookieSecret", opts.cookieSecret);
+  assertSecretStrength("cookieSecret", opts.cookieSecret, {
+    allowPlaceholder: true,
+  });
 
   const { user } = authenticateCookie({
     token: accessCookie(cookies, opts),

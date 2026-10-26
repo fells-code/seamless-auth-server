@@ -7,6 +7,9 @@ import request from "supertest";
 const { default: createSeamlessAuthServer, createEnsureCookiesMiddleware } =
   await import("../dist/index.js");
 
+// Unsigned: the adapter only reads the inner token's type, the auth API verifies it.
+const ACCESS_TOKEN = `e30.${Buffer.from(JSON.stringify({ typ: "access" })).toString("base64url")}.sig`;
+
 function createJsonResponse(status, body) {
   return {
     ok: status >= 200 && status < 300,
@@ -55,7 +58,7 @@ async function setCookieHeaders(app, path = "/auth/users/me") {
 
 function createAccessCookie(subject = "user-123") {
   const token = jwt.sign(
-    { sub: subject, roles: ["user"], sessionId: "session-123", token: "access-token" },
+    { sub: subject, roles: ["user"], sessionId: "session-123", token: ACCESS_TOKEN },
     "cookie-secret-cookie-secret-cookie-secret",
     { algorithm: "HS256", expiresIn: "300s" },
   );

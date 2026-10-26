@@ -110,6 +110,7 @@ async function cookiesFor(
       opts.authServerUrl,
       opts.audience,
       opts.authServerIssuer,
+      "ephemeral",
     );
 
     return [
@@ -312,6 +313,9 @@ export async function handleManifestRoute(
         opts.authServerUrl,
         opts.audience,
         opts.authServerIssuer,
+        route.issues === "preAuth" || route.issues === "registration"
+          ? "ephemeral"
+          : "access",
       );
     }
 

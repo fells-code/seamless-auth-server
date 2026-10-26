@@ -14,7 +14,8 @@ export interface RequireAuthOptions {
    * Together with `audience`, lets the guard accept the auth API's own access
    * token in `Authorization: Bearer`, which is how a native client with no
    * cookie jar authenticates. Leave both out and the guard accepts cookies
-   * only, as it always has.
+   * only, as it always has. With both set, the access token inside a cookie
+   * is verified against the auth API's JWKS too.
    */
   authServerUrl?: string;
   /**
@@ -73,7 +74,10 @@ export function requireAuth(opts: RequireAuthOptions) {
   } = opts;
 
   // Eagerly, so a weak secret fails at setup rather than on the first request.
-  assertSecretStrength("requireAuth: cookieSecret", cookieSecret);
+  // A guard has no local-mode setting, so only the adapter refuses a placeholder.
+  assertSecretStrength("requireAuth: cookieSecret", cookieSecret, {
+    allowPlaceholder: true,
+  });
 
   if ((authServerUrl === undefined) !== (audience === undefined)) {
     throw new Error(

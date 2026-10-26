@@ -5,6 +5,9 @@ name: conformance
 on:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   verify:
     uses: fells-code/seamless-cli/.github/workflows/verify-conformance.yml@main

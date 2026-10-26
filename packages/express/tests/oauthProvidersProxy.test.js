@@ -5,6 +5,9 @@ import request from "supertest";
 
 const { default: createSeamlessAuthServer } = await import("../dist/index.js");
 
+// Unsigned: the adapter only reads the inner token's type, the auth API verifies it.
+const ACCESS_TOKEN = `e30.${Buffer.from(JSON.stringify({ typ: "access" })).toString("base64url")}.sig`;
+
 function createJsonResponse(status, body) {
   return {
     ok: status >= 200 && status < 300,
@@ -15,7 +18,7 @@ function createJsonResponse(status, body) {
 
 function createAccessCookie(subject = "admin-123") {
   const token = jwt.sign(
-    { sub: subject, roles: ["admin"], token: "access-token" },
+    { sub: subject, roles: ["admin"], token: ACCESS_TOKEN },
     "cookie-secret-cookie-secret-cookie-secret",
     {
       algorithm: "HS256",
@@ -72,7 +75,7 @@ describe("oauth provider admin proxy routes", () => {
       expect.objectContaining({
         method: "GET",
         headers: expect.objectContaining({
-          Authorization: "Bearer access-token",
+          Authorization: `Bearer ${ACCESS_TOKEN}`,
         }),
       }),
     );

@@ -106,7 +106,7 @@ export async function refreshAccessToken(
   refreshCookie: string,
   opts: RefreshAccessTokenOptions,
 ): Promise<RefreshAccessTokenResult | null> {
-  assertSecrets(opts);
+  assertSecrets(opts, { allowPlaceholder: true });
 
   return dedupeRefresh(`cookie:${refreshCookie}`, async () => {
     const payload = verifyRefreshCookie(refreshCookie, opts.cookieSecret);

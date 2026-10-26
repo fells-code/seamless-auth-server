@@ -10,6 +10,7 @@ import {
   DEV_JWKS_KID,
   ensureCookies,
   handleManifestRoute,
+  InvalidPathParamError,
   matchManifestRoute,
   proxyRequest,
   redactSensitiveText,
@@ -162,6 +163,10 @@ export function createSeamlessAuthHandler(
     } catch (error) {
       if (error instanceof BodyError) {
         return collector.json(error.status, { error: error.message });
+      }
+
+      if (error instanceof InvalidPathParamError) {
+        return collector.json(400, { error: "bad_request" });
       }
 
       console.error(

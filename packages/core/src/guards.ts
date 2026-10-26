@@ -56,9 +56,12 @@ function normalizeOrigin(value: string): string {
  * `Strict` cookie is not sent on one, so the check is inert there.
  *
  * `Sec-Fetch-Site` is the primary signal: current browsers send it and page
- * JavaScript cannot forge it. When it is absent the `Origin` is matched against
- * `allowedOrigins`, but only when the adopter opted in, so nothing regresses for
- * callers that predate the guard.
+ * JavaScript cannot forge it. `cross-site` is refused and `same-origin` passes.
+ * `same-site` also covers a sibling subdomain, so when the adopter configured
+ * `allowedOrigins` the `Origin` must be on it as well; without the allowlist a
+ * same-site request passes, as it always has. When `Sec-Fetch-Site` is absent
+ * the `Origin` is matched against `allowedOrigins`, again only when the adopter
+ * opted in, so nothing regresses for callers that predate the guard.
  */
 export function checkOrigin(
   input: OriginCheckInput,
@@ -75,9 +78,20 @@ export function checkOrigin(
   };
 
   if (input.secFetchSite !== undefined) {
-    return input.secFetchSite.toLowerCase() === "cross-site"
-      ? rejection
-      : undefined;
+    const site = input.secFetchSite.toLowerCase();
+
+    if (site === "cross-site") {
+      return rejection;
+    }
+
+    if (site !== "same-site" || !input.allowedOrigins) {
+      return undefined;
+    }
+
+    return input.origin !== undefined &&
+      isAllowedOrigin(input.origin, input.allowedOrigins)
+      ? undefined
+      : rejection;
   }
 
   // No `Origin` and no `Sec-Fetch-Site` is a same-origin or non-browser
@@ -98,11 +112,15 @@ export function checkOrigin(
     return undefined;
   }
 
-  const allowed = new Set(
-    input.allowedOrigins.map(normalizeOrigin).filter(Boolean),
-  );
+  return isAllowedOrigin(input.origin, input.allowedOrigins)
+    ? undefined
+    : rejection;
+}
 
-  return allowed.has(normalizeOrigin(input.origin)) ? undefined : rejection;
+function isAllowedOrigin(origin: string, allowedOrigins: string[]): boolean {
+  const allowed = new Set(allowedOrigins.map(normalizeOrigin).filter(Boolean));
+
+  return allowed.has(normalizeOrigin(origin));
 }
 
 export interface CookieAuthInput {
@@ -147,7 +165,7 @@ export type CookieAuthResult =
  * against the auth API's key set before the adapter signed it into the cookie,
  * so its claims are read here without verifying it again.
  */
-function holdsAccessToken(token: unknown): boolean {
+export function holdsAccessToken(token: unknown): boolean {
   if (typeof token !== "string") return false;
 
   try {
@@ -165,7 +183,9 @@ function holdsAccessToken(token: unknown): boolean {
  * there.
  */
 export function authenticateCookie(input: CookieAuthInput): CookieAuthResult {
-  assertSecretStrength("requireAuth: cookieSecret", input.cookieSecret);
+  assertSecretStrength("requireAuth: cookieSecret", input.cookieSecret, {
+    allowPlaceholder: true,
+  });
 
   if (!input.token) {
     return {
@@ -296,15 +316,24 @@ export interface RequestAuthInput extends CookieAuthInput {
  * stale cookie should see the session rejected rather than fall through to a
  * header it never meant to send. Bearer is only consulted when there is no
  * cookie at all and the adopter has opted in.
+ *
+ * With `bearer` configured, a cookie's inner access token is also verified
+ * against the auth API's key set, and its roles come from that token.
  */
 export async function authenticateRequest(
   input: RequestAuthInput,
 ): Promise<AuthResult> {
   if (input.token || !input.bearer) {
-    return authenticateCookie(input);
+    const result = authenticateCookie(input);
+
+    return result.user && input.bearer
+      ? verifyCookieAccessToken(result.user, input.bearer)
+      : result;
   }
 
-  assertSecretStrength("requireAuth: cookieSecret", input.cookieSecret);
+  assertSecretStrength("requireAuth: cookieSecret", input.cookieSecret, {
+    allowPlaceholder: true,
+  });
 
   if (!extractBearerToken(input.authorization)) {
     return {
@@ -319,6 +348,33 @@ export async function authenticateRequest(
     allowRecoverySession: input.allowRecoverySession,
     ...input.bearer,
   });
+}
+
+// The cookie secret alone can sign a cookie. Holding the inner token to the
+// auth API's key set means a forged cookie cannot carry claims of its own.
+async function verifyCookieAccessToken(
+  user: SeamlessAuthUser,
+  verify: NonNullable<RequestAuthInput["bearer"]>,
+): Promise<AuthResult> {
+  const claims = await verifyAccessToken(
+    user.token as string,
+    verify.authServerUrl,
+    verify.audience,
+    verify.authServerIssuer,
+  );
+
+  if (!claims || claims.sub !== user.id) {
+    return {
+      rejection: { status: 401, errorCode: "Invalid or expired session" },
+    };
+  }
+
+  return {
+    user: {
+      ...user,
+      roles: Array.isArray(claims.roles) ? claims.roles : user.roles,
+    },
+  };
 }
 
 /**

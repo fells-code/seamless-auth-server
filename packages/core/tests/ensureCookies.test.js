@@ -16,6 +16,9 @@ jest.unstable_mockModule("../dist/verifySignedAuthResponse.js", () => ({
   verifySignedAuthResponse: verifySignedAuthResponseMock,
 }));
 
+// Unsigned: the adapter only reads the inner token's type, the auth API verifies it.
+const ACCESS_TOKEN = `e30.${Buffer.from(JSON.stringify({ typ: "access" })).toString("base64url")}.sig`;
+
 const BASE_OPTS = {
   authServerUrl: "https://auth.example.com",
   cookieDomain: "example.com",
@@ -53,7 +56,7 @@ describe("ensureCookies", () => {
 
     verifyCookieJwtMock.mockReturnValue({
       sub: "user-123",
-      token: "access-token",
+      token: ACCESS_TOKEN,
       roles: ["user"],
     });
 
@@ -68,7 +71,7 @@ describe("ensureCookies", () => {
     expect(result.type).toBe("ok");
     expect(result.user).toEqual({
       sub: "user-123",
-      token: "access-token",
+      token: ACCESS_TOKEN,
       roles: ["user"],
     });
   });
@@ -122,6 +125,7 @@ describe("ensureCookies", () => {
     const { ensureCookies } = await import("../dist/ensureCookies.js");
 
     verifySignedAuthResponseMock.mockResolvedValue({
+      typ: "access",
       sub: "user-123",
       sid: "session-123",
     });
@@ -193,6 +197,46 @@ describe("ensureCookies", () => {
     },
   );
 
+  // Every adapter cookie is signed with the same secret, so a pre-auth cookie
+  // copied into the access slot verifies. Its token type gives it away.
+  it.each([
+    ["an ephemeral token", `e30.${Buffer.from(JSON.stringify({ typ: "ephemeral" })).toString("base64url")}.sig`],
+    ["a token with no type", `e30.${Buffer.from("{}").toString("base64url")}.sig`],
+    ["an opaque string", "access-token"],
+  ])("refuses an access cookie holding %s", async (_label, token) => {
+    const { ensureCookies } = await import("../dist/ensureCookies.js");
+
+    verifyCookieJwtMock.mockReturnValue({ sub: "user-123", token });
+
+    const result = await ensureCookies(
+      { path: "/users/me", cookies: { access: "signed.cookie.jwt" } },
+      BASE_OPTS,
+    );
+
+    expect(result).toEqual({
+      type: "error",
+      status: 401,
+      errorCode: "Invalid or expired access cookie",
+      clearCookies: ["access"],
+    });
+    expect(refreshAccessTokenMock).not.toHaveBeenCalled();
+  });
+
+  it("still accepts an ephemeral token in the pre-auth cookie", async () => {
+    const { ensureCookies } = await import("../dist/ensureCookies.js");
+    const token = `e30.${Buffer.from(JSON.stringify({ typ: "ephemeral" })).toString("base64url")}.sig`;
+
+    verifyCookieJwtMock.mockReturnValue({ sub: "user-123", token });
+
+    const result = await ensureCookies(
+      { path: "/webAuthn/login/start", cookies: { preauth: "signed.cookie.jwt" } },
+      BASE_OPTS,
+    );
+
+    expect(result.type).toBe("ok");
+    expect(result.user.token).toBe(token);
+  });
+
   it("refreshes old access cookies that do not contain a stored auth token", async () => {
     const { ensureCookies } = await import("../dist/ensureCookies.js");
 
@@ -202,6 +246,7 @@ describe("ensureCookies", () => {
       roles: ["user"],
     });
     verifySignedAuthResponseMock.mockResolvedValue({
+      typ: "access",
       sub: "user-123",
       sid: "session-456",
     });
@@ -272,7 +317,7 @@ describe("ensureCookies", () => {
     });
 
     it("issues no cookie when the token names a different subject than the body", async () => {
-      verifySignedAuthResponseMock.mockResolvedValue({ sub: "someone-else" });
+      verifySignedAuthResponseMock.mockResolvedValue({ typ: "access", sub: "someone-else" });
 
       const result = await silentRefresh();
 
@@ -281,7 +326,7 @@ describe("ensureCookies", () => {
     });
 
     it("verifies against the access token audience, not the service token's", async () => {
-      verifySignedAuthResponseMock.mockResolvedValue({ sub: "user-123" });
+      verifySignedAuthResponseMock.mockResolvedValue({ typ: "access", sub: "user-123" });
 
       await silentRefresh({
         ...BASE_OPTS,
@@ -299,7 +344,7 @@ describe("ensureCookies", () => {
     });
 
     it("defaults the access token audience to the auth server URL", async () => {
-      verifySignedAuthResponseMock.mockResolvedValue({ sub: "user-123" });
+      verifySignedAuthResponseMock.mockResolvedValue({ typ: "access", sub: "user-123" });
 
       await silentRefresh({ ...BASE_OPTS, audience: "seamless-auth" });
 
@@ -312,7 +357,7 @@ describe("ensureCookies", () => {
     });
 
     it("verifies against the configured auth server issuer", async () => {
-      verifySignedAuthResponseMock.mockResolvedValue({ sub: "user-123" });
+      verifySignedAuthResponseMock.mockResolvedValue({ typ: "access", sub: "user-123" });
 
       await silentRefresh({
         ...BASE_OPTS,
@@ -331,6 +376,7 @@ describe("ensureCookies", () => {
 
     it("takes the session id from the signed token rather than the body", async () => {
       verifySignedAuthResponseMock.mockResolvedValue({
+        typ: "access",
         sub: "user-123",
         sid: "signed-session",
       });
@@ -489,7 +535,7 @@ describe("ensureCookies", () => {
 
     verifyCookieJwtMock.mockReturnValue({
       sub: "user-123",
-      token: "access-token",
+      token: ACCESS_TOKEN,
       sessionId: "session-123",
       roles: ["user"],
     });
@@ -506,7 +552,7 @@ describe("ensureCookies", () => {
     expect(result.user).toEqual({
       sub: "user-123",
       sessionId: "session-123",
-      token: "access-token",
+      token: ACCESS_TOKEN,
       roles: ["user"],
     });
   });
@@ -516,7 +562,7 @@ describe("ensureCookies", () => {
 
     verifyCookieJwtMock.mockReturnValue({
       sub: "admin-123",
-      token: "access-token",
+      token: ACCESS_TOKEN,
       sessionId: "session-123",
       roles: ["admin"],
     });
@@ -533,7 +579,7 @@ describe("ensureCookies", () => {
     expect(result.user).toEqual({
       sub: "admin-123",
       sessionId: "session-123",
-      token: "access-token",
+      token: ACCESS_TOKEN,
       roles: ["admin"],
     });
   });
@@ -543,7 +589,7 @@ describe("ensureCookies", () => {
 
     verifyCookieJwtMock.mockReturnValue({
       sub: "user-123",
-      token: "access-token",
+      token: ACCESS_TOKEN,
       sessionId: "session-123",
       roles: ["user"],
     });
@@ -561,7 +607,7 @@ describe("ensureCookies", () => {
       );
 
       expect(result.type).toBe("ok");
-      expect(result.user?.token).toBe("access-token");
+      expect(result.user?.token).toBe(ACCESS_TOKEN);
     }
   });
 
@@ -593,7 +639,7 @@ describe("ensureCookies", () => {
 
     verifyCookieJwtMock.mockReturnValue({
       sub: "user-123",
-      token: "access-token",
+      token: ACCESS_TOKEN,
       sessionId: "session-123",
       roles: ["user"],
     });
@@ -610,7 +656,7 @@ describe("ensureCookies", () => {
     expect(result.user).toEqual({
       sub: "user-123",
       sessionId: "session-123",
-      token: "access-token",
+      token: ACCESS_TOKEN,
       roles: ["user"],
     });
   });
@@ -668,7 +714,7 @@ describe("ensureCookies with a manifest", () => {
 
   it("refreshes a missing access cookie for an access route", async () => {
     const { ensureCookies } = await import("../dist/ensureCookies.js");
-    verifySignedAuthResponseMock.mockResolvedValue({ sub: "user-1", sid: "s-1" });
+    verifySignedAuthResponseMock.mockResolvedValue({ typ: "access", sub: "user-1", sid: "s-1" });
     refreshAccessTokenMock.mockResolvedValue({
       sub: "user-1",
       token: "new-access",

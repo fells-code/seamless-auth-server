@@ -15,6 +15,9 @@ const {
   createSeamlessConsoleProxy: createExpressConsoleProxy,
 } = await import("../../express/dist/index.js");
 
+// Unsigned: the adapter only reads the inner token's type, the auth API verifies it.
+const ACCESS_TOKEN = `e30.${Buffer.from(JSON.stringify({ typ: "access" })).toString("base64url")}.sig`;
+
 const COOKIE_SECRET = "cookie-secret-cookie-secret-cookie-secret";
 const SERVICE_SECRET = "service-secret-service-secret-service-secret";
 
@@ -59,7 +62,7 @@ function signed(payload, ttl = "300s") {
 }
 
 const accessCookie = () =>
-  `seamless-access=${signed({ sub: "user-123", roles: ["admin"], sessionId: "s-1", token: "access-token" })}`;
+  `seamless-access=${signed({ sub: "user-123", roles: ["admin"], sessionId: "s-1", token: ACCESS_TOKEN })}`;
 const preAuthCookie = () =>
   `seamless-ephemeral=${signed({ sub: "user-123", token: "pre-auth" })}`;
 
@@ -467,6 +470,51 @@ describe("next.js and express adapters agree", () => {
   // stale cookie in the path of the one call a signed-out client has to make.
   // Asserted with a valid cookie present so a future refactor cannot quietly
   // start attaching one.
+  // Every adapter cookie is signed with the same secret, so a pre-auth token
+  // copied into the access cookie verifies as a cookie. Its type does not.
+  it("refuses an access cookie that carries a pre-auth token", async () => {
+    const ephemeral = `e30.${Buffer.from(JSON.stringify({ typ: "ephemeral" })).toString("base64url")}.sig`;
+    const scenario = {
+      method: "get",
+      path: "/users/me",
+      cookie: `seamless-access=${signed({ sub: "user-123", roles: ["admin"], token: ephemeral })}`,
+    };
+    const { next, express: expressResult } = await bothAdapters(
+      scenario,
+      upstream(200, { user: { id: "user-123" } }),
+    );
+
+    for (const result of [next, expressResult]) {
+      expect(result.status).toBe(401);
+    }
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(next).toEqual(expressResult);
+  });
+
+  it("answers an upstream redirect as a 502 rather than following it", async () => {
+    const scenario = {
+      method: "post",
+      path: "/users/update",
+      cookie: accessCookie(),
+      payload: { email: "a@b.c" },
+    };
+    const { next, express: expressResult } = await bothAdapters(
+      scenario,
+      new Response(null, {
+        status: 302,
+        headers: { location: "https://elsewhere.example.com/users/update" },
+      }),
+    );
+
+    for (const result of [next, expressResult]) {
+      expect(result.status).toBe(502);
+      expect(result.body).toEqual({ error: "upstream_redirect" });
+    }
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch.mock.calls[0][1].redirect).toBe("manual");
+    expect(next).toEqual(expressResult);
+  });
+
   it("sends no identity upstream for the public system config", async () => {
     // One explicit user agent for both, so a default one side sends and the
     // other does not cannot show up as a header only one adapter forwards.
@@ -690,6 +738,33 @@ describe("next.js and express adapters agree", () => {
     );
   });
 
+  it.each([
+    ["same-site", "https://evil.example.com", 403],
+    ["same-site", undefined, 403],
+    ["same-site", "https://app.example.com", 200],
+    ["same-origin", "https://other.example.com", 200],
+    ["cross-site", "https://app.example.com", 403],
+  ])(
+    "with allowedOrigins, Sec-Fetch-Site %s from %s answers %i on both",
+    async (site, origin, status) => {
+      const scenario = {
+        method: "post",
+        path: "/users/update",
+        cookie: accessCookie(),
+        payload: { email: "a@b.c" },
+        headers: { "sec-fetch-site": site, ...(origin ? { origin } : {}) },
+        options: { allowedOrigins: ["https://app.example.com"] },
+      };
+      const { next, express: expressResult } = await bothAdapters(
+        scenario,
+        upstream(200, {}),
+      );
+
+      expect(next.status).toBe(status);
+      expect(expressResult.status).toBe(status);
+    },
+  );
+
   it("blocks a cross-site state change the same way", async () => {
     global.fetch = jest.fn(async () => upstream(200, {}));
 
@@ -751,6 +826,25 @@ describe("both adapters forward a magic link destination", () => {
 
     expect(viaN).toBe(viaE);
     expect(viaN).toBe("https://auth.example.com/magic-link");
+  });
+});
+
+describe("both adapters refuse a placeholder secret at startup", () => {
+  it.each([
+    ["cookieSecret", "dev-only-cookie-signing-key-replace-me"],
+    ["serviceSecret", "GRAB_FROM_SEAMLESS_AUTH_PORTAL_DEV"],
+  ])("%s", (name, value) => {
+    expect(() => createSeamlessAuthHandler({ ...OPTIONS, [name]: value })).toThrow(
+      /published placeholder/,
+    );
+    expect(() => buildExpress({ [name]: value })).toThrow(/published placeholder/);
+  });
+
+  it("accepts one in insecure local mode", () => {
+    const local = { cookieSecure: false, cookieSecret: "dev-only-cookie-signing-key-replace-me" };
+
+    expect(() => createSeamlessAuthHandler({ ...OPTIONS, ...local })).not.toThrow();
+    expect(() => buildExpress(local)).not.toThrow();
   });
 });
 
@@ -911,6 +1005,14 @@ function consoleUpstream(status, body, headers = {}) {
   return new Response(body, { status, headers });
 }
 
+const SECURITY_HEADERS = ["content-security-policy", "x-frame-options", "x-content-type-options"];
+
+function pickHeaders(read) {
+  return Object.fromEntries(
+    SECURITY_HEADERS.map((name) => [name, read(name)]).filter(([, v]) => v !== undefined),
+  );
+}
+
 function fetchedUrls() {
   return global.fetch.mock.calls.map(([url]) => url.toString());
 }
@@ -931,6 +1033,7 @@ async function viaNextConsole({ method, path }) {
     body: parseBody(await res.text()),
     contentType: res.headers.get("content-type") ?? undefined,
     cacheControl: res.headers.get("cache-control") ?? undefined,
+    security: pickHeaders((name) => res.headers.get(name) ?? undefined),
   };
 }
 
@@ -948,6 +1051,7 @@ async function viaExpressConsole({ method, path }) {
     body: parseBody(res.text),
     contentType: res.headers["content-type"],
     cacheControl: res.headers["cache-control"],
+    security: pickHeaders((name) => res.headers[name]),
   };
 }
 
@@ -1038,6 +1142,39 @@ describe("next.js and express console proxies agree", () => {
     expect(next.contentType).toBe(expressResult.contentType);
     expect(next.cacheControl).toBe(expressResult.cacheControl);
     expect(next.urls).toEqual(expressResult.urls);
+  });
+
+  it.each([
+    [
+      "keeps the API's framing and sniffing headers",
+      {
+        "content-security-policy": "default-src 'self'; frame-ancestors 'none'",
+        "x-frame-options": "SAMEORIGIN",
+        "x-content-type-options": "nosniff",
+      },
+      {
+        "content-security-policy": "default-src 'self'; frame-ancestors 'none'",
+        "x-frame-options": "SAMEORIGIN",
+        "x-content-type-options": "nosniff",
+      },
+    ],
+    [
+      "refuses framing and sniffing when the API sends neither header",
+      {},
+      { "x-frame-options": "DENY", "x-content-type-options": "nosniff" },
+    ],
+  ])("%s", async (_label, upstreamHeaders, expected) => {
+    const { next, express: expressResult } = await bothConsoleAdapters(
+      { method: "get", path: "/console/settings" },
+      async () =>
+        consoleUpstream(200, "<!doctype html>", {
+          "content-type": "text/html; charset=utf-8",
+          ...upstreamHeaders,
+        }),
+    );
+
+    expect(next.security).toEqual(expected);
+    expect(expressResult.security).toEqual(expected);
   });
 
   // Express and the URL parser normalize dot-segments at different points, so

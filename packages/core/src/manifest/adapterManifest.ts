@@ -1,4 +1,5 @@
 import { getSeamlessLogger } from "../logger.js";
+import { isDotSegment } from "../pathParam.js";
 import { BUNDLED_ADAPTER_MANIFEST } from "./bundledManifest.js";
 
 /**
@@ -152,7 +153,7 @@ export function matchManifestRoute(
 
         // Re-encoded, a dot segment survives as a literal `..` that fetch then
         // resolves, sending the held token to a different upstream path.
-        if (value === "." || value === "..") {
+        if (isDotSegment(value)) {
           matched = false;
           break;
         }
@@ -230,6 +231,7 @@ export function createAdapterManifestSource(
     try {
       const response = await fetch(`${opts.authServerUrl}${ADAPTER_MANIFEST_PATH}`, {
         headers: { accept: "application/json" },
+        redirect: "manual",
         signal: AbortSignal.timeout(opts.timeoutMs ?? DEFAULT_TIMEOUT_MS),
       });
 

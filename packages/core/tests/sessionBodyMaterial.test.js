@@ -76,6 +76,7 @@ describe("session responses do not repeat the credentials in the body", () => {
     global.fetch = jest.fn();
     verifySignedAuthResponseMock.mockReset();
     verifySignedAuthResponseMock.mockResolvedValue({
+      typ: "access",
       sub: "user-123",
       sid: "session-123",
     });

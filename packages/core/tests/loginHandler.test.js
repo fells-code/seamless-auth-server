@@ -15,7 +15,7 @@ async function createSignedAuthResponse(subject = "user-123") {
   jwk.kid = "test-key";
   jwk.use = "sig";
 
-  const token = await new SignJWT({ sub: subject })
+  const token = await new SignJWT({ sub: subject, typ: "ephemeral" })
     .setProtectedHeader({ alg: "RS256", kid: "test-key" })
     .setIssuer("https://auth.example.com")
     .setSubject(subject)

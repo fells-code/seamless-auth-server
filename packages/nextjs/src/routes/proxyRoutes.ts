@@ -1,4 +1,4 @@
-import type { ProxyIdentity } from "@seamless-auth/core";
+import { encodePathParam, type ProxyIdentity } from "@seamless-auth/core";
 
 export interface ProxyRouteDefinition {
   method: "GET" | "POST" | "PATCH" | "DELETE";
@@ -283,10 +283,10 @@ export function resolveUpstreamPath(
   return template.replace(/:([A-Za-z0-9_]+)/g, (_match, name: string) => {
     const value = params[name];
 
-    if (typeof value !== "string" || value === "") {
+    if (typeof value !== "string") {
       throw new Error(`Missing route parameter "${name}"`);
     }
 
-    return encodeURIComponent(value);
+    return encodePathParam(value, name);
   });
 }

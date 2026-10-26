@@ -7,7 +7,8 @@ const { default: createSeamlessAuthServer } = await import("../dist/index.js");
 
 const SERVICE_SECRET = "service-secret-service-secret-service-secret";
 const COOKIE_SECRET = "cookie-secret-cookie-secret-cookie-secret";
-const USER_ACCESS_TOKEN = "user-access-token";
+// Unsigned: the adapter only reads the inner token's type, the auth API verifies it.
+const USER_ACCESS_TOKEN = `e30.${Buffer.from(JSON.stringify({ typ: "access" })).toString("base64url")}.sig`;
 
 function createJsonResponse(status, body) {
   return {

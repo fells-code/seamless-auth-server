@@ -1,3 +1,4 @@
+import { encodePathParam } from "../pathParam.js";
 import type { AuthServerIssuerOption } from "../authServerIssuer.js";
 import { authFetch } from "../authFetch.js";
 import { sessionResult } from "../upstreamSession.js";
@@ -38,7 +39,7 @@ export async function switchOrganizationHandler(
   opts: SwitchOrganizationOptions,
 ): Promise<SwitchOrganizationResult> {
   const up = await authFetch(
-    `${opts.authServerUrl}/organizations/${encodeURIComponent(input.organizationId)}/switch`,
+    `${opts.authServerUrl}/organizations/${encodePathParam(input.organizationId)}/switch`,
     {
       method: "POST",
       authorization: input.authorization,

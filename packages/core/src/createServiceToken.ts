@@ -13,7 +13,9 @@ export interface ServiceTokenOptions {
 }
 
 export function createServiceToken(opts: ServiceTokenOptions): string {
-  assertSecretStrength("serviceSecret", opts.serviceSecret);
+  assertSecretStrength("serviceSecret", opts.serviceSecret, {
+    allowPlaceholder: true,
+  });
 
   return jwt.sign(
     {

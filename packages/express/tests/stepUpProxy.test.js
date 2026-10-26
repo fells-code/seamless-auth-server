@@ -5,6 +5,9 @@ import request from "supertest";
 
 const { default: createSeamlessAuthServer } = await import("../dist/index.js");
 
+// Unsigned: the adapter only reads the inner token's type, the auth API verifies it.
+const ACCESS_TOKEN = `e30.${Buffer.from(JSON.stringify({ typ: "access" })).toString("base64url")}.sig`;
+
 function createJsonResponse(status, body) {
   return {
     ok: status >= 200 && status < 300,
@@ -15,7 +18,7 @@ function createJsonResponse(status, body) {
 
 function createAccessCookie(subject = "user-123") {
   const token = jwt.sign(
-    { sub: subject, roles: ["user"], token: "access-token" },
+    { sub: subject, roles: ["user"], token: ACCESS_TOKEN },
     "cookie-secret-cookie-secret-cookie-secret",
     {
       algorithm: "HS256",
@@ -97,8 +100,8 @@ describe("step-up proxy routes", () => {
       expect.objectContaining({
         method: "GET",
         headers: expect.objectContaining({
-          Authorization: "Bearer access-token",
-          "x-seamless-service-token": expect.not.stringContaining("access-token"),
+          Authorization: `Bearer ${ACCESS_TOKEN}`,
+          "x-seamless-service-token": expect.not.stringContaining(ACCESS_TOKEN),
         }),
       }),
     );
@@ -139,8 +142,8 @@ describe("step-up proxy routes", () => {
         method: "POST",
         body: JSON.stringify(body),
         headers: expect.objectContaining({
-          Authorization: "Bearer access-token",
-          "x-seamless-service-token": expect.not.stringContaining("access-token"),
+          Authorization: `Bearer ${ACCESS_TOKEN}`,
+          "x-seamless-service-token": expect.not.stringContaining(ACCESS_TOKEN),
         }),
       }),
     );
@@ -198,7 +201,7 @@ describe("step-up proxy routes", () => {
       expect.objectContaining({
         method: "GET",
         headers: expect.objectContaining({
-          Authorization: "Bearer access-token",
+          Authorization: `Bearer ${ACCESS_TOKEN}`,
         }),
       }),
     );
