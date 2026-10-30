@@ -20,10 +20,16 @@ on:
 permissions:
   contents: read
 
+# Serialized rather than cancelled, so a snapshot publish is never cut off halfway.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   prerelease:
     name: Publish Prerelease Snapshot
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     permissions:
       contents: read
@@ -43,6 +49,9 @@ jobs:
           node-version-file: '.nvmrc'
           cache: pnpm
           registry-url: https://registry.npmjs.org/
+
+      - name: Use an npm that supports trusted publishing
+        run: npm install -g npm@^11.5.1
 
       - name: Determine release channel
         id: channel
@@ -72,6 +81,4 @@ jobs:
         if: steps.changesets.outputs.has_changesets == 'true'
         run: pnpm release:${{ steps.channel.outputs.tag }}
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
