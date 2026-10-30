@@ -150,7 +150,7 @@ describe("failure wire format", () => {
     });
   });
 
-  // The two readers in seamless-auth-react that a reshaped body would break.
+  // The two readers in seamless-auth-js that a reshaped body would break.
   describe("stays readable by the SDK", () => {
     function extractMessage(body) {
       if (typeof body !== "object" || body === null) return undefined;
