@@ -1713,6 +1713,91 @@ describe("fastify and express serve the OpenID Provider admin routes", () => {
   });
 });
 
+// An OAuth provider configured from its issuer can have its discovery document
+// read again on demand. The route is served from the bundled manifest.
+describe("fastify and express serve the OAuth provider discovery refresh", () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  const PATH = "/system-config/oauth-providers/okta%20prod/discovery";
+
+  function recordingUpstream(status, body) {
+    return jest.fn(async (url) =>
+      String(url).endsWith("/.well-known/jwks.json")
+        ? upstream(200, { keys: [jwk] })
+        : upstream(status, body),
+    );
+  }
+
+  async function both(scenario, status, body) {
+    global.fetch = recordingUpstream(status, body);
+    const viaAdapter = await viaFastify(scenario);
+    const adapterCalls = global.fetch.mock.calls;
+
+    global.fetch = recordingUpstream(status, body);
+    const viaExpressResult = await viaExpress(scenario);
+
+    return {
+      viaAdapter,
+      viaExpressResult,
+      calls: [adapterCalls, global.fetch.mock.calls],
+    };
+  }
+
+  const routeCall = (calls) =>
+    calls.find(([href]) => new URL(String(href)).pathname === PATH);
+
+  it("reaches the auth API with the access token and no body", async () => {
+    const provider = {
+      id: "okta prod",
+      issuer: "https://idp.example.com",
+      authorizationUrl: "https://idp.example.com/authorize",
+    };
+    const result = await both(
+      { method: "post", path: PATH, cookie: accessCookie() },
+      200,
+      provider,
+    );
+
+    expect(result.viaAdapter).toEqual({ status: 200, body: provider, cookies: [] });
+    expect(result.viaAdapter).toEqual(result.viaExpressResult);
+
+    for (const calls of result.calls) {
+      const [, init] = routeCall(calls);
+      expect(init.method).toBe("POST");
+      expect(init.headers.Authorization).toBe(`Bearer ${ACCESS_TOKEN}`);
+      expect(init.body).toBeUndefined();
+    }
+  });
+
+  it.each([
+    [403, { error: "step_up_required", message: "Recent step-up authentication is required" }],
+    [404, { error: "OAuth provider not found" }],
+    [502, { error: "Could not read the issuer's discovery document" }],
+  ])("passes a %s through unchanged", async (status, body) => {
+    const result = await both(
+      { method: "post", path: PATH, cookie: accessCookie() },
+      status,
+      body,
+    );
+
+    expect(result.viaAdapter).toEqual({ status, body, cookies: [] });
+    expect(result.viaAdapter).toEqual(result.viaExpressResult);
+  });
+
+  it("refuses it without an access cookie", async () => {
+    const result = await both({ method: "post", path: PATH }, 200, {});
+
+    expect(result.viaAdapter.status).toBe(401);
+    expect(result.viaAdapter).toEqual(result.viaExpressResult);
+    for (const calls of result.calls) {
+      expect(routeCall(calls)).toBeUndefined();
+    }
+  });
+});
+
 // A recovery session that enrolls a factor is rotated at once, so its new access
 // cookie drops the recovery claim (#235). Refresh tokens are unique per run: the
 // adapters replay a recent refresh for the same token, which would hide the call.

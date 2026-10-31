@@ -11,6 +11,7 @@
  * which carry provider implementations, and the adopter-facing configuration.
  */
 export type {
+  AccountNoticeApplication,
   AccountNoticeName,
   AuthDeliveryInstruction,
   DeliveryPurpose,
@@ -24,6 +25,7 @@ export type {
 } from "@seamless-auth/types";
 
 import type {
+  AccountNoticeApplication,
   AccountNoticeName,
   DeliveryPurpose,
   DeliveryResult,
@@ -44,7 +46,8 @@ export interface SendEnrollmentInviteEmailInput {
 /**
  * An owner notice the auth API asked this server to send, such as "account recovery
  * was requested". `text` is ready to send. `cancelUrl` carries a credential: send it
- * only to `to`, and never log it.
+ * only to `to`, and never log it. `application` names the registered application an
+ * `application_notice` was sent for; the text already says so.
  */
 export interface SendAccountNoticeEmailInput {
   notice: AccountNoticeName;
@@ -52,6 +55,7 @@ export interface SendAccountNoticeEmailInput {
   subject: string;
   text: string;
   cancelUrl?: string;
+  application?: AccountNoticeApplication;
   from?: string;
 }
 
@@ -60,6 +64,7 @@ export interface SendAccountNoticeSmsInput {
   to: string;
   text: string;
   cancelUrl?: string;
+  application?: AccountNoticeApplication;
   from?: string;
 }
 

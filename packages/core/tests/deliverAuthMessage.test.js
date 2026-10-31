@@ -329,6 +329,35 @@ describe("account recovery deliveries", () => {
     expect(email.send.mock.calls[0][0].subject).toBe("account_recovery_opened");
   });
 
+  it("passes the application an application notice was sent for to a handler and an override", async () => {
+    const application = { clientId: "client-1", name: "Orders" };
+    const notice = {
+      kind: "account_notice_sms",
+      notice: "application_notice",
+      to: "+15555550100",
+      text: "Orders: your order shipped.",
+      application,
+    };
+    const sendAccountNoticeSms = jest.fn(async () => ({}));
+    const sms = smsTransport();
+
+    await deliverAuthMessage({ handlers: { sendAccountNoticeSms } }, notice);
+    await deliverAuthMessage(
+      {
+        sms,
+        overrides: {
+          accountNoticeSms: (input, defaults) => ({ ...defaults, body: `[${input.application.name}] ${input.text}` }),
+        },
+      },
+      notice,
+    );
+
+    expect(sendAccountNoticeSms).toHaveBeenCalledWith(
+      expect.objectContaining({ notice: "application_notice", application }),
+    );
+    expect(sms.send.mock.calls[0][0].body).toBe("[Orders] Orders: your order shipped.");
+  });
+
   it("throws when a notice has no way to go out", async () => {
     await expect(deliverAuthMessage({ sms: smsTransport() }, emailNotice)).rejects.toThrow(
       "Missing email transport",

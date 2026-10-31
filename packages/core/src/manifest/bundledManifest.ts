@@ -581,6 +581,11 @@ export const BUNDLED_ADAPTER_MANIFEST: AdapterManifest = {
       "credential": "access"
     },
     {
+      "method": "POST",
+      "path": "/system-config/oauth-providers/{id}/discovery",
+      "credential": "access"
+    },
+    {
       "method": "GET",
       "path": "/system-config/policy",
       "credential": "access"
