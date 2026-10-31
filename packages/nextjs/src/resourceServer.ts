@@ -112,6 +112,9 @@ export function createResourceServer(
     protect(handler, requirements) {
       // A requirement that asks for nothing should fail at module load, not on
       // the first request.
+      if (requirements?.scopes !== undefined)
+        verifier.scopes(requirements.scopes);
+      if (requirements?.roles !== undefined) verifier.roles(requirements.roles);
       if (requirements?.stepUp) stepUpCheck(requirements.stepUp);
 
       return async (request, context) => {

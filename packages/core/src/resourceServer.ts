@@ -79,6 +79,14 @@ export interface ResourceServer {
     user: ResourceServerUser | undefined,
     roles: string | string[],
   ): GuardRejection | undefined;
+  /** Builds an all-of scope check, failing at setup on an empty list. */
+  scopes(
+    scopes: string | string[],
+  ): (user: ResourceServerUser | undefined) => GuardRejection | undefined;
+  /** Builds an any-of role check, failing at setup on an empty list. */
+  roles(
+    roles: string | string[],
+  ): (user: ResourceServerUser | undefined) => GuardRejection | undefined;
   /** Builds a step-up check, failing at setup on a requirement that asks for nothing. */
   stepUp(
     requirement: StepUpRequirement,
@@ -98,6 +106,22 @@ const ACCESS_TOKEN_TYP = "at+jwt";
 
 const DIFFERENT_LEVEL = "A different authentication level is required";
 const MORE_RECENT = "More recent authentication is required";
+
+const INSUFFICIENT_ROLE: GuardRejection = {
+  status: 403,
+  errorCode: "insufficient_role",
+};
+
+function requiredValues(guard: string, values: string | string[]): string[] {
+  const list = Array.isArray(values) ? values : [values];
+  if (
+    list.length === 0 ||
+    list.some((value) => typeof value !== "string" || !value)
+  ) {
+    throw new Error(`${guard}: give at least one non-empty value`);
+  }
+  return list;
+}
 
 const MISSING_TOKEN: GuardRejection = {
   status: 401,
@@ -205,7 +229,13 @@ function toUser(claims: JWTPayload, token: string): ResourceServerUser | null {
     !(orgId === undefined || orgId === null || typeof orgId === "string") ||
     !(amr === undefined || stringArray(amr)) ||
     !(roles === undefined || stringArray(roles)) ||
-    !(authTime === undefined || typeof authTime === "number")
+    !(
+      authTime === undefined ||
+      (typeof authTime === "number" && Number.isFinite(authTime))
+    ) ||
+    // jose type-checks these but lets 1e999 through as Infinity.
+    !Number.isFinite(claims.exp) ||
+    !(claims.nbf === undefined || Number.isFinite(claims.nbf))
   ) {
     return null;
   }
@@ -359,18 +389,11 @@ export function createResourceServer(
     return user ? { user } : { rejection: INVALID_TOKEN };
   }
 
-  function authorizeScopes(
-    user: ResourceServerUser | undefined,
-    scopes: string | string[],
-  ): GuardRejection | undefined {
-    if (!user) return MISSING_TOKEN;
-
-    const required = Array.isArray(scopes) ? scopes : [scopes];
-    if (required.every((scope) => user.scopes.includes(scope)))
-      return undefined;
-
+  function scopeCheck(scopes: string | string[]) {
+    // An empty list would let every token through an "all of" check.
+    const required = requiredValues("requireScope", scopes);
     const scope = required.join(" ");
-    return {
+    const rejection: GuardRejection = {
       status: 403,
       errorCode: "insufficient_scope",
       detail: { scope },
@@ -378,27 +401,38 @@ export function createResourceServer(
         "WWW-Authenticate": `Bearer error="insufficient_scope", scope="${quote(scope)}"`,
       },
     };
+
+    return (
+      user: ResourceServerUser | undefined,
+    ): GuardRejection | undefined => {
+      if (!user) return MISSING_TOKEN;
+      return required.every((value) => user.scopes.includes(value))
+        ? undefined
+        : rejection;
+    };
   }
 
-  function authorizeRoles(
-    user: ResourceServerUser | undefined,
-    roles: string | string[],
-  ): GuardRejection | undefined {
-    if (!user) return MISSING_TOKEN;
+  function roleCheck(roles: string | string[]) {
+    const required = requiredValues("requireRole", roles);
 
-    const required = Array.isArray(roles) ? roles : [roles];
-    const granted = required.some((role) =>
-      user.roles.some((held) => roleGrantsAccess(held, role)),
-    );
-    return granted
-      ? undefined
-      : { status: 403, errorCode: "insufficient_role" };
+    return (
+      user: ResourceServerUser | undefined,
+    ): GuardRejection | undefined => {
+      if (!user) return MISSING_TOKEN;
+      const granted = required.some((role) =>
+        user.roles.some((held) => roleGrantsAccess(held, role)),
+      );
+      return granted ? undefined : INSUFFICIENT_ROLE;
+    };
   }
 
   function stepUp(requirement: StepUpRequirement) {
     const { acrValues, amr, maxAge } = requirement;
 
-    if (!acrValues?.length && !amr?.length && maxAge === undefined) {
+    if (acrValues?.length === 0 || amr?.length === 0) {
+      throw new Error("stepUp: acrValues and amr must not be empty lists");
+    }
+    if (!acrValues && !amr && maxAge === undefined) {
       throw new Error("stepUp: give acrValues, amr or maxAge");
     }
     if (maxAge !== undefined && !(Number.isInteger(maxAge) && maxAge >= 0)) {
@@ -451,5 +485,13 @@ export function createResourceServer(
     };
   }
 
-  return { verify, authenticate, authorizeScopes, authorizeRoles, stepUp };
+  return {
+    verify,
+    authenticate,
+    scopes: scopeCheck,
+    roles: roleCheck,
+    authorizeScopes: (user, scopes) => scopeCheck(scopes)(user),
+    authorizeRoles: (user, roles) => roleCheck(roles)(user),
+    stepUp,
+  };
 }

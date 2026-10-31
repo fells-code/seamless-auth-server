@@ -1,4 +1,5 @@
 import { jest } from "@jest/globals";
+import { createPrivateKey, sign } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 
@@ -109,9 +110,8 @@ describe("createResourceServer", () => {
   it("refuses a step-up requirement that asks for nothing, or a negative maxAge", () => {
     const server = vectorServer();
     expect(() => server.stepUp({})).toThrow(/acrValues, amr or maxAge/);
-    expect(() => server.stepUp({ acrValues: [] })).toThrow(
-      /acrValues, amr or maxAge/,
-    );
+    expect(() => server.stepUp({ acrValues: [] })).toThrow(/empty lists/);
+    expect(() => server.stepUp({ amr: [], maxAge: 60 })).toThrow(/empty lists/);
     expect(() => server.stepUp({ maxAge: -1 })).toThrow(/maxAge/);
     expect(() => server.stepUp({ maxAge: 1.5 })).toThrow(/maxAge/);
   });
@@ -156,6 +156,78 @@ const jwk = {
   kid: "d1",
   use: "sig",
 };
+
+describe("setup and claim edge cases", () => {
+  const key = createPrivateKey(
+    readFileSync(
+      new URL("./fixtures/verify-only/vo-1.test-only.pem", import.meta.url),
+    ),
+  );
+
+  // Raw payload text, so values JSON.stringify cannot write (1e999) reach the verifier.
+  function signRaw(payloadText) {
+    const header = Buffer.from(
+      JSON.stringify({ alg: "RS256", kid: "vo-1", typ: "at+jwt" }),
+    ).toString("base64url");
+    const input = `${header}.${Buffer.from(payloadText).toString("base64url")}`;
+    return `${input}.${sign("sha256", Buffer.from(input), key).toString("base64url")}`;
+  }
+
+  const claims = {
+    iss: vectors.issuer,
+    aud: vectors.audience,
+    exp: vectors.now + 60,
+    sub: "user-1",
+    client_id: "app",
+  };
+
+  it("refuses scope and role guards that require nothing", () => {
+    const server = vectorServer();
+    expect(() => server.scopes([])).toThrow(/requireScope/);
+    expect(() => server.scopes("")).toThrow(/requireScope/);
+    expect(() => server.roles([])).toThrow(/requireRole/);
+    expect(() => server.roles(["admin", ""])).toThrow(/requireRole/);
+  });
+
+  it("refuses non-finite times", async () => {
+    const server = vectorServer();
+    const base = JSON.stringify(claims).slice(0, -1);
+
+    expect(await server.verify(signRaw(JSON.stringify(claims)))).not.toBeNull();
+    expect(await server.verify(signRaw(`${base},"exp":1e999}`))).toBeNull();
+    expect(await server.verify(signRaw(`${base},"nbf":-1e999}`))).toBeNull();
+    expect(
+      await server.verify(signRaw(`${base},"auth_time":1e999}`)),
+    ).toBeNull();
+    expect(
+      await server.verify(signRaw(`${base},"auth_time":true}`)),
+    ).toBeNull();
+  });
+
+  it("treats null claims as the wrong type, except org_id and cnf", async () => {
+    const server = vectorServer();
+    for (const name of [
+      "sid",
+      "acr",
+      "amr",
+      "roles",
+      "scope",
+      "auth_time",
+      "nbf",
+    ]) {
+      expect(
+        await server.verify(
+          signRaw(JSON.stringify({ ...claims, [name]: null })),
+        ),
+      ).toBeNull();
+    }
+    expect(
+      await server.verify(
+        signRaw(JSON.stringify({ ...claims, org_id: null, cnf: null })),
+      ),
+    ).not.toBeNull();
+  });
+});
 
 describe("discovery", () => {
   const realFetch = global.fetch;

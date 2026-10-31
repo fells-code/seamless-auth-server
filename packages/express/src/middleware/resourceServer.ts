@@ -88,10 +88,8 @@ export function createResourceServer(
         next();
       };
     },
-    requireScope: (scopes) =>
-      guard((user) => verifier.authorizeScopes(user, scopes)),
-    requireRole: (roles) =>
-      guard((user) => verifier.authorizeRoles(user, roles)),
+    requireScope: (scopes) => guard(verifier.scopes(scopes)),
+    requireRole: (roles) => guard(verifier.roles(roles)),
     requireStepUp: (requirement) => guard(verifier.stepUp(requirement)),
   };
 }
