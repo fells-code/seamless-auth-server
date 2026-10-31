@@ -1562,3 +1562,117 @@ describe("no adapter returns an ephemeral token in a cookie-transport body", () 
     expect(expressResult.body).toEqual(fastify.body);
   });
 });
+
+// The OpenID Provider admin routes are served from the manifest, not registered
+// by hand, so the bundled fallback has to carry them (#241).
+describe("fastify and express serve the OpenID Provider admin routes", () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  const APP = "/admin/applications/app%201";
+  const ROUTES = [
+    ["get", "/admin/applications", undefined],
+    ["post", "/admin/applications", { name: "Docs", clientType: "public" }],
+    ["get", APP, undefined],
+    ["patch", APP, { name: "Renamed" }],
+    ["delete", APP, undefined],
+    ["post", `${APP}/secret`, undefined],
+    ["put", `${APP}/keys`, { jwks: { keys: [] } }],
+    ["get", `${APP}/resources`, undefined],
+    ["put", `${APP}/resources`, { resources: [] }],
+    ["get", "/admin/resources", undefined],
+    ["post", "/admin/resources", { identifier: "https://api.example.com" }],
+    ["get", "/admin/resources/res-1", undefined],
+    ["patch", "/admin/resources/res-1", { name: "Orders" }],
+    ["delete", "/admin/resources/res-1", undefined],
+  ];
+
+  function recordingUpstream(status, body) {
+    return jest.fn(async (url) =>
+      String(url).endsWith("/.well-known/jwks.json")
+        ? upstream(200, { keys: [jwk] })
+        : upstream(status, body),
+    );
+  }
+
+  async function both(scenario, status, body) {
+    global.fetch = recordingUpstream(status, body);
+    const viaAdapter = await viaFastify(scenario);
+    const adapterCalls = global.fetch.mock.calls;
+
+    global.fetch = recordingUpstream(status, body);
+    const viaExpressResult = await viaExpress(scenario);
+
+    return {
+      viaAdapter,
+      viaExpressResult,
+      calls: [adapterCalls, global.fetch.mock.calls],
+    };
+  }
+
+  it.each(ROUTES)(
+    "%s %s reaches the auth API with the access token",
+    async (method, path, payload) => {
+      const result = await both(
+        { method, path, cookie: accessCookie(), payload },
+        200,
+        { ok: true },
+      );
+
+      expect(result.viaAdapter).toEqual({ status: 200, body: { ok: true }, cookies: [] });
+      expect(result.viaAdapter).toEqual(result.viaExpressResult);
+
+      for (const calls of result.calls) {
+        const [url, init] = calls.find(([href]) =>
+          new URL(String(href)).pathname.startsWith("/admin/"),
+        );
+        expect(new URL(String(url)).pathname).toBe(path);
+        expect(init.method).toBe(method.toUpperCase());
+        expect(init.headers.Authorization).toBe(`Bearer ${ACCESS_TOKEN}`);
+        if (payload === undefined) {
+          expect(init.body).toBeUndefined();
+        } else {
+          expect(JSON.parse(init.body)).toEqual(payload);
+        }
+      }
+    },
+  );
+
+  it("passes a step-up refusal through unchanged", async () => {
+    const refusal = {
+      error: "step_up_required",
+      message: "Recent step-up authentication is required",
+    };
+    const result = await both(
+      {
+        method: "post",
+        path: "/admin/applications",
+        cookie: accessCookie(),
+        payload: { name: "Docs" },
+      },
+      403,
+      refusal,
+    );
+
+    expect(result.viaAdapter).toEqual({ status: 403, body: refusal, cookies: [] });
+    expect(result.viaAdapter).toEqual(result.viaExpressResult);
+  });
+
+  it("refuses an admin route without an access cookie", async () => {
+    const result = await both(
+      { method: "get", path: "/admin/applications" },
+      200,
+      { ok: true },
+    );
+
+    expect(result.viaAdapter.status).toBe(401);
+    expect(result.viaAdapter).toEqual(result.viaExpressResult);
+    for (const calls of result.calls) {
+      expect(
+        calls.some(([href]) => String(href).includes("/admin/")),
+      ).toBe(false);
+    }
+  });
+});

@@ -3,7 +3,7 @@ import type { AdapterManifest } from "./adapterManifest.js";
 
 export const BUNDLED_ADAPTER_MANIFEST: AdapterManifest = {
   "schemaVersion": 1,
-  "apiVersion": "0.19.4",
+  "apiVersion": "0.20.0",
   "session": {
     "subject": "sub",
     "token": "token",
@@ -12,6 +12,51 @@ export const BUNDLED_ADAPTER_MANIFEST: AdapterManifest = {
     "refreshTtl": "refreshTtl"
   },
   "routes": [
+    {
+      "method": "GET",
+      "path": "/admin/applications",
+      "credential": "access"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/applications",
+      "credential": "access"
+    },
+    {
+      "method": "DELETE",
+      "path": "/admin/applications/{id}",
+      "credential": "access"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/applications/{id}",
+      "credential": "access"
+    },
+    {
+      "method": "PATCH",
+      "path": "/admin/applications/{id}",
+      "credential": "access"
+    },
+    {
+      "method": "PUT",
+      "path": "/admin/applications/{id}/keys",
+      "credential": "access"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/applications/{id}/resources",
+      "credential": "access"
+    },
+    {
+      "method": "PUT",
+      "path": "/admin/applications/{id}/resources",
+      "credential": "access"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/applications/{id}/secret",
+      "credential": "access"
+    },
     {
       "method": "GET",
       "path": "/admin/auth-events",
@@ -100,6 +145,31 @@ export const BUNDLED_ADAPTER_MANIFEST: AdapterManifest = {
     {
       "method": "GET",
       "path": "/admin/reports/authentication-coverage",
+      "credential": "access"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/resources",
+      "credential": "access"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/resources",
+      "credential": "access"
+    },
+    {
+      "method": "DELETE",
+      "path": "/admin/resources/{id}",
+      "credential": "access"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/resources/{id}",
+      "credential": "access"
+    },
+    {
+      "method": "PATCH",
+      "path": "/admin/resources/{id}",
       "credential": "access"
     },
     {
