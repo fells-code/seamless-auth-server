@@ -2,6 +2,7 @@
 // A missing named export fails this file at module link time, before any assertion runs.
 import {
   createEnsureCookiesMiddleware,
+  createResourceServer,
   createSeamlessAuthServer,
   createSeamlessConsoleProxy,
   getSeamlessUser,
@@ -15,6 +16,7 @@ import defaultExport from "../dist/index.js";
 
 const DOCUMENTED_EXPORTS = {
   createEnsureCookiesMiddleware,
+  createResourceServer,
   createSeamlessAuthServer,
   createSeamlessConsoleProxy,
   getSeamlessUser,

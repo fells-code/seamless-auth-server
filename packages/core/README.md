@@ -279,6 +279,16 @@ provider identity linking. Core and adapter code never store provider access tok
 
 ---
 
+## Verify-only resource servers
+
+`createResourceServer({ issuer, audience })` verifies the OpenID Provider's RFC 9068 access
+tokens for an API that only receives them, with `authenticate`, `authorizeScopes`,
+`authorizeRoles` and `stepUp` returning a `GuardRejection` (status, `errorCode`, `detail` and
+`headers`, including the `WWW-Authenticate` challenge). The Express, Fastify and Next.js
+adapters wrap it; their READMEs list the rules and responses. `tests/fixtures/verify-only`
+holds the signed vectors every adapter, including Go, Python and Rust, is tested against, with
+the script that generates them.
+
 ## Scoped Roles
 
 Core exports `hasScopedRole` and `roleGrantsAccess` for framework adapters and custom servers that

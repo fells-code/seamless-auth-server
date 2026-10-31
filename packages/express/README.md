@@ -690,6 +690,66 @@ Compatibility rules:
 
 ---
 
+### `createResourceServer(options)`
+
+Verify-only guards for an API that receives the OpenID Provider's access tokens: a backend for
+a mobile or desktop app, or a service behind a gateway. It needs the provider's issuer and this
+API's resource identifier, and nothing else: no cookie secret, service secret or `/auth` routes.
+
+```ts
+import { createResourceServer } from "@seamless-auth/express";
+
+const api = createResourceServer({
+  issuer: "https://login.example.com",
+  audience: "https://api.example.com",
+});
+
+app.get("/orders", api.requireAuth(), api.requireScope("orders:read"), listOrders);
+app.delete("/orders/:id", api.requireAuth(), api.requireRole("orders:write"), deleteOrder);
+app.post(
+  "/payouts",
+  api.requireAuth(),
+  api.requireStepUp({ acrValues: ["phr"], maxAge: 300 }),
+  createPayout,
+);
+```
+
+`requireAuth()` sets `req.user`. The other guards only trust a user it verified, so they cannot
+be satisfied by a cookie session or anything else that set `req.user`.
+
+Tokens are verified the same way in every Seamless adapter (Express, Fastify, Next.js, Go,
+Python and Rust), held to shared signed test vectors:
+
+- RS256 only, with header `typ` `at+jwt` (RFC 9068), a `kid` from the issuer's key set, and no
+  `crit` header.
+- `iss` equal to `issuer` exactly, `audience` in `aud`, `exp` required, 5 seconds of clock skew.
+- `sub` and `client_id` present. A first-party Seamless session token never passes.
+- A sender-constrained token (`cnf`) is refused unless you pass a `confirm` hook, which is
+  where a DPoP proof check plugs in.
+
+Keys come from `<issuer>/.well-known/openid-configuration` (its `issuer` must match, and its
+`jwks_uri` must be https when the issuer is). Pass `jwksUri` to skip discovery. If discovery or
+the key set cannot be fetched, the request gets `401 invalid_token`; nothing fails open.
+
+| Refusal                    | Status | Body `error`                       | `WWW-Authenticate`                                                                 |
+| -------------------------- | ------ | ---------------------------------- | ---------------------------------------------------------------------------------- |
+| No bearer token            | 401    | `missing_token`                    | `Bearer`                                                                           |
+| Token fails verification   | 401    | `invalid_token`                    | `Bearer error="invalid_token"`                                                     |
+| Missing scope (all needed) | 403    | `insufficient_scope`, plus `scope` | `Bearer error="insufficient_scope", scope="..."`                                   |
+| Missing role (any one)     | 403    | `insufficient_role`                | none                                                                               |
+| Step-up not met            | 401    | `insufficient_user_authentication` | RFC 9470 challenge with `error_description`, and `acr_values` / `max_age` if set   |
+
+`requireStepUp` takes `acrValues` (any of, and `phr` is also met by `phrh`), `amr` (all of) and
+`maxAge` (seconds since `auth_time`). A passkey within the last five minutes is
+`{ acrValues: ["phr"], maxAge: 300 }`. The challenge tells the client which `acr_values` and
+`max_age` to send the user back through the provider with.
+
+The verified user has `id` (`sub`), `clientId`, `scopes`, `roles`, `sid`, `orgId`, `acr`, `amr`
+and `authTime`. A client credentials token (`sub` equal to `client_id`) verifies too, and fails
+role and step-up checks.
+
+---
+
 ### `getSeamlessUser(req, options)`
 
 Optional helper that calls the Auth Server to retrieve the **fully hydrated user object**.

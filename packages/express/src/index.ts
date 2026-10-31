@@ -12,6 +12,8 @@ export { createSeamlessConsoleProxy } from "./consoleProxy.js";
 export type { SeamlessConsoleProxyOptions } from "./consoleProxy.js";
 export { requireAuth } from "./middleware/requireAuth.js";
 export { requireRole } from "./middleware/requireRole.js";
+export { createResourceServer } from "./middleware/resourceServer.js";
+export type { ExpressResourceServer } from "./middleware/resourceServer.js";
 export { createEnsureCookiesMiddleware } from "./middleware/ensureCookies.js";
 export { getSeamlessUser } from "./getSeamlessUser.js";
 export type {
@@ -20,7 +22,11 @@ export type {
   DeliveryResult,
   EmailMessage,
   EmailTransport,
+  ResourceServerClaims,
+  ResourceServerOptions,
+  ResourceServerUser,
   SeamlessAuthMessagingOptions,
+  StepUpRequirement,
   SeamlessUser,
   SmsMessage,
   SmsTransport,

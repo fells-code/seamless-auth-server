@@ -186,6 +186,61 @@ cookies, exactly as in the other adapters: tokens travel in the response body
 and `Authorization`, `ensureCookies` is skipped, and `POST /auth/refresh`
 rotates the pair.
 
+## Verify-only resource servers
+
+`createResourceServer` is for route handlers that receive the OpenID Provider's access tokens
+and only have to check them. It needs the provider's issuer and this API's resource identifier,
+and nothing else: no cookie secret, service secret or auth route handler.
+
+```ts
+// app/api/payouts/route.ts
+import { createResourceServer } from "@seamless-auth/nextjs";
+
+const api = createResourceServer({
+  issuer: process.env.OIDC_ISSUER!,
+  audience: "https://api.example.com",
+});
+
+export const POST = api.protect(
+  async (request, _context, user) => Response.json(await createPayout(user.id)),
+  { scopes: "payouts:write", stepUp: { acrValues: ["phr"], maxAge: 300 } },
+);
+```
+
+`protect` checks `scopes`, then `roles`, then `stepUp`. `api.authenticate(request, requirements)`
+returns `{ user }` or the `{ response }` to send, for handlers that branch on it.
+
+Tokens are verified the same way in every Seamless adapter (Express, Fastify, Next.js, Go,
+Python and Rust), held to shared signed test vectors:
+
+- RS256 only, with header `typ` `at+jwt` (RFC 9068), a `kid` from the issuer's key set, and no
+  `crit` header.
+- `iss` equal to `issuer` exactly, `audience` in `aud`, `exp` required, 5 seconds of clock skew.
+- `sub` and `client_id` present. A first-party Seamless session token never passes.
+- A sender-constrained token (`cnf`) is refused unless you pass a `confirm` hook, which is
+  where a DPoP proof check plugs in.
+
+Keys come from `<issuer>/.well-known/openid-configuration` (its `issuer` must match, and its
+`jwks_uri` must be https when the issuer is). Pass `jwksUri` to skip discovery. If discovery or
+the key set cannot be fetched, the request gets `401 invalid_token`; nothing fails open.
+
+| Refusal                    | Status | Body `error`                       | `WWW-Authenticate`                                                                 |
+| -------------------------- | ------ | ---------------------------------- | ---------------------------------------------------------------------------------- |
+| No bearer token            | 401    | `missing_token`                    | `Bearer`                                                                           |
+| Token fails verification   | 401    | `invalid_token`                    | `Bearer error="invalid_token"`                                                     |
+| Missing scope (all needed) | 403    | `insufficient_scope`, plus `scope` | `Bearer error="insufficient_scope", scope="..."`                                   |
+| Missing role (any one)     | 403    | `insufficient_role`                | none                                                                               |
+| Step-up not met            | 401    | `insufficient_user_authentication` | RFC 9470 challenge with `error_description`, and `acr_values` / `max_age` if set   |
+
+`stepUp` takes `acrValues` (any of, and `phr` is also met by `phrh`), `amr` (all of) and
+`maxAge` (seconds since `auth_time`). A passkey within the last five minutes is
+`{ acrValues: ["phr"], maxAge: 300 }`. The challenge tells the client which `acr_values` and
+`max_age` to send the user back through the provider with.
+
+The verified user has `id` (`sub`), `clientId`, `scopes`, `roles`, `sid`, `orgId`, `acr`, `amr`
+and `authTime`. A client credentials token (`sub` equal to `client_id`) verifies too, and fails
+role and step-up checks.
+
 ## Options
 
 `createSeamlessAuthHandler` takes the same options as the Express and Fastify
