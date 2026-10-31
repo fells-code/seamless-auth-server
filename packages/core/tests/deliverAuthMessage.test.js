@@ -84,6 +84,30 @@ describe("deliverAuthMessage", () => {
     expect(email.send.mock.calls[0][0].subject).toBe("Code for user@acme.test");
   });
 
+  it("hands an override's headers to the transport untouched", async () => {
+    const email = emailTransport();
+    const headers = {
+      "List-Unsubscribe": "<https://acme.test/unsubscribe/abc>",
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    };
+
+    await deliverAuthMessage(
+      {
+        email,
+        overrides: {
+          magicLinkEmail: (_input, defaults) => ({ ...defaults, headers }),
+        },
+      },
+      {
+        kind: "magic_link_email",
+        to: "user@acme.test",
+        magicLinkUrl: "https://acme.test/link",
+      },
+    );
+
+    expect(email.send.mock.calls[0][0].headers).toEqual(headers);
+  });
+
   it("routes an SMS instruction to the SMS transport", async () => {
     const sms = smsTransport();
 

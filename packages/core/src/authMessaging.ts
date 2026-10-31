@@ -18,6 +18,7 @@ export type {
   DeliveryResult,
   EmailMessage,
   MessagingChannel,
+  SendEnrollmentInviteEmailInput,
   SendMagicLinkEmailInput,
   SendOtpEmailInput,
   SendOtpSmsInput,
@@ -30,18 +31,12 @@ import type {
   DeliveryPurpose,
   DeliveryResult,
   EmailMessage,
+  SendEnrollmentInviteEmailInput,
   SendMagicLinkEmailInput,
   SendOtpEmailInput,
   SendOtpSmsInput,
   SmsMessage,
 } from "@seamless-auth/types";
-
-export interface SendEnrollmentInviteEmailInput {
-  to: string;
-  signInUrl: string;
-  from?: string;
-  subject?: string;
-}
 
 /**
  * An owner notice the auth API asked this server to send, such as "account recovery

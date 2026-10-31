@@ -6,6 +6,7 @@ import {
   getSeamlessUser,
   requireAuth,
   requireRole,
+  type EmailMessage,
 } from "@seamless-auth/express";
 
 const app = express();
@@ -33,3 +34,13 @@ requireRole(42);
 createSeamlessAuthServer(42);
 // @ts-expect-error getSeamlessUser takes a request and options
 getSeamlessUser(42);
+
+const unsubscribable: EmailMessage = {
+  to: "user@example.com",
+  subject: "News",
+  text: "Hello",
+  headers: { "List-Unsubscribe": "<https://example.com/unsubscribe>" },
+};
+// @ts-expect-error header values are strings
+const badHeader: EmailMessage = { ...unsubscribable, headers: { "X-Count": 1 } };
+void badHeader;
