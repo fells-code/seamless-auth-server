@@ -16,17 +16,31 @@ export type {
   SeamlessSession,
   SeamlessSessionOptions,
 } from "./session.js";
-export type { ClientIpResolver, SeamlessAuthHandlerOptions } from "./options.js";
+export type {
+  ClientIpResolver,
+  SeamlessAuthHandlerOptions,
+} from "./options.js";
+export { createResourceServer } from "./resourceServer.js";
+export type {
+  NextResourceServer,
+  ResourceServerRequirements,
+  ResourceServerResult,
+  ResourceServerRouteHandler,
+} from "./resourceServer.js";
 export type {
   AuthMessageOverrides,
   AuthMessagingHandlers,
   DeliveryResult,
   EmailMessage,
   EmailTransport,
+  ResourceServerClaims,
+  ResourceServerOptions,
+  ResourceServerUser,
   SeamlessAuthMessagingOptions,
   SeamlessAuthUser,
   SeamlessUser,
   SmsMessage,
   SmsTransport,
+  StepUpRequirement,
 } from "@seamless-auth/core";
 export { hasScopedRole, roleGrantsAccess } from "@seamless-auth/core";

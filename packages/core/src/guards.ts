@@ -26,6 +26,8 @@ export interface GuardRejection {
   status: number;
   errorCode: string;
   detail?: Record<string, unknown>;
+  /** Response headers, such as a `WWW-Authenticate` challenge. */
+  headers?: Record<string, string>;
   warn?: string;
 }
 
