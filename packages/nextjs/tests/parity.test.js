@@ -651,6 +651,42 @@ describe("next.js and express adapters agree", () => {
     expect(next.status).toBe(expressResult.status);
   });
 
+  it.each([
+    ["/totp/status", "/totp/status"],
+    ["/organizations", "/organizations"],
+    ["/system-config/oauth-providers", "/system-config/oauth-providers"],
+  ])(
+    "serves proxied access route %s on the request that silently refreshed",
+    async (path, upstreamPath) => {
+      const scenario = {
+        method: "get",
+        path,
+        cookie: `seamless-refresh=${signed({ sub: "user-123", refreshToken: "opaque" }, "3600s")}`,
+      };
+
+      const routeAuthorization = () => {
+        const call = global.fetch.mock.calls.find(([url]) =>
+          new URL(String(url)).pathname.endsWith(upstreamPath),
+        );
+        return new Headers(call?.[1]?.headers).get("authorization");
+      };
+
+      global.fetch = refreshUpstream(REFRESH_OK);
+      const next = await viaNext(scenario);
+      const nextAuthorization = routeAuthorization();
+
+      global.fetch = refreshUpstream(REFRESH_OK);
+      const expressResult = await viaExpress(scenario);
+      const expressAuthorization = routeAuthorization();
+
+      expect(next.status).toBe(200);
+      expect(expressResult.status).toBe(200);
+      expect(nextAuthorization).toBe(`Bearer ${REFRESHED_ACCESS_TOKEN}`);
+      expect(expressAuthorization).toBe(nextAuthorization);
+      expect(next.cookies).toEqual(expressResult.cookies);
+    },
+  );
+
   // Every other flow verifies the token the auth API returns before minting a
   // session from it. The silent refresh must too: the access cookie is signed
   // with the adopter's own secret, and its roles are trusted on every later

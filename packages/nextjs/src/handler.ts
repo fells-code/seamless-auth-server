@@ -77,6 +77,7 @@ const PASSTHROUGH_ROUTES: Route[] = PROXY_ROUTES.map((definition) => ({
   run: async (ctx, opts) => {
     const rejection = checkProxyIdentity({
       subject: ctx.cookiePayload?.sub,
+      refreshed: ctx.cookiePayload?.refreshed === true,
       cookies: ctx.cookies,
       identity: definition.identity,
       accessCookieName: opts.accessCookieName,

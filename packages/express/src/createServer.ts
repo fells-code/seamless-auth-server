@@ -276,6 +276,7 @@ export function createSeamlessAuthServer(
     async (req: Request & { cookiePayload?: any }, res: Response) => {
       const rejection = checkProxyIdentity({
         subject: req.cookiePayload?.sub,
+        refreshed: req.cookiePayload?.refreshed === true,
         cookies: req.cookies ?? {},
         identity,
         accessCookieName: resolvedOpts.accessCookieName,

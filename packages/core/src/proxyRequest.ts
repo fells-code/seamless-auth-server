@@ -63,6 +63,8 @@ export type ProxyIdentity = "preAuth" | "access" | "register";
 export interface ProxyIdentityInput {
   /** `sub` from the verified cookie payload, if the request carried one. */
   subject?: string;
+  /** Whether `ensureCookies` refreshed the access session earlier in this request. */
+  refreshed?: boolean;
   cookies: Record<string, unknown>;
   identity: ProxyIdentity;
   accessCookieName: string;
@@ -92,9 +94,11 @@ const IDENTITY_REQUIRED: Record<ProxyIdentity, string> = {
  * Returns the rejection to send, or `undefined` when the request may proceed.
  * In cookie transport the cookie payload alone is not enough: it survives a
  * refresh, so the route also has to see the specific cookie for the identity it
- * needs. In bearer transport the client presents the token for the identity
- * itself, and the auth API is the one that checks which kind it is, so the
- * adapter only insists that one was sent.
+ * needs. The one exception is an access session `ensureCookies` refreshed in this
+ * same request: the browser has not sent the new access cookie yet, but a refresh
+ * only ever yields an access session. In bearer transport the client presents
+ * the token for the identity itself, and the auth API is the one that checks
+ * which kind it is, so the adapter only insists that one was sent.
  */
 export function checkProxyIdentity(
   input: ProxyIdentityInput,
@@ -113,6 +117,10 @@ export function checkProxyIdentity(
       errorCode: "Unauthenticated request",
       warn: "Missing expected cookie payload/sub.",
     };
+  }
+
+  if (input.identity === "access" && input.refreshed) {
+    return undefined;
   }
 
   const cookieName: Record<ProxyIdentity, string> = {

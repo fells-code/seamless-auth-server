@@ -145,6 +145,7 @@ function registerProxyRoutes(
       handler: async (req: FastifyRequest, reply: FastifyReply) => {
         const rejection = checkProxyIdentity({
           subject: req.cookiePayload?.sub,
+          refreshed: req.cookiePayload?.refreshed === true,
           cookies: req.cookies ?? {},
           identity: route.identity,
           accessCookieName: opts.accessCookieName,

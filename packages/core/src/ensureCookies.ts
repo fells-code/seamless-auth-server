@@ -47,6 +47,8 @@ export interface EnsureCookiesResult extends ResultFailure {
     sessionId?: string;
     token?: string;
     roles?: string[];
+    /** Set when this request's access session came from a silent refresh. */
+    refreshed?: boolean;
   };
   setCookies?: CookieInstruction[];
   clearCookies?: string[];
@@ -341,6 +343,7 @@ async function refreshRequiredCookie(
         : { sessionId: access.sessionId }),
       token: access.token,
       roles: access.roles,
+      refreshed: true,
     },
     setCookies,
   };

@@ -42,7 +42,7 @@ export interface ManifestProxyInput {
   /** The raw `Authorization` header, read in bearer transport. */
   authorization?: string;
   /** The verified payload `ensureCookies` loaded for this route's credential. */
-  cookiePayload?: { sub?: string; token?: string };
+  cookiePayload?: { sub?: string; token?: string; refreshed?: boolean };
   cookies: Record<string, unknown>;
   forwardedClientIp?: string;
   forwardedUserAgent?: string;
@@ -216,6 +216,7 @@ export async function handleManifestRoute(
   if (route.credential !== "none") {
     const rejection = checkProxyIdentity({
       subject: input.cookiePayload?.sub,
+      refreshed: input.cookiePayload?.refreshed,
       cookies: input.cookies,
       identity: IDENTITY[route.credential],
       accessCookieName: opts.accessCookieName,
