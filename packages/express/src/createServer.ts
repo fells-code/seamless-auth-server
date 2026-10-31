@@ -17,6 +17,7 @@ import {
 } from "./handlers/verifyLoginOtp.js";
 import { switchOrganization } from "./handlers/switchOrganization.js";
 import { finishRegister } from "./handlers/finishRegister.js";
+import { withRecoveryRefresh } from "./internal/recoveryRefresh.js";
 import { me } from "./handlers/me.js";
 import { logout } from "./handlers/logout.js";
 import { deleteAccount } from "./handlers/deleteAccount.js";
@@ -311,7 +312,7 @@ export function createSeamlessAuthServer(
         raw,
       });
 
-      respond(res, result, resolvedOpts);
+      respond(res, await withRecoveryRefresh(req, res, result), resolvedOpts);
     };
 
   // Runs before ensureCookies and the routes so a blocked cross-site request

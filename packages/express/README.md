@@ -630,9 +630,12 @@ app.get("/api/profile", guard, (req, res) => {
 A recovery session comes from account recovery or a recovery code, and its access token carries
 `recovery: true`. It can only enroll a new passkey or authenticator app, so the guard refuses it
 with `403 { "error": "enrollment_required" }` unless `allowRecoverySession` is set. Set it only on
-routes that drive that enrollment. Once a factor is enrolled the auth API lifts the restriction,
-and the next `POST /auth/refresh` issues an access token without the claim; the React SDK
-refreshes after enrollment for you.
+routes that drive that enrollment. Once a factor is enrolled the auth API lifts the restriction.
+In cookie transport the adapter rotates the session as soon as `POST /auth/webAuthn/register/finish`
+or `POST /auth/totp/enroll/verify` succeeds from a recovery session, so the new access cookie drops
+the claim at once. If that refresh fails the enrollment answer is unchanged and the next
+`POST /auth/refresh` drops it instead. A bearer client holds its refresh token and calls
+`/auth/refresh` itself.
 
 With `authServerIssuer` set, pass the same value as `audience`: the auth API sets both `iss` and
 `aud` to its `ISSUER`.

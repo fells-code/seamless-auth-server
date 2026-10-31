@@ -96,8 +96,11 @@ A recovery session, from account recovery or a recovery code, carries `recovery:
 true` on its access token and can only enroll a new passkey or authenticator app.
 `requireAuth` refuses it with `403 { "error": "enrollment_required" }` unless
 `allowRecoverySession: true` is set, so set that only on the routes that drive the
-enrollment. Once a factor is enrolled, the next `POST /auth/refresh` issues an
-access token without the claim; the React SDK refreshes after enrollment for you.
+enrollment. In cookie transport the plugin rotates the session as soon as
+`POST /auth/webAuthn/register/finish` or `POST /auth/totp/enroll/verify` succeeds
+from a recovery session, so the new access cookie drops the claim at once. If that
+refresh fails, the next `POST /auth/refresh` drops it instead. A bearer client
+calls `/auth/refresh` itself.
 
 For the hydrated profile rather than the token payload, `getSeamlessUser(request, options)`
 fetches it from the auth API and returns `SeamlessUser | null`. It resolves a cookie

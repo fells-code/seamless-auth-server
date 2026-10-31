@@ -29,6 +29,15 @@ export class ResponseCollector {
   private body: unknown;
   private raw: RawBody | undefined;
 
+  /** Forgets cookies queued under these names, so a later write replaces them. */
+  dropCookies(names: string[]): void {
+    const dropped = new Set(names);
+    const kept = this.setCookies.filter(
+      (header) => !dropped.has(header.split("=")[0]),
+    );
+    this.setCookies.splice(0, this.setCookies.length, ...kept);
+  }
+
   readonly adapter: ResponseAdapter = {
     setCookie: (command) => {
       this.setCookies.push(

@@ -9,13 +9,16 @@ import {
   createAdapterManifestSource,
   DEV_JWKS_KID,
   ensureCookies,
+  type EnsureCookiesOptions,
   handleManifestRoute,
   InvalidPathParamError,
   matchManifestRoute,
   proxyRequest,
   redactSensitiveText,
+  refreshAfterRecoveryEnrollment,
   SERVICE_TOKEN_AUDIENCE,
   SERVICE_TOKEN_ISSUER,
+  type SessionCookie,
 } from "@seamless-auth/core";
 
 import {
@@ -238,29 +241,35 @@ async function dispatch(
 
   // A bearer client holds its own tokens and refreshes through /refresh, so
   // there is no cookie here to load or rotate.
+  let refreshRecovery:
+    | ((status: number) => Promise<SessionCookie[] | undefined>)
+    | undefined;
+
   if (ctx.transport !== "bearer") {
+    const ensureOptions: EnsureCookiesOptions = {
+      authServerUrl: opts.authServerUrl,
+      cookieDomain: opts.cookieDomain,
+      accessCookieName: opts.accessCookieName,
+      registrationCookieName: opts.registrationCookieName,
+      refreshCookieName: opts.refreshCookieName,
+      preAuthCookieName: opts.preAuthCookieName,
+      cookieSecret: opts.cookieSecret,
+      serviceSecret: opts.serviceSecret,
+      // The silent-refresh path mints an M2M service token, which the auth API
+      // validates against a fixed issuer and audience rather than the
+      // adopter-configured one.
+      issuer: SERVICE_TOKEN_ISSUER,
+      audience: SERVICE_TOKEN_AUDIENCE,
+      accessTokenAudience: opts.audience,
+      authServerIssuer: opts.authServerIssuer,
+      keyId: opts.jwksKid,
+      forwardedClientIp: forwardedClientIp(request, opts.resolveClientIp),
+      forwardedUserAgent: forwardedUserAgent(request),
+    };
+
     const result = await ensureCookies(
       { path, cookies: ctx.cookies, method: request.method, manifest },
-      {
-        authServerUrl: opts.authServerUrl,
-        cookieDomain: opts.cookieDomain,
-        accessCookieName: opts.accessCookieName,
-        registrationCookieName: opts.registrationCookieName,
-        refreshCookieName: opts.refreshCookieName,
-        preAuthCookieName: opts.preAuthCookieName,
-        cookieSecret: opts.cookieSecret,
-        serviceSecret: opts.serviceSecret,
-        // The silent-refresh path mints an M2M service token, which the auth API
-        // validates against a fixed issuer and audience rather than the
-        // adopter-configured one.
-        issuer: SERVICE_TOKEN_ISSUER,
-        audience: SERVICE_TOKEN_AUDIENCE,
-        accessTokenAudience: opts.audience,
-        authServerIssuer: opts.authServerIssuer,
-        keyId: opts.jwksKid,
-        forwardedClientIp: forwardedClientIp(request, opts.resolveClientIp),
-        forwardedUserAgent: forwardedUserAgent(request),
-      },
+      ensureOptions,
     );
 
     applyCookies(result, collector.adapter, opts);
@@ -272,9 +281,35 @@ async function dispatch(
     if (result.type === "error") {
       return collector.json(result.status ?? 401, { error: result.errorCode });
     }
+
+    refreshRecovery = (status) =>
+      refreshAfterRecoveryEnrollment(
+        {
+          method: request.method,
+          path,
+          status,
+          accessToken: result.user?.token,
+          queuedCookies: result.setCookies,
+          refreshCookie: ctx.cookies[opts.refreshCookieName],
+        },
+        ensureOptions,
+      );
   }
 
-  return respond(collector, ctx, await target.run(ctx), opts);
+  let result = await target.run(ctx);
+  const recoveryCookies = await refreshRecovery?.(result.status);
+
+  if (recoveryCookies) {
+    // The collector appends, so the cookies the silent refresh queued under the
+    // same names come off first.
+    collector.dropCookies(recoveryCookies.map((cookie) => cookie.name));
+    result = {
+      ...result,
+      setCookies: [...(result.setCookies ?? []), ...recoveryCookies],
+    };
+  }
+
+  return respond(collector, ctx, result, opts);
 }
 
 interface DispatchTarget {

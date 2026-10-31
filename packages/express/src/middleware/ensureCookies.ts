@@ -2,7 +2,9 @@ import { Request, Response, NextFunction } from "express";
 import {
   type AdapterManifestSource,
   ensureCookies,
+  type EnsureCookiesOptions,
   EnsureCookiesResult,
+  refreshAfterRecoveryEnrollment,
 } from "@seamless-auth/core";
 
 import {
@@ -14,6 +16,7 @@ import { assertSecrets } from "../internal/validateSecrets.js";
 import { applyCookies, type CookieSameSite } from "@seamless-auth/core";
 import { expressResponseAdapter } from "../internal/respond.js";
 import { transportOf } from "../internal/transport.js";
+import type { RequestWithRecoveryRefresh } from "../internal/recoveryRefresh.js";
 
 export interface EnsureCookiesMiddlewareOptions {
   authServerUrl: string;
@@ -63,6 +66,24 @@ export function createEnsureCookiesMiddleware(
       return;
     }
 
+    const ensureOptions: EnsureCookiesOptions = {
+      authServerUrl: opts.authServerUrl,
+      cookieDomain: opts.cookieDomain,
+      accessCookieName: opts.accessCookieName,
+      registrationCookieName: opts.registrationCookieName,
+      refreshCookieName: opts.refreshCookieName,
+      preAuthCookieName: opts.preAuthCookieName,
+      cookieSecret: opts.cookieSecret,
+      serviceSecret: opts.serviceSecret,
+      issuer: opts.issuer,
+      audience: opts.audience,
+      accessTokenAudience: opts.accessTokenAudience,
+      authServerIssuer: opts.authServerIssuer,
+      keyId: opts.keyId,
+      forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+      forwardedUserAgent: buildForwardedUserAgent(req),
+    };
+
     const result = await ensureCookies(
       {
         path: req.path,
@@ -70,27 +91,24 @@ export function createEnsureCookiesMiddleware(
         method: req.method,
         manifest: await opts.manifestSource?.get(),
       },
-      {
-        authServerUrl: opts.authServerUrl,
-        cookieDomain: opts.cookieDomain,
-        accessCookieName: opts.accessCookieName,
-        registrationCookieName: opts.registrationCookieName,
-        refreshCookieName: opts.refreshCookieName,
-        preAuthCookieName: opts.preAuthCookieName,
-        cookieSecret: opts.cookieSecret,
-        serviceSecret: opts.serviceSecret,
-        issuer: opts.issuer,
-        audience: opts.audience,
-        accessTokenAudience: opts.accessTokenAudience,
-        authServerIssuer: opts.authServerIssuer,
-        keyId: opts.keyId,
-        forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-        forwardedUserAgent: buildForwardedUserAgent(req),
-      },
+      ensureOptions,
     );
 
     applyMiddlewareResult(res, req, result, opts);
     if (result.type === "error") return;
+
+    (req as RequestWithRecoveryRefresh).seamlessRecoveryRefresh = (status) =>
+      refreshAfterRecoveryEnrollment(
+        {
+          method: req.method,
+          path: req.path,
+          status,
+          accessToken: result.user?.token,
+          queuedCookies: result.setCookies,
+          refreshCookie: req.cookies?.[opts.refreshCookieName],
+        },
+        ensureOptions,
+      );
     next();
   };
 }

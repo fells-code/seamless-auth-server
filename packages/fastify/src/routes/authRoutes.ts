@@ -33,6 +33,7 @@ import { buildForwardedClientIp } from "../internal/buildForwardedClientIp.js";
 import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent.js";
 import { requestCookies } from "../internal/requestCookies.js";
 import { respond } from "../internal/respond.js";
+import { withRecoveryRefresh } from "../internal/recoveryRefresh.js";
 import { transportOf } from "../internal/transport.js";
 import type { ResolvedOptions } from "../options.js";
 
@@ -137,7 +138,11 @@ export function registerAuthRoutes(
       { authServerUrl: opts.authServerUrl },
     );
 
-    respond(reply, { ...result, body: { message: "success" } }, opts);
+    respond(
+      reply,
+      await withRecoveryRefresh(req, { ...result, body: { message: "success" } }),
+      opts,
+    );
   });
 
   const otpRoutes: Array<

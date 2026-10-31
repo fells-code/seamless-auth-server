@@ -33,6 +33,7 @@ import type { ResolvedOptions, SeamlessAuthServerOptions } from "./options.js";
 import { PROXY_ROUTES, resolveUpstreamPath } from "./routes/proxyRoutes.js";
 import { registerAuthRoutes } from "./routes/authRoutes.js";
 import { registerAdminRoutes } from "./routes/adminRoutes.js";
+import { withRecoveryRefresh } from "./internal/recoveryRefresh.js";
 
 function warnOnDevJwksKid(jwksKid: string | undefined): void {
   if (!jwksKid || jwksKid === DEV_JWKS_KID) {
@@ -181,7 +182,7 @@ function registerProxyRoutes(
           raw: route.raw,
         });
 
-        respond(reply, result, opts);
+        respond(reply, await withRecoveryRefresh(req, result), opts);
         // Returned so Fastify waits for a streamed download rather than finishing the
         // reply when this handler resolves.
         return reply;

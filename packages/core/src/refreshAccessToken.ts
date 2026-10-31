@@ -111,27 +111,50 @@ export async function refreshAccessToken(
   return dedupeRefresh(`cookie:${refreshCookie}`, async () => {
     const payload = verifyRefreshCookie(refreshCookie, opts.cookieSecret);
     if (!payload) return null;
-    const serviceToken = createServiceToken({
-      subject: payload.sub,
-      issuer: opts.issuer,
-      audience: opts.audience,
-      serviceSecret: opts.serviceSecret,
-      keyId: opts.keyId,
-      refreshToken: payload.refreshToken,
-    });
-
-    const response = await authFetch(`${opts.authServerUrl}/refresh`, {
-      method: "POST",
-      authorization: `Bearer ${payload.refreshToken}`,
-      serviceAuthorization: `Bearer ${serviceToken}`,
-      forwardedClientIp: opts.forwardedClientIp,
-      forwardedUserAgent: opts.forwardedUserAgent,
-    });
-
-    if (!response.ok) return null;
-
-    return response.json();
+    return rotate(payload, opts);
   });
+}
+
+/**
+ * Rotates a refresh token this request already holds unsigned, such as one a
+ * silent refresh earlier in the same request just issued. The cookie carrying
+ * it has not reached the browser yet, so it cannot be read back from one.
+ */
+export async function refreshSessionToken(
+  payload: { sub: string; refreshToken: string },
+  opts: RefreshAccessTokenOptions,
+): Promise<RefreshAccessTokenResult | null> {
+  assertSecrets(opts, { allowPlaceholder: true });
+
+  return dedupeRefresh(`token:${payload.refreshToken}`, () =>
+    rotate(payload, opts),
+  );
+}
+
+async function rotate(
+  payload: { sub: string; refreshToken: string },
+  opts: RefreshAccessTokenOptions,
+): Promise<RefreshAccessTokenResult | null> {
+  const serviceToken = createServiceToken({
+    subject: payload.sub,
+    issuer: opts.issuer,
+    audience: opts.audience,
+    serviceSecret: opts.serviceSecret,
+    keyId: opts.keyId,
+    refreshToken: payload.refreshToken,
+  });
+
+  const response = await authFetch(`${opts.authServerUrl}/refresh`, {
+    method: "POST",
+    authorization: `Bearer ${payload.refreshToken}`,
+    serviceAuthorization: `Bearer ${serviceToken}`,
+    forwardedClientIp: opts.forwardedClientIp,
+    forwardedUserAgent: opts.forwardedUserAgent,
+  });
+
+  if (!response.ok) return null;
+
+  return response.json();
 }
 
 class UpstreamRefreshFailure extends Error {
