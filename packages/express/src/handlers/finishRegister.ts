@@ -8,6 +8,7 @@ import {
 import { buildForwardedClientIp } from "../internal/buildForwardedClientIp.js";
 import { buildForwardedUserAgent } from "../internal/buildForwardedUserAgent.js";
 import { SeamlessAuthServerOptions } from "../createServer.js";
+import { withRecoveryRefresh } from "../internal/recoveryRefresh.js";
 
 export async function finishRegister(
   req: Request & { cookiePayload?: any },
@@ -27,5 +28,12 @@ export async function finishRegister(
     { authServerUrl: opts.authServerUrl },
   );
 
-  respond(res, { ...result, body: { message: "success" } }, opts);
+  respond(
+    res,
+    await withRecoveryRefresh(req, res, {
+      ...result,
+      body: { message: "success" },
+    }),
+    opts,
+  );
 }

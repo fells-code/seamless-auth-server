@@ -4,6 +4,8 @@ import {
   applyCookies,
   assertSecrets,
   ensureCookies,
+  type EnsureCookiesOptions,
+  refreshAfterRecoveryEnrollment,
   SERVICE_TOKEN_AUDIENCE,
   SERVICE_TOKEN_ISSUER,
 } from "@seamless-auth/core";
@@ -55,33 +57,36 @@ export function createEnsureCookiesHook(
       return;
     }
 
+    const path = mountRelativePath(req.url, prefix);
+    const ensureOptions: EnsureCookiesOptions = {
+      authServerUrl: opts.authServerUrl,
+      cookieDomain: opts.cookieDomain,
+      accessCookieName: opts.accessCookieName,
+      registrationCookieName: opts.registrationCookieName,
+      refreshCookieName: opts.refreshCookieName,
+      preAuthCookieName: opts.preAuthCookieName,
+      cookieSecret: opts.cookieSecret,
+      serviceSecret: opts.serviceSecret,
+      // The silent-refresh path mints an M2M service token, which the auth API
+      // validates against a fixed issuer and audience rather than the
+      // adopter-configured one.
+      issuer: SERVICE_TOKEN_ISSUER,
+      audience: SERVICE_TOKEN_AUDIENCE,
+      accessTokenAudience: opts.audience,
+      authServerIssuer: opts.authServerIssuer,
+      keyId: opts.jwksKid,
+      forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
+      forwardedUserAgent: buildForwardedUserAgent(req),
+    };
+
     const result = await ensureCookies(
       {
-        path: mountRelativePath(req.url, prefix),
+        path,
         cookies: req.cookies ?? {},
         method: req.method,
         manifest: await manifestSource?.get(),
       },
-      {
-        authServerUrl: opts.authServerUrl,
-        cookieDomain: opts.cookieDomain,
-        accessCookieName: opts.accessCookieName,
-        registrationCookieName: opts.registrationCookieName,
-        refreshCookieName: opts.refreshCookieName,
-        preAuthCookieName: opts.preAuthCookieName,
-        cookieSecret: opts.cookieSecret,
-        serviceSecret: opts.serviceSecret,
-        // The silent-refresh path mints an M2M service token, which the auth API
-        // validates against a fixed issuer and audience rather than the
-        // adopter-configured one.
-        issuer: SERVICE_TOKEN_ISSUER,
-        audience: SERVICE_TOKEN_AUDIENCE,
-        accessTokenAudience: opts.audience,
-        authServerIssuer: opts.authServerIssuer,
-        keyId: opts.jwksKid,
-        forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-        forwardedUserAgent: buildForwardedUserAgent(req),
-      },
+      ensureOptions,
     );
 
     applyCookies(result, fastifyResponseAdapter(reply), opts);
@@ -95,5 +100,20 @@ export function createEnsureCookiesHook(
         .status(result.status ?? 401)
         .send({ error: result.errorCode });
     }
+
+    // Fastify keeps one Set-Cookie per name, so the rotated cookies replace the
+    // ones the silent refresh above wrote.
+    req.seamlessRecoveryRefresh = (status) =>
+      refreshAfterRecoveryEnrollment(
+        {
+          method: req.method,
+          path,
+          status,
+          accessToken: result.user?.token,
+          queuedCookies: result.setCookies,
+          refreshCookie: req.cookies?.[opts.refreshCookieName],
+        },
+        ensureOptions,
+      );
   };
 }

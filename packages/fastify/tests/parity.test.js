@@ -1562,3 +1562,195 @@ describe("no adapter returns an ephemeral token in a cookie-transport body", () 
     expect(expressResult.body).toEqual(fastify.body);
   });
 });
+
+// A recovery session that enrolls a factor is rotated at once, so its new access
+// cookie drops the recovery claim (#235). Refresh tokens are unique per run: the
+// adapters replay a recent refresh for the same token, which would hide the call.
+describe("fastify and express rotate a recovery session after enrollment", () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  let run = 0;
+  const RECOVERY_TOKEN = `e30.${Buffer.from(JSON.stringify({ typ: "access", recovery: true })).toString("base64url")}.sig`;
+
+  const recoveryCookie = () =>
+    `seamless-access=${signed({ sub: "user-123", sessionId: "s-1", token: RECOVERY_TOKEN })}`;
+  const refreshCookie = (token) =>
+    `seamless-refresh=${signed({ sub: "user-123", refreshToken: token }, "3600s")}`;
+
+  function session(token, refreshToken) {
+    return {
+      sub: "user-123",
+      token,
+      refreshToken,
+      roles: [],
+      ttl: 300,
+      refreshTtl: 3600,
+    };
+  }
+
+  // Answers /refresh by the refresh token presented, so a test can tell which one
+  // the adapter rotated.
+  function enrollmentUpstream(refreshes, routeStatus = 200) {
+    return jest.fn(async (url, init) => {
+      const href = String(url);
+      if (href.endsWith("/.well-known/jwks.json")) {
+        return upstream(200, { keys: [jwk] });
+      }
+      if (href.endsWith("/refresh")) {
+        const presented = init.headers.Authorization.replace("Bearer ", "");
+        const answer = refreshes[presented];
+        return answer ? upstream(200, answer) : upstream(401, { error: "refresh_token_reused" });
+      }
+      return upstream(routeStatus, routeStatus < 300 ? { message: "ok" } : { error: "bad_code" });
+    });
+  }
+
+  function refreshedWith(calls) {
+    return calls
+      .filter(([url]) => String(url).endsWith("/refresh"))
+      .map(([, init]) => init.headers.Authorization.replace("Bearer ", ""));
+  }
+
+  async function through(adapter, build) {
+    run += 1;
+    const { scenario, refreshes, routeStatus } = await build(`r${run}`);
+    global.fetch = enrollmentUpstream(refreshes, routeStatus);
+    const result = await adapter(scenario);
+    return { result, refreshed: refreshedWith(global.fetch.mock.calls) };
+  }
+
+  async function both(build) {
+    return {
+      viaAdapter: await through(viaFastify, build),
+      viaExpressResult: await through(viaExpress, build),
+    };
+  }
+
+  it.each([
+    ["/webAuthn/register/finish", { response: {} }],
+    ["/totp/enroll/verify", { code: "123456" }],
+  ])("sets fresh session cookies after %s", async (path, payload) => {
+    const { viaAdapter, viaExpressResult } = await both(async (id) => ({
+      scenario: {
+        method: "post",
+        path,
+        cookie: `${recoveryCookie()}; ${refreshCookie(`${id}-1`)}`,
+        payload,
+      },
+      refreshes: {
+        [`${id}-1`]: session(REFRESHED_ACCESS_TOKEN, `${id}-2`),
+      },
+    }));
+
+    for (const { result, refreshed } of [viaAdapter, viaExpressResult]) {
+      expect(result.status).toBeLessThan(300);
+      expect(result.cookies).toEqual(
+        expect.arrayContaining([
+          expect.stringMatching(/^seamless-access=<signed>/),
+          expect.stringMatching(/^seamless-refresh=<signed>/),
+        ]),
+      );
+      expect(refreshed).toHaveLength(1);
+    }
+    expect(viaAdapter.result).toEqual(viaExpressResult.result);
+  });
+
+  it("rotates the token a silent refresh just issued, and sets each cookie once", async () => {
+    const recovering = await accessToken({
+      sub: "user-123",
+      typ: "access",
+      sid: "s-1",
+      recovery: true,
+    });
+
+    const { viaAdapter, viaExpressResult } = await both(async (id) => ({
+      scenario: {
+        method: "post",
+        path: "/webAuthn/register/finish",
+        cookie: refreshCookie(`${id}-1`),
+        payload: { response: {} },
+      },
+      refreshes: {
+        [`${id}-1`]: session(recovering, `${id}-2`),
+        [`${id}-2`]: session(REFRESHED_ACCESS_TOKEN, `${id}-3`),
+      },
+    }));
+
+    for (const [{ result, refreshed }, id] of [
+      [viaAdapter, `r${run - 1}`],
+      [viaExpressResult, `r${run}`],
+    ]) {
+      expect(refreshed).toEqual([`${id}-1`, `${id}-2`]);
+      expect(result.cookies.filter((c) => c.startsWith("seamless-access="))).toHaveLength(1);
+      expect(result.cookies.filter((c) => c.startsWith("seamless-refresh="))).toHaveLength(1);
+    }
+    expect(viaAdapter.result).toEqual(viaExpressResult.result);
+  });
+
+  it("leaves the enrollment answer alone when the refresh fails", async () => {
+    const { viaAdapter, viaExpressResult } = await both(async (id) => ({
+      scenario: {
+        method: "post",
+        path: "/totp/enroll/verify",
+        cookie: `${recoveryCookie()}; ${refreshCookie(`${id}-1`)}`,
+        payload: { code: "123456" },
+      },
+      refreshes: {},
+    }));
+
+    expect(viaAdapter.result).toEqual({ status: 200, body: { message: "ok" }, cookies: [] });
+    expect(viaAdapter.result).toEqual(viaExpressResult.result);
+  });
+
+  it.each([
+    [
+      "the enrollment failed",
+      { cookie: (id) => `${recoveryCookie()}; ${refreshCookie(`${id}-1`)}`, routeStatus: 400 },
+    ],
+    [
+      "the session is not a recovery session",
+      { cookie: (id) => `${accessCookie()}; ${refreshCookie(`${id}-1`)}`, routeStatus: 200 },
+    ],
+  ])("does not refresh when %s", async (_label, { cookie, routeStatus }) => {
+    const { viaAdapter, viaExpressResult } = await both(async (id) => ({
+      scenario: {
+        method: "post",
+        path: "/totp/enroll/verify",
+        cookie: cookie(id),
+        payload: { code: "123456" },
+      },
+      refreshes: { [`${id}-1`]: session(REFRESHED_ACCESS_TOKEN, `${id}-2`) },
+      routeStatus,
+    }));
+
+    for (const { result, refreshed } of [viaAdapter, viaExpressResult]) {
+      expect(refreshed).toEqual([]);
+      expect(result.cookies).toEqual([]);
+    }
+    expect(viaAdapter.result).toEqual(viaExpressResult.result);
+  });
+
+  it("leaves bearer transport to the client", async () => {
+    const { viaAdapter, viaExpressResult } = await both(async () => ({
+      scenario: {
+        method: "post",
+        path: "/totp/enroll/verify",
+        headers: {
+          "x-seamless-auth-transport": "bearer",
+          authorization: `Bearer ${RECOVERY_TOKEN}`,
+        },
+        payload: { code: "123456" },
+      },
+      refreshes: {},
+    }));
+
+    for (const { result, refreshed } of [viaAdapter, viaExpressResult]) {
+      expect(refreshed).toEqual([]);
+      expect(result.cookies).toEqual([]);
+    }
+    expect(viaAdapter.result).toEqual(viaExpressResult.result);
+  });
+});

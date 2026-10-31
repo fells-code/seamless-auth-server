@@ -104,8 +104,10 @@ true` and can only enroll a new passkey or authenticator app. `getSeamlessSessio
 and `getSeamlessClaims` treat it as signed out unless you pass
 `allowRecoverySession: true`, so do that only on the pages that drive the
 enrollment. `hasSeamlessSession` still reports it, since the session can use the
-auth routes to enroll. Once a factor is enrolled, the next refresh drops the claim;
-the React SDK refreshes after enrollment for you.
+auth routes to enroll. In cookie transport the route handler rotates the session as
+soon as `POST /webAuthn/register/finish` or `POST /totp/enroll/verify` succeeds from a
+recovery session, so the new access cookie drops the claim at once. If that refresh
+fails, the next refresh drops it instead.
 
 ## Protect routes in `proxy.ts`
 
