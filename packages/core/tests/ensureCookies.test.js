@@ -276,6 +276,7 @@ describe("ensureCookies", () => {
       sessionId: "session-456",
       token: "new-access",
       roles: ["user"],
+      refreshed: true,
     });
   });
 

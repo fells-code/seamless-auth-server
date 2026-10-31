@@ -109,6 +109,26 @@ describe("checkProxyIdentity", () => {
     ).toBeUndefined();
   });
 
+  it("admits an access session refreshed earlier in the same request", () => {
+    expect(
+      checkProxyIdentity({
+        ...base,
+        subject: "u1",
+        identity: "access",
+        refreshed: true,
+      }),
+    ).toBeUndefined();
+  });
+
+  it.each([
+    ["preAuth", "pre-auth session required"],
+    ["register", "registration session required"],
+  ])("does not let a refreshed session stand in for %s", (identity, errorCode) => {
+    expect(
+      checkProxyIdentity({ ...base, subject: "u1", identity, refreshed: true }),
+    ).toEqual({ status: 401, errorCode });
+  });
+
   it("does not accept a different identity's cookie", () => {
     expect(
       checkProxyIdentity({
