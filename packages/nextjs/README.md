@@ -6,7 +6,7 @@ passwordless authentication.
 It serves the Seamless Auth routes from a route handler in your Next.js
 application and manages the session cookies they depend on, so the browser
 talks to your origin and never holds a token itself. It also reads the session
-in server components and `proxy.ts`. The decisions all live in
+in server components and `proxy.ts`, and guards your own route handlers. The decisions all live in
 `@seamless-auth/core`; this package binds them to web-standard `Request` and
 `Response`.
 
@@ -69,7 +69,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     cookieSecret: process.env.COOKIE_SECRET!,
     serviceSecret: process.env.SEAMLESS_SERVICE_TOKEN!,
     jwksKid: process.env.JWKS_KID,
-    userAgent: (await headers()).get("user-agent") ?? undefined,
+    headers: await headers(),
+    trustedProxies: ["10.0.0.0/8"],
   });
 
   return (
@@ -87,7 +88,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 `getSeamlessSession` verifies the access cookie locally, asks the auth API for
 `/users/me` with the token inside it, and returns the result in the shape
 `AuthProvider` takes as `initialSession`. The first paint then renders the
-signed-in user instead of a loading state.
+signed-in user instead of a loading state. Given the request `headers`, it
+forwards the browser's user agent and, with `trustedProxies` or
+`resolveClientIp`, its address, the same way the route handler does.
 
 It never refreshes. When the access cookie has expired it resolves to `null`,
 even if the refresh cookie is still valid. A refresh here would rotate the
@@ -108,6 +111,78 @@ auth routes to enroll. In cookie transport the route handler rotates the session
 soon as `POST /webAuthn/register/finish` or `POST /totp/enroll/verify` succeeds from a
 recovery session, so the new access cookie drops the claim at once. If that refresh
 fails, the next refresh drops it instead.
+
+## Protect your own route handlers
+
+`requireAuth` and `requireRole` wrap an App Router route handler so it only runs
+for a signed-in user. They accept the access cookie the auth routes set, or the
+auth API's access token in `Authorization: Bearer`, which is how a native client
+calls. The cookie wins when both are present.
+
+```ts
+// lib/seamless.ts
+export const seamless = {
+  authServerUrl: process.env.AUTH_SERVER_URL!,
+  audience: process.env.AUTH_SERVER_URL!,
+  cookieSecret: process.env.COOKIE_SECRET!,
+  serviceSecret: process.env.SEAMLESS_SERVICE_TOKEN!,
+  jwksKid: process.env.JWKS_KID,
+};
+```
+
+```ts
+// app/api/me/route.ts
+import { requireAuth } from "@seamless-auth/nextjs";
+import { seamless } from "@/lib/seamless";
+
+export const GET = requireAuth(
+  async (_request, _context, user) =>
+    Response.json({ id: user.id, organizationId: user.organizationId }),
+  seamless,
+);
+```
+
+```ts
+// app/api/reports/[id]/route.ts
+import { requireRole } from "@seamless-auth/nextjs";
+import { seamless } from "@/lib/seamless";
+
+export const DELETE = requireRole(
+  ["admin", "reports:write"],
+  async (_request, { params }: { params: Promise<{ id: string }> }, user) =>
+    Response.json(await deleteReport((await params).id, user.id)),
+  seamless,
+);
+```
+
+The handler gets the request, the route context and the user. The access token
+inside a cookie is verified against the auth API's key set as well as the
+cookie's own signature, so `roles` and `organizationId` (the token's `org_id`)
+always come from a token the auth API signed, for a cookie session as much as a
+bearer one. `requireRole` passes when any one of the roles is granted, with the
+same scoped matching as `hasScopedRole`: a broad `admin` grants `admin:read`, and
+a `:write` role grants the matching `:read`. A role guard with no roles throws when
+the module loads.
+
+| Refusal | Status | Body |
+| --- | --- | --- |
+| No session, an invalid or expired one, or a sign-in flow's ephemeral token | 401 | `{"error":"unauthenticated"}` |
+| A recovery session, unless `allowRecoverySession: true` | 403 | `{"error":"enrollment_required"}` |
+| A cookie request the origin check refuses (see `allowedOrigins`) | 403 | `{"error":"cross_site_request_blocked"}` |
+| None of the roles granted | 403 | `{"error":"insufficient_role"}` |
+
+The body never names the user's roles or the required ones. These are the codes
+the Go, Python and Rust adapters answer with.
+
+The guards never refresh. An expired access cookie is a `401`, and the client
+renews the session through the auth routes, as with the Express and Fastify
+guards. Refreshing here would rotate the refresh token in a response the
+client's other requests never see.
+
+They take `authServerUrl`, `audience`, `cookieSecret`, and optionally
+`authServerIssuer`, `accessCookieName`, `cookieSecure`, `cookieSameSite`,
+`allowedOrigins` and `allowRecoverySession`: a subset of the route handler's
+options, so one object serves both.
 
 ## Protect routes in `proxy.ts`
 
@@ -267,27 +342,54 @@ adapters, plus `basePath`.
 | `preAuthCookieName` | `seamless-ephemeral` | Login-initiation cookie name |
 | `messaging` | none | Adopter-supplied delivery transports and overrides |
 | `resolveClientIp` | none | Picks the end user's IP to forward |
+| `trustedProxies` | none | Addresses or CIDR ranges of your proxies; the client IP is read from `X-Forwarded-For` past them |
 
 The session helpers take `authServerUrl`, `cookieSecret`, and optionally
-`serviceSecret`, `jwksKid`, the cookie names, and `userAgent`. They also accept
+`serviceSecret`, `jwksKid`, the cookie names, `userAgent`, `headers`,
+`trustedProxies` and `resolveClientIp`. They also accept
 `authServerIssuer`, so one options object can serve the handler and the helpers;
 the helpers verify only the adapter's own cookies, so it has no effect there.
 
 ### Client IP
 
-A route handler has no trustworthy source for the client address: any caller
-can set `X-Forwarded-For`. So nothing is forwarded unless you pass
-`resolveClientIp`, reading the header your platform sets and a client cannot:
+The auth API rate limits and audits by client address, so the adapter forwards
+one as `x-seamless-client-ip`. A route handler never sees the connecting peer,
+and any caller can set `X-Forwarded-For`, so the address has to come from
+something you trust. There are two ways to say what that is.
+
+`trustedProxies` lists the addresses or CIDR ranges of the proxies in front of
+the app. `X-Forwarded-For` is read from the right, skipping those, and the first
+other hop is the client. A hop a client wrote itself sits to the left of the one
+your proxy appended, so it is never picked.
 
 ```ts
 createSeamlessAuthHandler({
   // ...
-  resolveClientIp: (request) => request.headers.get("x-real-ip") ?? undefined,
+  trustedProxies: ["10.0.0.0/8", "fd00::/8"],
 });
 ```
 
-A value that is not an IP address is dropped. The browser's `User-Agent` is
-always forwarded, capped at 512 characters: it is self-reported either way.
+There is deliberately no hop count option: a count cannot tell a proxy from a
+client that sent its own header.
+
+`resolveClientIp` reads the address yourself, for a platform that sets a header
+of its own and strips any copy a client sent. It takes precedence over
+`trustedProxies`.
+
+```ts
+// Vercel
+resolveClientIp: (request) => request.headers.get("x-real-ip") ?? undefined,
+
+// Cloudflare
+resolveClientIp: (request) =>
+  request.headers.get("cf-connecting-ip") ?? undefined,
+```
+
+With neither set, no address is forwarded and the handler logs one warning at
+startup saying so. A value that is not an IP address is dropped, and an
+IPv4-mapped IPv6 address is sent as IPv4. A `trustedProxies` entry that is not an
+address or range throws when the handler is created. The browser's `User-Agent`
+is always forwarded, capped at 512 characters: it is self-reported either way.
 
 ## Relationship to the other adapters
 
@@ -301,6 +403,11 @@ Two differences follow from having no framework underneath:
 - request bodies are parsed here, the way Express's `json()` does: only
   `application/json`, strict, 100kb maximum
 - an unknown route answers `404 { "error": "not_found" }` as JSON
+
+`requireAuth` and `requireRole` are run against the Express guards of the same
+names: status, the user handed to the route, and no refresh all match. Their
+error bodies are the codes in the table above, which Express and Fastify do not
+use yet.
 
 The console proxy runs the Fastify parity scenarios against
 `createSeamlessConsoleProxy` from `@seamless-auth/express`. A write is refused

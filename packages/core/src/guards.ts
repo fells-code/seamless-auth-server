@@ -153,8 +153,21 @@ function isRecoveryToken(token: unknown): boolean {
   }
 }
 
+/**
+ * A session as a guard hands it on. `organizationId` is the verified access
+ * token's `org_id`, so it is only set on a path that checked that token against
+ * the auth API's key set (bearer, or a cookie with bearer verification on).
+ */
+export type GuardUser = SeamlessAuthUser & { organizationId?: string };
+
+function organizationOf(claims: { org_id?: unknown }) {
+  return typeof claims.org_id === "string" && claims.org_id
+    ? { organizationId: claims.org_id }
+    : {};
+}
+
 export type CookieAuthResult =
-  | { user: SeamlessAuthUser; rejection?: undefined }
+  | { user: GuardUser; rejection?: undefined }
   | { user?: undefined; rejection: GuardRejection };
 
 /**
@@ -293,6 +306,7 @@ export async function authenticateBearer(
       iat: claims.iat,
       exp: claims.exp,
       token,
+      ...organizationOf(claims),
     },
   };
 }
@@ -375,6 +389,7 @@ async function verifyCookieAccessToken(
     user: {
       ...user,
       roles: Array.isArray(claims.roles) ? claims.roles : user.roles,
+      ...organizationOf(claims),
     },
   };
 }

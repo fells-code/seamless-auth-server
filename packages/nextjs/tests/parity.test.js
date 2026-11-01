@@ -3,16 +3,23 @@
 // scenarios are the Fastify parity suite's, so all three adapters are held to
 // one contract.
 import { jest } from "@jest/globals";
+import { parse as parseCookieHeader } from "cookie";
 import express from "express";
 import jwt from "jsonwebtoken";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import request from "supertest";
 
-const { createSeamlessAuthHandler, createSeamlessConsoleProxy } =
-  await import("../dist/index.js");
+const {
+  createSeamlessAuthHandler,
+  createSeamlessConsoleProxy,
+  requireAuth: nextRequireAuth,
+  requireRole: nextRequireRole,
+} = await import("../dist/index.js");
 const {
   default: createSeamlessAuthServer,
   createSeamlessConsoleProxy: createExpressConsoleProxy,
+  requireAuth: expressRequireAuth,
+  requireRole: expressRequireRole,
 } = await import("../../express/dist/index.js");
 
 // Unsigned: the adapter only reads the inner token's type, the auth API verifies it.
@@ -1949,5 +1956,238 @@ describe("next and express rotate a recovery session after enrollment", () => {
       expect(result.cookies).toEqual([]);
     }
     expect(viaAdapter.result).toEqual(viaExpressResult.result);
+  });
+});
+
+const GUARD_SESSION_CLAIMS = {
+  sub: "user-123",
+  typ: "access",
+  sid: "s-1",
+  roles: ["admin"],
+  org_id: "org-9",
+};
+
+const GUARD_TOKENS = {
+  session: await accessToken(GUARD_SESSION_CLAIMS),
+  reader: await accessToken({ ...GUARD_SESSION_CLAIMS, roles: ["reports:read"] }),
+  noRoles: await accessToken({ ...GUARD_SESSION_CLAIMS, roles: [], org_id: undefined }),
+  recovery: await accessToken({ ...GUARD_SESSION_CLAIMS, recovery: true }),
+  ephemeral: await accessToken({ sub: "user-123", typ: "ephemeral" }),
+};
+
+// The first-party guards on an adopter's own routes. Status, the user handed to
+// the route and the decision to refresh (never) match Express. Error bodies are
+// the codes the Go, Python and Rust adapters answer with; Express moves to them
+// in #263, so for now only its status is compared on a refusal.
+describe("next.js and express route guards agree", () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  const tokens = GUARD_TOKENS;
+
+  const GUARD_OPTIONS = {
+    authServerUrl: OPTIONS.authServerUrl,
+    audience: OPTIONS.audience,
+    cookieSecret: COOKIE_SECRET,
+  };
+
+  const cookieFor = (token, extra = {}) =>
+    `seamless-access=${signed({ sub: "user-123", roles: ["admin"], email: "user@example.com", token, ...extra })}`;
+
+  // The same signed cookie through both adapters, so iat/exp agree.
+  const cookies = {
+    session: cookieFor(tokens.session),
+    forgedRoles: cookieFor(tokens.noRoles, { roles: ["admin"], org_id: "forged" }),
+    recovery: cookieFor(tokens.recovery),
+    preAuth: `seamless-access=${signed({ sub: "user-123", token: "pre-auth" })}`,
+    ephemeral: cookieFor(tokens.ephemeral),
+    expired: `seamless-access=${signed({ sub: "user-123", token: tokens.session }, "-10s")}`,
+    refresh: `seamless-refresh=${signed({ sub: "user-123", refreshToken: "opaque" }, "3600s")}`,
+    garbage: "seamless-access=not-a-jwt",
+  };
+
+  function guardFetch() {
+    return jest.fn(async (url) => {
+      if (String(url).endsWith("/.well-known/jwks.json")) {
+        return upstream(200, { keys: [jwk] });
+      }
+      return upstream(200, REFRESH_OK);
+    });
+  }
+
+  async function viaNextGuard({ roles, method = "GET", cookie, headers, options }) {
+    const route = (_request, _context, user) => Response.json({ user });
+    const opts = { ...GUARD_OPTIONS, ...options };
+    const guarded = roles
+      ? nextRequireRole(roles, route, opts)
+      : nextRequireAuth(route, opts);
+    const res = await guarded(
+      new Request("http://localhost/api/thing", {
+        method,
+        headers: { ...(headers ?? {}), ...(cookie ? { cookie } : {}) },
+      }),
+      { params: Promise.resolve({}) },
+    );
+    return {
+      status: res.status,
+      body: parseBody(await res.text()),
+      cookies: normalizeCookies(res.headers.getSetCookie()),
+    };
+  }
+
+  async function viaExpressGuard({ roles, method = "GET", cookie, headers, options }) {
+    const app = express();
+    // What cookie-parser does, which an adopter mounts in front of requireAuth.
+    app.use((req, _res, next) => {
+      req.cookies = parseCookieHeader(req.headers.cookie ?? "");
+      next();
+    });
+    const chain = [
+      expressRequireAuth({ ...GUARD_OPTIONS, ...options }),
+      ...(roles ? [expressRequireRole(roles)] : []),
+    ];
+    app.all("/api/thing", ...chain, (req, res) => res.json({ user: req.user }));
+    let req = request(app)[method.toLowerCase()]("/api/thing");
+    if (headers) req = req.set(headers);
+    if (cookie) req = req.set("Cookie", cookie);
+    const res = await req;
+    return {
+      status: res.status,
+      body: parseBody(res.text),
+      cookies: normalizeCookies(res.headers["set-cookie"]),
+    };
+  }
+
+  async function bothGuards(scenario) {
+    global.fetch = guardFetch();
+    const next = await viaNextGuard(scenario);
+    const nextUrls = global.fetch.mock.calls.map(([url]) => String(url));
+
+    global.fetch = guardFetch();
+    const expressResult = await viaExpressGuard(scenario);
+    const expressUrls = global.fetch.mock.calls.map(([url]) => String(url));
+
+    // Only ever the key set: neither guard refreshes or calls the auth API.
+    for (const urls of [nextUrls, expressUrls]) {
+      expect(urls.every((url) => url.endsWith("/.well-known/jwks.json"))).toBe(true);
+    }
+    expect(next.cookies).toEqual([]);
+    expect(expressResult.cookies).toEqual([]);
+
+    return { next, express: expressResult };
+  }
+
+  const bearer = (token) => ({ authorization: `Bearer ${token}` });
+
+  it.each([
+    ["a cookie session", { cookie: cookies.session }],
+    ["a bearer session", { headers: bearer(tokens.session) }],
+    ["a cookie session with a role", { cookie: cookies.session, roles: "admin" }],
+    ["a bearer session with a role", { headers: bearer(tokens.session), roles: ["support", "admin"] }],
+    ["a scoped role granted by a broader one", { cookie: cookies.session, roles: "admin:read" }],
+    ["a read role granted by its write role", { headers: bearer(tokens.reader), roles: "reports:read" }],
+    ["a recovery session where it is allowed", { cookie: cookies.recovery, options: { allowRecoverySession: true } }],
+    ["a cookie preferred over a bearer token", { cookie: cookies.session, headers: bearer(tokens.ephemeral) }],
+  ])("passes %s with the same user", async (_, scenario) => {
+    const { next, express: expressResult } = await bothGuards(scenario);
+
+    expect(next.status).toBe(200);
+    expect(next).toEqual(expressResult);
+    expect(next.body.user).toMatchObject({ id: "user-123", organizationId: "org-9" });
+  });
+
+  it("takes roles and the organization from the verified token, not the cookie", async () => {
+    const { next, express: expressResult } = await bothGuards({ cookie: cookies.forgedRoles });
+
+    expect(next).toEqual(expressResult);
+    expect(next.body.user.roles).toEqual([]);
+    expect(next.body.user).not.toHaveProperty("organizationId");
+  });
+
+  it.each([
+    ["no credential", {}, 401, "unauthenticated"],
+    ["a malformed cookie", { cookie: cookies.garbage }, 401, "unauthenticated"],
+    ["an expired cookie, even with a refresh cookie", { cookie: `${cookies.expired}; ${cookies.refresh}` }, 401, "unauthenticated"],
+    ["a pre-auth cookie presented as the session", { cookie: cookies.preAuth }, 401, "unauthenticated"],
+    ["a cookie holding an ephemeral token", { cookie: cookies.ephemeral }, 401, "unauthenticated"],
+    ["an ephemeral bearer token", { headers: bearer(tokens.ephemeral) }, 401, "unauthenticated"],
+    ["a bearer token with another scheme", { headers: { authorization: `Basic ${tokens.session}` } }, 401, "unauthenticated"],
+    ["a recovery cookie session", { cookie: cookies.recovery }, 403, "enrollment_required"],
+    ["a recovery bearer session", { headers: bearer(tokens.recovery) }, 403, "enrollment_required"],
+    ["a recovery session behind a role guard", { cookie: cookies.recovery, roles: "admin" }, 403, "enrollment_required"],
+    ["a session without the role", { headers: bearer(tokens.reader), roles: "admin" }, 403, "insufficient_role"],
+    ["a session with no roles", { cookie: cookies.forgedRoles, roles: "admin" }, 403, "insufficient_role"],
+    ["no credential behind a role guard", { roles: "admin" }, 401, "unauthenticated"],
+  ])("refuses %s with the same status", async (_, scenario, status, error) => {
+    jest.spyOn(console, "warn").mockImplementation(() => {});
+    const { next, express: expressResult } = await bothGuards(scenario);
+
+    expect(next.status).toBe(status);
+    expect(expressResult.status).toBe(status);
+    expect(next.body).toEqual({ error });
+  });
+
+  it("blocks a cross-site state change on a cookie session but not on a bearer one", async () => {
+    global.fetch = guardFetch();
+    const options = { cookieSameSite: "none" };
+    const crossSite = { "sec-fetch-site": "cross-site" };
+
+    const cookieResult = await viaNextGuard({
+      method: "POST",
+      cookie: cookies.session,
+      headers: crossSite,
+      options,
+    });
+    const bearerResult = await viaNextGuard({
+      method: "POST",
+      headers: { ...crossSite, ...bearer(tokens.session) },
+      options,
+    });
+    const safeRead = await viaNextGuard({
+      cookie: cookies.session,
+      headers: crossSite,
+      options,
+    });
+
+    expect(cookieResult).toMatchObject({
+      status: 403,
+      body: { error: "cross_site_request_blocked" },
+    });
+    expect(bearerResult.status).toBe(200);
+    expect(safeRead.status).toBe(200);
+  });
+
+  it.each([[[]], [""], [["admin", " "]]])(
+    "refuses a role guard configured with no role (%j) at setup",
+    (roles) => {
+      expect(() =>
+        nextRequireRole(roles, () => new Response(), GUARD_OPTIONS),
+      ).toThrow(/at least one/);
+    },
+  );
+
+  it("refuses to build a guard that cannot verify access tokens", () => {
+    expect(() =>
+      nextRequireAuth(() => new Response(), { cookieSecret: COOKIE_SECRET }),
+    ).toThrow(/authServerUrl and audience/);
+    expect(() =>
+      nextRequireAuth(() => new Response(), { ...GUARD_OPTIONS, cookieSecret: "short" }),
+    ).toThrow(/cookieSecret/);
+  });
+
+  it("hands the route its context", async () => {
+    global.fetch = guardFetch();
+    const guarded = nextRequireAuth(
+      (_request, context) => Response.json(context),
+      GUARD_OPTIONS,
+    );
+    const res = await guarded(
+      new Request("http://localhost/api/thing", { headers: bearer(tokens.session) }),
+      { params: { id: "t-1" } },
+    );
+
+    expect(await res.json()).toEqual({ params: { id: "t-1" } });
   });
 });

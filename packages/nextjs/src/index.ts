@@ -5,6 +5,13 @@ export type {
   SeamlessConsoleProxyHandlers,
   SeamlessConsoleProxyOptions,
 } from "./consoleProxy.js";
+export { requireAuth, requireRole } from "./guards.js";
+export type {
+  SeamlessGuardedHandler,
+  SeamlessGuardedRoute,
+  SeamlessGuardOptions,
+  SeamlessGuardUser,
+} from "./guards.js";
 export {
   getSeamlessClaims,
   getSeamlessSession,

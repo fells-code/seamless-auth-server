@@ -75,6 +75,53 @@ describe("session helpers", () => {
       );
     });
 
+    it("forwards the client IP and user agent resolved from the request headers", async () => {
+      const headers = new Headers({
+        "x-forwarded-for": "198.51.100.1, 203.0.113.9, 10.0.0.2",
+        "user-agent": "Mozilla/5.0 (headers)",
+      });
+
+      await getSeamlessSession(jar({ "seamless-access": signed(ACCESS) }), {
+        ...OPTIONS,
+        headers,
+        trustedProxies: ["10.0.0.0/8"],
+      });
+
+      const [, init] = global.fetch.mock.calls[0];
+      expect(init.headers["x-seamless-client-ip"]).toBe("203.0.113.9");
+      expect(init.headers["x-seamless-client-user-agent"]).toBe(
+        "Mozilla/5.0 (headers)",
+      );
+    });
+
+    it("resolves the client IP with resolveClientIp from the request headers", async () => {
+      await getSeamlessSession(jar({ "seamless-access": signed(ACCESS) }), {
+        ...OPTIONS,
+        headers: new Headers({ "x-real-ip": "203.0.113.9" }),
+        resolveClientIp: (request) =>
+          request.headers.get("x-real-ip") ?? undefined,
+      });
+
+      expect(
+        global.fetch.mock.calls[0][1].headers["x-seamless-client-ip"],
+      ).toBe("203.0.113.9");
+    });
+
+    it("forwards no client IP without headers or a configured source", async () => {
+      await getSeamlessSession(jar({ "seamless-access": signed(ACCESS) }), {
+        ...OPTIONS,
+        trustedProxies: ["10.0.0.0/8"],
+      });
+      await getSeamlessSession(jar({ "seamless-access": signed(ACCESS) }), {
+        ...OPTIONS,
+        headers: new Headers({ "x-forwarded-for": "203.0.113.9" }),
+      });
+
+      for (const [, init] of global.fetch.mock.calls) {
+        expect(init.headers["x-seamless-client-ip"]).toBeUndefined();
+      }
+    });
+
     it("works without a serviceSecret, sending no service token", async () => {
       const { serviceSecret: _unused, ...withoutService } = OPTIONS;
 

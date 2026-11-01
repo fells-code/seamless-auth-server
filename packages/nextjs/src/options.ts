@@ -41,11 +41,18 @@ export type SeamlessAuthHandlerOptions = {
   messaging?: SeamlessAuthMessagingOptions;
   /**
    * A route handler has no trusted source for the client address: any caller
-   * can set `X-Forwarded-For`. Nothing is forwarded unless this is given, so
-   * read the header your platform sets and a client cannot (for example
-   * `x-real-ip` on Vercel).
+   * can set `X-Forwarded-For`. Use this to read the header your platform sets
+   * and a client cannot (for example `x-real-ip` on Vercel). Takes precedence
+   * over `trustedProxies`. With neither set, nothing is forwarded.
    */
   resolveClientIp?: ClientIpResolver;
+  /**
+   * Addresses or CIDR ranges of the proxies in front of this app, such as
+   * `["10.0.0.0/8"]`. `X-Forwarded-For` is read from the right, skipping these,
+   * and the first other hop is forwarded as the client address. Used when
+   * `resolveClientIp` is not given.
+   */
+  trustedProxies?: string[];
   /**
    * Fetch the adapter manifest from the auth API (the default). Routes with no
    * handler of their own here are proxied as it describes, so a new API route
@@ -68,4 +75,5 @@ export type ResolvedOptions = SeamlessAuthHandlerOptions & {
   refreshCookieName: string;
   preAuthCookieName: string;
   basePath: string;
+  clientIpOf: (request: Request) => string | undefined;
 };
