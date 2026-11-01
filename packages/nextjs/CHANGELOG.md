@@ -1,5 +1,34 @@
 # @seamless-auth/nextjs
 
+## 0.7.0
+
+### Minor Changes
+
+- 6b8e205: `EmailMessage` carries an optional `headers` record, taken from `@seamless-auth/types` 0.34.0, so an override or a custom transport can send headers such as `List-Unsubscribe` and `List-Unsubscribe-Post`. Core passes an override's headers to the email transport untouched; `@seamless-auth/messaging-aws` sends them through SES v2 and validates the names and values.
+  
+  `SendEnrollmentInviteEmailInput` now comes from `@seamless-auth/types` rather than being declared in core, and the Express, Fastify and Next.js adapters export it alongside the other messaging types.
+- 397d74d: Rotate a recovery session right after it enrolls a factor. In cookie transport, a 2xx from `POST /webAuthn/register/finish` or `POST /totp/enroll/verify` made with a recovery session (`recovery: true` on the access token) now refreshes the session and sets new access and refresh cookies on the same response, so `requireAuth` stops answering `enrollment_required` at once, as the Go, Python and Rust adapters already do. When a silent refresh earlier in the request already rotated the session, the refresh token it issued is the one used, so the auth API never sees a replay; the cookies from that silent refresh are replaced rather than sent twice. If the refresh fails the enrollment answer is unchanged. Bearer transport is unchanged. Core exports `refreshAfterRecoveryEnrollment` and `refreshSessionToken`.
+- bec9b80: Add verify-only resource servers for APIs that receive the OpenID Provider's access tokens (RFC 9068). `createResourceServer({ issuer, audience })` needs no cookie secret, service secret or auth routes: it finds the provider's keys through discovery (or `jwksUri` / `jwks`), checks `iss`, `aud`, the `at+jwt` header and the token's claims, and refuses a sender-constrained (`cnf`) token unless a `confirm` hook accepts it.
+  
+  Express and Fastify get `requireAuth()`, `requireScope()`, `requireRole()` and `requireStepUp()` guards; Next.js gets `protect(handler, { scopes, roles, stepUp })` and `authenticate(request)`. `requireStepUp({ acrValues: ["phr"], maxAge: 300 })` answers with the RFC 9470 `insufficient_user_authentication` challenge. The verified user carries `clientId`, `scopes`, `sid`, `orgId`, `acr`, `amr` and `authTime`, and `request.user` is widened with those as optional fields. `GuardRejection` gains optional `headers`.
+  
+  Every Seamless adapter (these, Go, Python and Rust) answers the same signed vectors in `packages/core/tests/fixtures/verify-only` the same way.
+
+### Patch Changes
+
+- 8ab9756: Serve `POST /system-config/oauth-providers/{id}/discovery` from the bundled manifest, so an adapter that cannot fetch the live manifest still reaches the auth API route that reads an OAuth provider's discovery document again. Account notice deliveries accept the `application_notice` notice from `@seamless-auth/types` 0.34, and `SendAccountNoticeEmailInput` and `SendAccountNoticeSmsInput` carry the optional `application` (`clientId` and `name`) the auth API sends with it, for a handler or override that renders its own template. `AccountNoticeApplication` is re-exported.
+- fc84583: Serve a proxied access route on the same request that silently refreshed the session. When a cookie-transport request carried only the refresh cookie, `ensureCookies` refreshed the session but `checkProxyIdentity` still looked for the access cookie on the incoming request and answered 401 `access session required`, so the first request after the access cookie expired failed and only the retry worked. A session refreshed earlier in the request now satisfies the `access` identity, for passthrough routes and manifest routes in Express, Fastify and Next.js. A refreshed session still never stands in for a pre-auth or registration cookie. The `user` that `ensureCookies` returns carries `refreshed: true` after a silent refresh.
+- f9605c5: Depend on `@seamless-auth/types` `^0.34.0`, the stable release, instead of the 0.34.0 prerelease.
+- Updated dependencies [4d42ba4]
+- Updated dependencies [6b8e205]
+- Updated dependencies [8ab9756]
+- Updated dependencies [e3b3949]
+- Updated dependencies [fc84583]
+- Updated dependencies [397d74d]
+- Updated dependencies [f9605c5]
+- Updated dependencies [bec9b80]
+  - @seamless-auth/core@0.23.0
+
 ## 0.6.0
 
 ### Minor Changes
