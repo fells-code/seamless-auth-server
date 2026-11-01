@@ -24,6 +24,7 @@ export type {
   ResourceServerOptions,
   ResourceServerUser,
   SeamlessAuthMessagingOptions,
+  SendEnrollmentInviteEmailInput,
   SeamlessAuthUser,
   SeamlessUser,
   SmsMessage,
