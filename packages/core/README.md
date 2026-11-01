@@ -130,7 +130,9 @@ remain for direct imports.
 - `checkProxyIdentity(...)` – checks a request carries the session a proxied route requires
 - `buildQueryString(...)` / `buildUpstreamUrl(...)` – build an upstream URL
 - `signSessionCookie(...)` / `resolveCookieSameSite(...)` – cookie format and policy
-- `authFetch(...)` – calls the auth API with the adapter's headers and a tolerant `json()`
+- `authFetch(...)` – calls the auth API with the adapter's headers and a tolerant `json()`. A call
+  that cannot reach the API or takes longer than `timeoutMs` (15 seconds by default) resolves to
+  `502 {"error":"upstream_unavailable"}`
 
 **The adapter manifest**
 

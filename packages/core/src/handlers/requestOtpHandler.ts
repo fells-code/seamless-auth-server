@@ -41,7 +41,7 @@ export async function requestOtpHandler(
         : "otp/generate-phone-otp";
 
   const up = await authFetch(`${opts.authServerUrl}/${path}`, {
-    method: "GET",
+    method: "POST",
     authorization: input.authorization,
     forwardedClientIp: opts.forwardedClientIp,
     forwardedUserAgent: opts.forwardedUserAgent,

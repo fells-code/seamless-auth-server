@@ -186,6 +186,8 @@ export const AUTH_ROUTES: Route[] = [
         { body: ctx.body },
         {
           ...common(ctx, opts),
+          audience: opts.audience,
+          authServerIssuer: opts.authServerIssuer,
           cookieDomain: opts.cookieDomain,
           registrationCookieName: opts.registrationCookieName,
           transport: ctx.transport,
@@ -194,7 +196,7 @@ export const AUTH_ROUTES: Route[] = [
         },
       );
 
-      if (result.errorBody) {
+      if (result.errorBody || result.errorCode) {
         return result;
       }
 
