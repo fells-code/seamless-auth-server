@@ -1,5 +1,13 @@
 # @seamless-auth/express
 
+## 0.24.0
+
+### Patch Changes
+
+- Updated dependencies [82687e6]
+- Updated dependencies [241a207]
+  - @seamless-auth/core@0.24.0
+
 ## 0.23.0
 
 ### Minor Changes

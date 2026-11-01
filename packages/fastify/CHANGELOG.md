@@ -1,5 +1,13 @@
 # @seamless-auth/fastify
 
+## 0.14.1
+
+### Patch Changes
+
+- Updated dependencies [82687e6]
+- Updated dependencies [241a207]
+  - @seamless-auth/core@0.24.0
+
 ## 0.14.0
 
 ### Minor Changes
