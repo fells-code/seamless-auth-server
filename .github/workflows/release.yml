@@ -47,9 +47,9 @@ jobs:
       - name: Version or publish packages
         uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
-          version: pnpm version-packages
-          publish: pnpm release:stable
-          createGithubReleases: true
+          version-script: pnpm version-packages
+          publish-script: pnpm release:stable
+          create-github-releases: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
