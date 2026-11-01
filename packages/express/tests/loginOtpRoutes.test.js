@@ -70,7 +70,7 @@ describe("login OTP routes", () => {
     expect(global.fetch).toHaveBeenCalledWith(
       "https://auth.example.com/otp/generate-login-email-otp",
       expect.objectContaining({
-        method: "GET",
+        method: "POST",
         headers: expect.objectContaining({
           Authorization: "Bearer ephemeral-token",
           "x-seamless-service-token": expect.not.stringContaining("ephemeral-token"),

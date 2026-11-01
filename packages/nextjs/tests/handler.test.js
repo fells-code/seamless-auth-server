@@ -291,16 +291,38 @@ describe("createSeamlessAuthHandler", () => {
   });
 
   describe("errors", () => {
+    // A response whose body cannot be read, which no route expects.
+    const unreadable = (message) => ({
+      ok: true,
+      status: 200,
+      text: async () => {
+        throw new Error(message);
+      },
+    });
+
     it("answers 500 without leaking the failure", async () => {
       const spy = jest.spyOn(console, "error").mockImplementation(() => {});
-      global.fetch = jest.fn(async () => {
-        throw new Error("upstream exploded at /srv/secret/path");
-      });
+      global.fetch = jest.fn(async () =>
+        unreadable("upstream exploded at /srv/secret/path"),
+      );
 
       const res = await call("/auth/oauth/providers");
 
       expect(res.status).toBe(500);
       expect(await res.json()).toEqual({ error: "internal_error" });
+      spy.mockRestore();
+    });
+
+    it("answers 502 upstream_unavailable when the API cannot be reached", async () => {
+      const spy = jest.spyOn(console, "error").mockImplementation(() => {});
+      global.fetch = jest.fn(async () => {
+        throw new Error("connect ECONNREFUSED");
+      });
+
+      const res = await call("/auth/oauth/providers");
+
+      expect(res.status).toBe(502);
+      expect(await res.json()).toEqual({ error: "upstream_unavailable" });
       spy.mockRestore();
     });
 
@@ -314,7 +336,7 @@ describe("createSeamlessAuthHandler", () => {
         if (String(url).endsWith("/.well-known/jwks.json")) {
           return upstream(200, { keys: [jwk] });
         }
-        throw new Error("upstream down");
+        return unreadable("upstream down");
       });
 
       const res = await call("/auth/users/me", {

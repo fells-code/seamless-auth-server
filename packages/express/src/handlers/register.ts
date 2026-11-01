@@ -20,6 +20,8 @@ export async function register(
     { body: req.body },
     {
       authServerUrl: opts.authServerUrl,
+      audience: opts.audience,
+      authServerIssuer: opts.authServerIssuer,
       cookieDomain: opts.cookieDomain,
       registrationCookieName: opts.registrationCookieName!,
       transport: transportOf(req),
@@ -32,7 +34,7 @@ export async function register(
     },
   );
 
-  if (result.errorBody) {
+  if (result.errorBody || result.errorCode) {
     return respond(res, result, opts);
   }
 

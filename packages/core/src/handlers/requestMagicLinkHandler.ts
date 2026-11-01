@@ -39,7 +39,7 @@ export async function requestMagicLinkHandler(
   );
 
   const up = await authFetch(url, {
-    method: "GET",
+    method: "POST",
     authorization: input.authorization,
     forwardedClientIp: opts.forwardedClientIp,
     forwardedUserAgent: opts.forwardedUserAgent,

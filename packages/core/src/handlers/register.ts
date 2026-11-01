@@ -1,8 +1,10 @@
+import type { AuthServerIssuerOption } from "../authServerIssuer.js";
 import { authFetch } from "../authFetch.js";
 import { readPassthroughFailure } from "../upstreamError.js";
 import { EXTERNAL_DELIVERY_HEADERS } from "../apiContract.js";
 import type { ResultFailure } from "../result.js";
 import type { CookiePayload } from "../ensureCookies.js";
+import { verifyUpstreamSession } from "../upstreamSession.js";
 import type { AuthTransport } from "../transport.js";
 import { withoutTokens } from "../bodyTokens.js";
 
@@ -10,8 +12,9 @@ export interface RegisterInput {
   body: unknown;
 }
 
-export interface RegisterOptions {
+export interface RegisterOptions extends AuthServerIssuerOption {
   authServerUrl: string;
+  audience: string;
   cookieDomain?: string;
   registrationCookieName: string;
   externalDelivery?: boolean;
@@ -31,6 +34,9 @@ export interface RegisterResult extends ResultFailure {
     domain?: string;
   }[];
 }
+
+/** The error code a registration gets when the auth API's token fails verification. */
+export const INVALID_UPSTREAM_SESSION_ERROR_CODE = "invalid_upstream_session";
 
 export async function registerHandler(
   input: RegisterInput,
@@ -56,6 +62,18 @@ export async function registerHandler(
       status: up.status,
       ...readPassthroughFailure(data),
     };
+  }
+
+  try {
+    await verifyUpstreamSession(
+      data,
+      opts.authServerUrl,
+      opts.audience,
+      opts.authServerIssuer,
+      "ephemeral",
+    );
+  } catch {
+    return { status: 502, errorCode: INVALID_UPSTREAM_SESSION_ERROR_CODE };
   }
 
   if (opts.transport === "bearer") {
