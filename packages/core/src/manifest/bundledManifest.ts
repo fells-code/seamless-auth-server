@@ -3,7 +3,7 @@ import type { AdapterManifest } from "./adapterManifest.js";
 
 export const BUNDLED_ADAPTER_MANIFEST: AdapterManifest = {
   "schemaVersion": 1,
-  "apiVersion": "0.20.0",
+  "apiVersion": "0.21.0",
   "session": {
     "subject": "sub",
     "token": "token",
