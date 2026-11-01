@@ -86,7 +86,15 @@ packages/
   express/    Express adapter built on top of core
   fastify/    Fastify adapter built on top of core
   nextjs/     Next.js route handler adapter built on top of core
+conformance/
+  nextjs-refapp/  reference app the adapter conformance specs drive
 ```
+
+- `conformance/nextjs-refapp` is a private workspace package, never
+  published. The `nextjs` job in `.github/workflows/conformance.yml` runs the
+  seamless-cli adapter specs against it with `seamless verify --adapter-url`,
+  since the seamless-cli matrix builds only the Express and Fastify apps. Its
+  routes follow `verify/CONFORMANCE.md` in seamless-cli.
 
 - Keep framework specifics in the adapter package, not in `core`.
 - The Next.js adapter has no framework underneath, so it builds its own

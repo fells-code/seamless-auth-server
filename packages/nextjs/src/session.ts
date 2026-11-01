@@ -8,6 +8,8 @@ import {
 import type { MeResponse } from "@seamless-auth/types";
 
 import { buildProxyServiceAuthorization } from "./internal/buildAuthorization.js";
+import { createClientIpResolver } from "./internal/clientIp.js";
+import type { ClientIpResolver } from "./options.js";
 
 /**
  * The read side of a cookie store. Both `await cookies()` from `next/headers`
@@ -31,8 +33,22 @@ export interface SeamlessSessionOptions {
   jwksKid?: string;
   accessCookieName?: string;
   refreshCookieName?: string;
-  /** The browser's user agent, for the auth API to record instead of this server's. */
+  /**
+   * The browser's user agent, for the auth API to record instead of this
+   * server's. Read from `headers` when left out.
+   */
   userAgent?: string;
+  /**
+   * The incoming request's headers (`await headers()` from `next/headers`, or
+   * `request.headers` in `proxy.ts`). The client IP is resolved from them the
+   * way the route handler resolves it, with `resolveClientIp` or
+   * `trustedProxies`, and forwarded to the auth API.
+   */
+  headers?: Headers;
+  /** As on the route handler options. */
+  resolveClientIp?: ClientIpResolver;
+  /** As on the route handler options. */
+  trustedProxies?: string[];
   /**
    * Accept a recovery session (`recovery: true` on the access token), which can only
    * enroll a new passkey or authenticator app. Off by default, so the helpers treat it
@@ -108,6 +124,16 @@ export function hasSeamlessSession(
   return Boolean(refresh && verifyRefreshCookie(refresh, opts.cookieSecret));
 }
 
+function clientIpOf(opts: SeamlessSessionOptions): string | undefined {
+  if (!opts.headers) {
+    return undefined;
+  }
+
+  return createClientIpResolver(opts)(
+    new Request("http://localhost/", { headers: opts.headers }),
+  );
+}
+
 /**
  * Resolves the signed-in user's session for a server component.
  *
@@ -140,7 +166,11 @@ export async function getSeamlessSession(
     method: "GET",
     authorization: `Bearer ${user.token}`,
     serviceAuthorization: buildProxyServiceAuthorization(opts),
-    forwardedUserAgent: opts.userAgent?.trim().slice(0, 512) || undefined,
+    forwardedClientIp: clientIpOf(opts),
+    forwardedUserAgent:
+      (opts.userAgent ?? opts.headers?.get("user-agent") ?? undefined)
+        ?.trim()
+        .slice(0, 512) || undefined,
   });
 
   if (!response.ok) {

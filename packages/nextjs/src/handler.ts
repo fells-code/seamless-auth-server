@@ -27,8 +27,11 @@ import {
   buildServiceAuthorization,
 } from "./internal/buildAuthorization.js";
 import {
+  createClientIpResolver,
+  warnOnNoClientIp,
+} from "./internal/clientIp.js";
+import {
   BodyError,
-  forwardedClientIp,
   forwardedUserAgent,
   mountRelativePath,
   readBody,
@@ -68,6 +71,7 @@ export function resolveOptions(
     // initiation never hold an ephemeral cookie at the same time.
     preAuthCookieName: opts.preAuthCookieName ?? "seamless-ephemeral",
     basePath: opts.basePath ?? "/auth",
+    clientIpOf: createClientIpResolver(opts),
   };
 }
 
@@ -101,7 +105,7 @@ const PASSTHROUGH_ROUTES: Route[] = PROXY_ROUTES.map((definition) => ({
       method: definition.method,
       authorization: buildServiceAuthorization(ctx),
       serviceAuthorization: buildProxyServiceAuthorization(opts),
-      forwardedClientIp: forwardedClientIp(ctx.request, opts.resolveClientIp),
+      forwardedClientIp: opts.clientIpOf(ctx.request),
       forwardedUserAgent: forwardedUserAgent(ctx.request),
       query: ctx.query,
       body: ctx.body,
@@ -152,6 +156,7 @@ export function createSeamlessAuthHandler(
 ): SeamlessAuthRouteHandlers {
   assertSecrets(options);
   warnOnDevJwksKid(options.jwksKid);
+  warnOnNoClientIp(options);
 
   const opts = resolveOptions(options);
   const manifestSource = createAdapterManifestSource({
@@ -264,7 +269,7 @@ async function dispatch(
       accessTokenAudience: opts.audience,
       authServerIssuer: opts.authServerIssuer,
       keyId: opts.jwksKid,
-      forwardedClientIp: forwardedClientIp(request, opts.resolveClientIp),
+      forwardedClientIp: opts.clientIpOf(request),
       forwardedUserAgent: forwardedUserAgent(request),
     };
 
@@ -349,7 +354,7 @@ function resolveTarget(
           authorization: request.headers.get("authorization") ?? undefined,
           cookiePayload: ctx.cookiePayload,
           cookies: ctx.cookies,
-          forwardedClientIp: forwardedClientIp(request, opts.resolveClientIp),
+          forwardedClientIp: opts.clientIpOf(request),
           forwardedUserAgent: forwardedUserAgent(request),
         },
         {

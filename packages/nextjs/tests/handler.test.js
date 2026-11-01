@@ -218,6 +218,63 @@ describe("createSeamlessAuthHandler", () => {
 
       expect(forwardedIp()).toBeUndefined();
     });
+
+    describe("trustedProxies", () => {
+      async function resolvedFrom(forwardedFor, trustedProxies, extra = {}) {
+        global.fetch = jest.fn(async () => upstream(200, { providers: [] }));
+        await call("/auth/system-config/public", {
+          headers:
+            forwardedFor === undefined
+              ? {}
+              : { "x-forwarded-for": forwardedFor },
+          options: { trustedProxies, ...extra },
+        });
+        return forwardedIp();
+      }
+
+      it.each([
+        ["the hop left of a trusted proxy", "203.0.113.9, 10.0.0.2", ["10.0.0.0/8"], "203.0.113.9"],
+        ["past every trusted hop", "203.0.113.9, 10.1.2.3, 10.0.0.2", ["10.0.0.0/8"], "203.0.113.9"],
+        ["the rightmost untrusted hop, not a forged leftmost one", "198.51.100.1, 203.0.113.9, 10.0.0.2", ["10.0.0.0/8"], "203.0.113.9"],
+        ["the rightmost hop when it is untrusted", "203.0.113.9, 198.51.100.7", ["10.0.0.0/8"], "198.51.100.7"],
+        ["the leftmost hop when every hop is trusted", "10.0.0.5, 10.0.0.2", ["10.0.0.0/8"], "10.0.0.5"],
+        ["an exact address entry", "203.0.113.9, 192.0.2.10", ["192.0.2.10"], "203.0.113.9"],
+        ["IPv6 ranges", "2001:db8::1, fd00::2", ["fd00::/8"], "2001:db8::1"],
+        ["an IPv4-mapped trusted hop", "203.0.113.9, ::ffff:10.0.0.2", ["10.0.0.0/8"], "203.0.113.9"],
+        ["an IPv4-mapped client, unmapped", "::ffff:203.0.113.9, 10.0.0.2", ["10.0.0.0/8"], "203.0.113.9"],
+      ])("forwards %s", async (_, header, proxies, expected) => {
+        expect(await resolvedFrom(header, proxies)).toBe(expected);
+      });
+
+      it.each([
+        ["no header", undefined],
+        ["an empty header", ""],
+        ["a first untrusted hop that is not an address", "203.0.113.9, garbage, 10.0.0.2"],
+      ])("forwards none for %s", async (_, header) => {
+        expect(await resolvedFrom(header, ["10.0.0.0/8"])).toBeUndefined();
+      });
+
+      it("treats an empty list as not configured", async () => {
+        expect(await resolvedFrom("203.0.113.9", [])).toBeUndefined();
+      });
+
+      it("yields to resolveClientIp when both are set", async () => {
+        expect(
+          await resolvedFrom("203.0.113.9, 10.0.0.2", ["10.0.0.0/8"], {
+            resolveClientIp: () => "192.0.2.44",
+          }),
+        ).toBe("192.0.2.44");
+      });
+
+      it.each(["10.0.0.0/33", "not-an-ip", "10.0.0.0/8/1", "fd00::/129", "10.0.0.0/x"])(
+        "refuses %s at setup",
+        (entry) => {
+          expect(() =>
+            createSeamlessAuthHandler({ ...OPTIONS, trustedProxies: [entry] }),
+          ).toThrow(/trustedProxies/);
+        },
+      );
+    });
   });
 
   it("sends no body on a 204, where a Response would refuse one", async () => {

@@ -1,13 +1,9 @@
-import { isIP } from "node:net";
-
 import { parse as parseCookieHeader } from "cookie";
 import {
   AUTH_TRANSPORT_HEADER,
   resolveAuthTransport,
   type AuthTransport,
 } from "@seamless-auth/core";
-
-import type { ClientIpResolver } from "../options.js";
 
 /**
  * What a route reads from a request. The Express and Fastify adapters get this
@@ -132,12 +128,4 @@ export function forwardedUserAgent(request: Request): string | undefined {
       ?.trim()
       .slice(0, MAX_USER_AGENT_LENGTH) || undefined
   );
-}
-
-export function forwardedClientIp(
-  request: Request,
-  resolveClientIp?: ClientIpResolver,
-): string | undefined {
-  const candidate = resolveClientIp?.(request);
-  return candidate && isIP(candidate) !== 0 ? candidate : undefined;
 }

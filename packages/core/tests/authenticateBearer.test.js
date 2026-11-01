@@ -282,6 +282,47 @@ describe("authenticateRequest", () => {
     expect(result.rejection.warn).toMatch(/bearer/i);
   });
 
+  it("carries the verified org_id as organizationId on both credentials", async () => {
+    const server = nextServer();
+    mockJwks(server);
+    const token = await accessToken(server, { org_id: "org-7" });
+    const bearer = { authServerUrl: server, audience: server };
+
+    const viaBearer = await authenticateRequest({
+      token: undefined,
+      cookieSecret: COOKIE_SECRET,
+      authorization: `Bearer ${token}`,
+      bearer,
+    });
+    const viaCookie = await authenticateRequest({
+      token: cookie({ sub: "user-123", org_id: "forged", token }),
+      cookieSecret: COOKIE_SECRET,
+      bearer,
+    });
+
+    expect(viaBearer.user.organizationId).toBe("org-7");
+    expect(viaCookie.user.organizationId).toBe("org-7");
+  });
+
+  it("leaves organizationId unset without a verified org_id", async () => {
+    const server = nextServer();
+    mockJwks(server);
+
+    const verified = await authenticateRequest({
+      token: undefined,
+      cookieSecret: COOKIE_SECRET,
+      authorization: `Bearer ${await accessToken(server)}`,
+      bearer: { authServerUrl: server, audience: server },
+    });
+    const unverified = await authenticateRequest({
+      token: cookie({ sub: "user-1", org_id: "org-7", token: INNER }),
+      cookieSecret: COOKIE_SECRET,
+    });
+
+    expect(verified.user).not.toHaveProperty("organizationId");
+    expect(unverified.user).not.toHaveProperty("organizationId");
+  });
+
   it("still enforces cookie secret strength on the bearer path", async () => {
     const server = nextServer();
 

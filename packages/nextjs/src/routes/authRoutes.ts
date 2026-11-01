@@ -29,7 +29,6 @@ import {
   buildServiceAuthorization,
 } from "../internal/buildAuthorization.js";
 import {
-  forwardedClientIp,
   forwardedUserAgent,
   type AuthContext,
 } from "../internal/context.js";
@@ -38,7 +37,7 @@ import type { ResolvedOptions } from "../options.js";
 
 function forwarded(ctx: AuthContext, opts: ResolvedOptions) {
   return {
-    forwardedClientIp: forwardedClientIp(ctx.request, opts.resolveClientIp),
+    forwardedClientIp: opts.clientIpOf(ctx.request),
     forwardedUserAgent: forwardedUserAgent(ctx.request),
   };
 }

@@ -34,7 +34,6 @@ import {
   buildServiceAuthorization,
 } from "../internal/buildAuthorization.js";
 import {
-  forwardedClientIp,
   forwardedUserAgent,
   type AuthContext,
 } from "../internal/context.js";
@@ -209,7 +208,7 @@ export const ADMIN_ROUTES: Route[] = TABLE.map(([method, path, call]) => ({
         authServerUrl: opts.authServerUrl,
         authorization: buildServiceAuthorization(ctx),
         serviceAuthorization: buildProxyServiceAuthorization(opts),
-        forwardedClientIp: forwardedClientIp(ctx.request, opts.resolveClientIp),
+        forwardedClientIp: opts.clientIpOf(ctx.request),
         forwardedUserAgent: forwardedUserAgent(ctx.request),
       },
       ctx,
