@@ -32,7 +32,7 @@ describe("requestOtpHandler", () => {
 
     expect(global.fetch).toHaveBeenCalledWith(
       "https://auth.example.com/otp/generate-email-otp",
-      expect.objectContaining({ method: "GET" }),
+      expect.objectContaining({ method: "POST" }),
     );
   });
 
@@ -52,7 +52,7 @@ describe("requestOtpHandler", () => {
 
     expect(global.fetch).toHaveBeenCalledWith(
       "https://auth.example.com/otp/generate-login-phone-otp",
-      expect.objectContaining({ method: "GET" }),
+      expect.objectContaining({ method: "POST" }),
     );
   });
 

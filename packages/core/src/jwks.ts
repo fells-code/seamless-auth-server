@@ -9,7 +9,8 @@ const jwksByUrl = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
 export function getAuthServerJwks(
   authServerUrl: string,
 ): ReturnType<typeof createRemoteJWKSet> {
-  const jwksUrl = new URL("/.well-known/jwks.json", authServerUrl).toString();
+  // Appended rather than resolved, so an auth server mounted under a path keeps its prefix.
+  const jwksUrl = `${authServerUrl.replace(/\/+$/, "")}/.well-known/jwks.json`;
 
   let jwks = jwksByUrl.get(jwksUrl);
   if (!jwks) {

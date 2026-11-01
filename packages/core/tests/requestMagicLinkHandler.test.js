@@ -43,6 +43,17 @@ describe("requestMagicLinkHandler", () => {
     expect(requestedUrl()).toBe("https://auth.example.com/magic-link");
   });
 
+  it("requests the link with POST, not the deprecated GET", async () => {
+    const requestMagicLinkHandler = await load();
+
+    await requestMagicLinkHandler(
+      {},
+      { authServerUrl: "https://auth.example.com" },
+    );
+
+    expect(global.fetch.mock.calls[0][1].method).toBe("POST");
+  });
+
   it("forwards a requested target as a query parameter", async () => {
     const requestMagicLinkHandler = await load();
 

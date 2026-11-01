@@ -48,6 +48,19 @@ const REFRESHED_ACCESS_TOKEN = await accessToken({
   roles: ["admin"],
 });
 
+// What the auth API answers a registration with: an ephemeral token the adapter
+// verifies before it sets the registration cookie.
+const REGISTRATION_TOKEN = await accessToken({ sub: "user-123", typ: "ephemeral" });
+
+// Serves the key set alongside the response, for routes that verify the token.
+function withJwks(response) {
+  return jest.fn(async (url) =>
+    String(url).endsWith("/.well-known/jwks.json")
+      ? upstream(200, { keys: [jwk] })
+      : response,
+  );
+}
+
 function upstream(status, body) {
   return { ok: status >= 200 && status < 300, status, json: async () => body };
 }
@@ -156,10 +169,10 @@ function refreshUpstream(refreshBody) {
 }
 
 async function bothAdapters(scenario, upstreamResponse) {
-  global.fetch = jest.fn(async () => upstreamResponse);
+  global.fetch = withJwks(upstreamResponse);
   const fastify = await viaFastify(scenario);
 
-  global.fetch = jest.fn(async () => upstreamResponse);
+  global.fetch = withJwks(upstreamResponse);
   const expressResult = await viaExpress(scenario);
 
   return { fastify, express: expressResult };
@@ -637,7 +650,7 @@ describe("fastify and express adapters agree", () => {
     const upstreamResponse = upstream(200, {
       message: "Registration started",
       sub: "user-123",
-      token: "registration-token",
+      token: REGISTRATION_TOKEN,
       ttl: "300",
     });
 
@@ -1561,13 +1574,13 @@ describe("no adapter returns an ephemeral token in a cookie-transport body", () 
     const registered = upstream(200, {
       message: "Success",
       sub: "user-123",
-      token: "registration-token",
+      token: REGISTRATION_TOKEN,
       ttl: 300,
     });
 
-    global.fetch = jest.fn(async () => registered);
+    global.fetch = withJwks(registered);
     const fastify = await viaFastify(scenario);
-    global.fetch = jest.fn(async () => registered);
+    global.fetch = withJwks(registered);
     const expressResult = await viaExpress(scenario);
 
     expect(fastify.status).toBe(200);

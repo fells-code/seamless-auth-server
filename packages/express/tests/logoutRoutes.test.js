@@ -124,7 +124,7 @@ describe("logout routes", () => {
     expect(res.status).toBe(200);
     expect(global.fetch).toHaveBeenCalledWith(
       "https://auth.example.com/magic-link",
-      expect.objectContaining({ method: "GET" }),
+      expect.objectContaining({ method: "POST" }),
     );
   });
 

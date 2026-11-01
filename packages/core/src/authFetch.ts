@@ -3,6 +3,7 @@
  * Licensed under the Apache License, Version 2.0
  */
 import { getSeamlessLogger } from "./logger.js";
+import { redactSensitiveText } from "./redaction.js";
 
 export interface AuthFetchOptions {
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -12,7 +13,15 @@ export interface AuthFetchOptions {
   serviceAuthorization?: string;
   forwardedClientIp?: string;
   forwardedUserAgent?: string;
+  /** Defaults to {@link DEFAULT_UPSTREAM_TIMEOUT_MS}. */
+  timeoutMs?: number;
 }
+
+/** How long a call to the auth API may take before it answers 502, matching the other adapters. */
+export const DEFAULT_UPSTREAM_TIMEOUT_MS = 15_000;
+
+/** The error code a request gets when the auth API could not be reached or timed out. */
+export const UPSTREAM_UNAVAILABLE_ERROR_CODE = "upstream_unavailable";
 
 export async function authFetch(
   url: string,
@@ -35,26 +44,48 @@ export async function authFetch(
 
   // Following a redirect would resend the service token and the forwarded
   // client headers to wherever a misconfigured proxy in front of the API points.
-  const response = await fetch(url, {
-    method: options.method,
-    headers,
-    body: options.body ? JSON.stringify(options.body) : undefined,
-    redirect: "manual",
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: options.method,
+      headers,
+      body: options.body ? JSON.stringify(options.body) : undefined,
+      redirect: "manual",
+      signal: AbortSignal.timeout(
+        options.timeoutMs ?? DEFAULT_UPSTREAM_TIMEOUT_MS,
+      ),
+    });
+  } catch (err) {
+    getSeamlessLogger().error(
+      `[SeamlessAuth] The auth API at ${originOf(url)} could not be reached for a ${options.method} (${describeFetchError(err)}).`,
+    );
+    return jsonError(502, UPSTREAM_UNAVAILABLE_ERROR_CODE);
+  }
 
   if (isRedirect(response)) {
     getSeamlessLogger().error(
       `[SeamlessAuth] The auth API at ${originOf(url)} answered a ${options.method} with a redirect (HTTP ${response.status}), which is not followed.`,
     );
-    return makeJsonTolerant(
-      new Response(JSON.stringify({ error: UPSTREAM_REDIRECT_ERROR_CODE }), {
-        status: 502,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
+    return jsonError(502, UPSTREAM_REDIRECT_ERROR_CODE);
   }
 
   return makeJsonTolerant(response);
+}
+
+function jsonError(status: number, error: string): Response {
+  return makeJsonTolerant(
+    new Response(JSON.stringify({ error }), {
+      status,
+      headers: { "Content-Type": "application/json" },
+    }),
+  );
+}
+
+function describeFetchError(err: unknown): string {
+  if (err instanceof Error && err.name === "TimeoutError") {
+    return "timed out";
+  }
+  return redactSensitiveText(err instanceof Error ? err.message : String(err));
 }
 
 /** The error code a request gets when the auth API answered it with a redirect. */

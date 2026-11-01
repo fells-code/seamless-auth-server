@@ -110,6 +110,8 @@ export function registerAuthRoutes(
       { body: req.body },
       {
         ...common(req),
+        audience: opts.audience,
+        authServerIssuer: opts.authServerIssuer,
         cookieDomain: opts.cookieDomain,
         registrationCookieName: opts.registrationCookieName,
         transport: transportOf(req),
@@ -118,7 +120,7 @@ export function registerAuthRoutes(
       },
     );
 
-    if (result.errorBody) {
+    if (result.errorBody || result.errorCode) {
       return respond(reply, result, opts);
     }
 

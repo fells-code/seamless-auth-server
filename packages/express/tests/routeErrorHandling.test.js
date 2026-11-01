@@ -37,6 +37,18 @@ function createApp() {
   return app;
 }
 
+// A response whose body cannot be read, which no handler expects.
+function unreadable(message) {
+  return {
+    ok: true,
+    status: 200,
+    headers: new Headers(),
+    text: async () => {
+      throw new Error(message);
+    },
+  };
+}
+
 describe("route error handling", () => {
   const originalFetch = global.fetch;
   let errorSpy;
@@ -51,7 +63,7 @@ describe("route error handling", () => {
     errorSpy.mockRestore();
   });
 
-  it("answers 500 instead of hanging when an upstream request rejects", async () => {
+  it("answers 502 upstream_unavailable instead of hanging when the API cannot be reached", async () => {
     global.fetch.mockRejectedValue(new Error("network down"));
 
     const res = await request(createApp())
@@ -59,11 +71,26 @@ describe("route error handling", () => {
       .set("Cookie", createPreAuthCookie())
       .timeout({ response: 5000 });
 
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(502);
+    expect(res.body).toEqual({ error: "upstream_unavailable" });
+  });
+
+  it("redacts sensitive values when it logs an unreachable API", async () => {
+    global.fetch.mockRejectedValue(
+      new Error("upstream rejected Bearer sk-secret-token-value"),
+    );
+
+    await request(createApp())
+      .get("/auth/magic-link/check")
+      .set("Cookie", createPreAuthCookie());
+
+    const [logged] = errorSpy.mock.calls[0];
+    expect(logged).not.toContain("sk-secret-token-value");
+    expect(logged).toContain("[REDACTED]");
   });
 
   it("returns a JSON error body without leaking internals", async () => {
-    global.fetch.mockRejectedValue(new Error("SECRET_INTERNAL_DETAIL"));
+    global.fetch.mockResolvedValue(unreadable("SECRET_INTERNAL_DETAIL"));
 
     const res = await request(createApp())
       .get("/auth/magic-link/check")
@@ -116,7 +143,7 @@ describe("route error handling", () => {
   });
 
   it("logs the underlying error server side", async () => {
-    global.fetch.mockRejectedValue(new Error("network down"));
+    global.fetch.mockResolvedValue(unreadable("network down"));
 
     await request(createApp())
       .get("/auth/magic-link/check")
@@ -129,8 +156,8 @@ describe("route error handling", () => {
   });
 
   it("redacts sensitive values in the logged error", async () => {
-    global.fetch.mockRejectedValue(
-      new Error("upstream rejected Bearer sk-secret-token-value"),
+    global.fetch.mockResolvedValue(
+      unreadable("upstream rejected Bearer sk-secret-token-value"),
     );
 
     await request(createApp())

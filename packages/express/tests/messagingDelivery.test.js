@@ -96,7 +96,7 @@ describe("messaging delivery routes", () => {
     expect(global.fetch).toHaveBeenCalledWith(
       "https://auth.example.com/magic-link",
       expect.objectContaining({
-        method: "GET",
+        method: "POST",
         headers: expect.objectContaining({
           "Content-Type": "application/json",
           "x-seamless-auth-delivery-mode": "external",

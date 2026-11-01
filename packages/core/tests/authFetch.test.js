@@ -168,4 +168,45 @@ describe("authFetch against a redirecting upstream", () => {
       expect(elsewhere).not.toHaveBeenCalled();
     },
   );
+
+  it("answers 502 upstream_unavailable when the API does not answer in time", async () => {
+    const { authFetch, UPSTREAM_UNAVAILABLE_ERROR_CODE } = await import(
+      "../dist/authFetch.js"
+    );
+    const api = await listen(() => {});
+
+    const response = await authFetch(`${api}/login`, {
+      method: "POST",
+      timeoutMs: 50,
+    });
+
+    expect(response.status).toBe(502);
+    expect(await response.json()).toEqual({ error: UPSTREAM_UNAVAILABLE_ERROR_CODE });
+  });
+
+  it("answers 502 upstream_unavailable when the API cannot be reached", async () => {
+    const { authFetch, UPSTREAM_UNAVAILABLE_ERROR_CODE } = await import(
+      "../dist/authFetch.js"
+    );
+    const api = await listen(() => {});
+    await new Promise((resolve) => servers.pop().close(resolve));
+
+    const response = await authFetch(`${api}/login`, { method: "POST" });
+
+    expect(response.status).toBe(502);
+    expect(await response.json()).toEqual({ error: UPSTREAM_UNAVAILABLE_ERROR_CODE });
+  });
+
+  it("applies a timeout to every call by default", async () => {
+    const { authFetch } = await import("../dist/authFetch.js");
+    const original = global.fetch;
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200 });
+
+    try {
+      await authFetch("https://auth.example.com/login", { method: "POST" });
+      expect(global.fetch.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
+    } finally {
+      global.fetch = original;
+    }
+  });
 });
