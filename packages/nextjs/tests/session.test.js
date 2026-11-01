@@ -232,6 +232,21 @@ describe("session helpers", () => {
       ],
       ["only a valid refresh cookie", { "seamless-refresh": refresh() }, true],
       ["an expired refresh cookie", { "seamless-refresh": refresh("-1s") }, false],
+      [
+        "a pre-auth cookie copied into the refresh slot",
+        {
+          "seamless-refresh": signed({
+            sub: "user-123",
+            token: jwt.sign({ sub: "user-123", typ: "ephemeral" }, "upstream-signing-key"),
+          }),
+        },
+        false,
+      ],
+      [
+        "an access cookie copied into the refresh slot",
+        { "seamless-refresh": signed(ACCESS) },
+        false,
+      ],
       ["no cookies", {}, false],
       [
         "a tampered refresh cookie",
