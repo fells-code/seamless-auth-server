@@ -172,7 +172,7 @@ the module loads.
 | None of the roles granted | 403 | `{"error":"insufficient_role"}` |
 
 The body never names the user's roles or the required ones. These are the codes
-the Go, Python and Rust adapters answer with.
+every Seamless Auth adapter answers with.
 
 The guards never refresh. An expired access cookie is a `401`, and the client
 renews the session through the auth routes, as with the Express and Fastify
@@ -391,6 +391,22 @@ IPv4-mapped IPv6 address is sent as IPv4. A `trustedProxies` entry that is not a
 address or range throws when the handler is created. The browser's `User-Agent`
 is always forwarded, capped at 512 characters: it is self-reported either way.
 
+## Logging
+
+The adapter writes its warnings and errors through one logger, `console` by
+default. `setSeamlessLogger` sends them elsewhere: anything with `warn(message)`
+and `error(message)` works, including `pino` or a platform logger. Call it with
+no argument to go back to `console`.
+
+```ts
+import { setSeamlessLogger } from "@seamless-auth/nextjs";
+
+setSeamlessLogger({
+  warn: (message) => logger.warn(message),
+  error: (message) => logger.error(message),
+});
+```
+
 ## Relationship to the other adapters
 
 This adapter serves the same routes and issues the same cookies as
@@ -398,16 +414,13 @@ This adapter serves the same routes and issues the same cookies as
 Fastify parity scenarios, cookie and bearer transport both, against the Express
 adapter and assert the status, body, and every `Set-Cookie` header match.
 
-Two differences follow from having no framework underneath:
-
-- request bodies are parsed here, the way Express's `json()` does: only
-  `application/json`, strict, 100kb maximum
-- an unknown route answers `404 { "error": "not_found" }` as JSON
+Request bodies are parsed here, since there is no framework underneath, the way
+Express's `json()` does: only `application/json`, strict, 100kb maximum. An
+unknown route answers `404 { "error": "not_found" }` as JSON, as in the other
+adapters.
 
 `requireAuth` and `requireRole` are run against the Express guards of the same
-names: status, the user handed to the route, and no refresh all match. Their
-error bodies are the codes in the table above, which Express and Fastify do not
-use yet.
+names: status, body, the user handed to the route, and no refresh all match.
 
 The console proxy runs the Fastify parity scenarios against
 `createSeamlessConsoleProxy` from `@seamless-auth/express`. A write is refused

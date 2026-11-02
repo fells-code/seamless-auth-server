@@ -63,31 +63,6 @@ describe("cookie requirement routes", () => {
     global.fetch = originalFetch;
   });
 
-  it("forwards a Bearer token when updating a user (#57)", async () => {
-    global.fetch.mockResolvedValue(
-      createJsonResponse(200, { message: "Success" }),
-    );
-
-    const body = { email: "user@example.com" };
-
-    const res = await request(createApp())
-      .post("/auth/users/update")
-      .set("Cookie", createAccessCookie())
-      .send(body);
-
-    expect(res.status).toBe(200);
-    expect(global.fetch).toHaveBeenCalledWith(
-      "https://auth.example.com/users/update",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify(body),
-        headers: expect.objectContaining({
-          Authorization: `Bearer ${ACCESS_TOKEN}`,
-        }),
-      }),
-    );
-  });
-
   it("forwards a Bearer token when adding a credential (#57)", async () => {
     global.fetch.mockResolvedValue(
       createJsonResponse(200, { message: "Success" }),
@@ -131,8 +106,10 @@ describe("cookie requirement routes", () => {
     );
   });
 
-  it("rejects user update without an access session (#57)", async () => {
-    const res = await request(createApp()).post("/auth/users/update").send({});
+  it("rejects adding a credential without an access session (#57)", async () => {
+    const res = await request(createApp())
+      .post("/auth/users/credentials")
+      .send({});
 
     expect(res.status).toBeGreaterThanOrEqual(400);
     expect(global.fetch).not.toHaveBeenCalled();

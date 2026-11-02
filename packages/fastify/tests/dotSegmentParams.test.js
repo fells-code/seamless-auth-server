@@ -100,12 +100,26 @@ describe("dot-segment route params", () => {
     return app;
   };
 
+  // A manifest route has no match for a dot segment, so it is not found, as in the
+  // Go, Python and Rust adapters.
   it.each([
     ["get", "/organizations/%2e%2e"],
     ["patch", "/organizations/%2E/members/u1"],
     ["delete", "/organizations/org-1/members/%2e%2e"],
     ["patch", "/system-config/oauth-providers/%2e%2e"],
     ["get", "/admin/organizations/%2e%2e"],
+  ])("answers %s %s as not found without calling upstream", async (method, path) => {
+    for (const server of [fastifyHandler, expressApp()]) {
+      const res = await send(server, method, path);
+
+      expect(res.status).toBe(404);
+      expect(res.body).toEqual({ error: "not_found" });
+    }
+
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it.each([
     ["delete", "/sessions/%2e%2e"],
     ["get", "/admin/users/%2e%2e"],
     ["post", "/organizations/%2e%2e/switch"],

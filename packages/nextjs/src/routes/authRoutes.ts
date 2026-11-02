@@ -313,6 +313,7 @@ export const AUTH_ROUTES: Route[] = [
         },
         {
           ...common(ctx, opts),
+          transport: ctx.transport,
           serviceAuthorization: buildProxyServiceAuthorization(opts),
         },
       ),

@@ -1,3 +1,4 @@
+import { getSeamlessLogger } from "@seamless-auth/core";
 import { isIP } from "node:net";
 
 import { Request } from "express";
@@ -13,7 +14,7 @@ function derivedFromTrustedHop(req: Request): string | undefined {
   if (req.app?.get?.("trust proxy") === true) {
     if (!warnedBlanketTrustProxy) {
       warnedBlanketTrustProxy = true;
-      console.warn(
+      getSeamlessLogger().warn(
         "[seamless-auth] Express 'trust proxy' is set to true, so req.ip is client-controlled. " +
           "The client IP will not be forwarded to the auth API. Set 'trust proxy' to an explicit " +
           "hop count or subnet, or pass resolveClientIp to createSeamlessAuthServer.",

@@ -102,6 +102,15 @@ from a recovery session, so the new access cookie drops the claim at once. If th
 refresh fails, the next `POST /auth/refresh` drops it instead. A bearer client
 calls `/auth/refresh` itself.
 
+| Refusal | Status | Body |
+| --- | --- | --- |
+| No session, an invalid or expired one, or a sign-in flow's ephemeral token | 401 | `{"error":"unauthenticated"}` |
+| A recovery session, unless `allowRecoverySession: true` | 403 | `{"error":"enrollment_required"}` |
+| None of the roles granted, or no roles at all | 403 | `{"error":"insufficient_role"}` |
+
+The body never names the user's roles or the required ones. These are the codes
+the other Seamless Auth adapters answer with.
+
 For the hydrated profile rather than the token payload, `getSeamlessUser(request, options)`
 fetches it from the auth API and returns `SeamlessUser | null`. It resolves a cookie
 session or a bearer access token, and returns `null` without calling the auth API when
@@ -280,6 +289,22 @@ The browser's `User-Agent` is forwarded alongside it as
 `x-seamless-client-user-agent`, capped at 512 characters, so the auth API can
 record the device a person signed in from rather than this adapter. It needs no
 trust decision: it is self-reported by the browser either way.
+
+## Logging
+
+The adapter writes its warnings and errors through one logger, `console` by
+default. `setSeamlessLogger` sends them elsewhere: anything with `warn(message)`
+and `error(message)` works, including `pino` or a platform logger. Call it with
+no argument to go back to `console`.
+
+```ts
+import { setSeamlessLogger } from "@seamless-auth/fastify";
+
+setSeamlessLogger({
+  warn: (message) => logger.warn(message),
+  error: (message) => logger.error(message),
+});
+```
 
 ## Relationship to `@seamless-auth/express`
 

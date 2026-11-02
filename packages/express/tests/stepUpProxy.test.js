@@ -197,7 +197,7 @@ describe("step-up proxy routes", () => {
 
     expect(res.status).toBe(200);
     expect(global.fetch).toHaveBeenCalledWith(
-      "https://auth.example.com/webAuthn/register/start?requirePrf=true",
+      "https://auth.example.com/webauthn/register/start?requirePrf=true",
       expect.objectContaining({
         method: "GET",
         headers: expect.objectContaining({

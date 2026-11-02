@@ -1,3 +1,4 @@
+import { getSeamlessLogger } from "@seamless-auth/core";
 import { isIP } from "node:net";
 
 import type { FastifyRequest } from "fastify";
@@ -64,7 +65,7 @@ function derivedFromTrustedHop(req: FastifyRequest): string | undefined {
   if (trustsAnyAddress(req)) {
     if (!warnedBlanketTrustProxy) {
       warnedBlanketTrustProxy = true;
-      console.warn(
+      getSeamlessLogger().warn(
         "[seamless-auth] Fastify 'trustProxy' trusts every address (for example `true`), so request.ip is client-controlled. " +
           "The client IP will not be forwarded to the auth API. Set 'trustProxy' to the proxy's address or subnet, " +
           "or pass resolveClientIp to the plugin.",
@@ -83,7 +84,7 @@ function derivedFromTrustedHop(req: FastifyRequest): string | undefined {
     req.ip === req.socket?.remoteAddress
   ) {
     warnedUntrustedProxy = true;
-    console.warn(
+    getSeamlessLogger().warn(
       "[seamless-auth] Requests carry X-Forwarded-For, but Fastify's 'trustProxy' trusts no proxy, so request.ip is the " +
         "connecting peer. If this app is behind a proxy, set 'trustProxy' to the proxy's address or subnet (Fastify " +
         "5.12.1 and later ignore a hop count), or pass resolveClientIp to the plugin.",

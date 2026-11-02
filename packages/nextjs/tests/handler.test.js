@@ -110,13 +110,13 @@ describe("createSeamlessAuthHandler", () => {
     });
 
     it("matches the WebAuthn routes case-insensitively, as Express does", async () => {
-      const res = await call("/auth/webauthn/register/start", {
+      const res = await call("/auth/webAuthn/register/start", {
         headers: { cookie: accessCookie() },
       });
 
       expect(res.status).toBe(200);
       expect(global.fetch.mock.calls[0][0]).toBe(
-        "https://auth.example.com/webAuthn/register/start",
+        "https://auth.example.com/webauthn/register/start",
       );
     });
 

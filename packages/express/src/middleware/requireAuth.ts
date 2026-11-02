@@ -1,5 +1,9 @@
 import { Request, Response, NextFunction } from "express";
-import { assertSecretStrength, authenticateRequest } from "@seamless-auth/core";
+import {
+  assertSecretStrength,
+  authenticateRequest,
+  getSeamlessLogger,
+} from "@seamless-auth/core";
 
 export interface RequireAuthOptions {
   cookieName?: string;
@@ -114,7 +118,7 @@ export function requireAuth(opts: RequireAuthOptions) {
 
     if (rejection) {
       if (rejection.warn) {
-        console.warn(
+        getSeamlessLogger().warn(
           `[SEAMLESS-AUTH-EXPRESS] - (requireAuth) - ${rejection.warn} ${hint}`,
         );
       }

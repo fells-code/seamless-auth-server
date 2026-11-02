@@ -116,7 +116,8 @@ conformance/
   handler of its own for, through `handleManifestRoute` in core. Add a dedicated
   handler only for behaviour the manifest cannot describe. Refresh the bundled
   fallback with `node scripts/sync-adapter-manifest.mjs` after the API's
-  manifest changes.
+  manifest changes. `node scripts/check-adapter-manifest.mjs` (the `manifest`
+  workflow, also run daily) fails while the two list different routes.
 
 ## Tooling
 
@@ -125,6 +126,7 @@ conformance/
 | Install | `pnpm install` |
 | Build   | `pnpm build`   |
 | Test    | `pnpm test`    |
+| Manifest | `node scripts/check-adapter-manifest.mjs` |
 
 - Supported Node is `>=22`. CI tests 22, 24, and the latest release;
   `.nvmrc` pins Node 24 for development and releases. Run `nvm use` and

@@ -298,6 +298,7 @@ export function registerAuthRoutes(
       },
       {
         ...common(req),
+        transport: transportOf(req),
         serviceAuthorization: buildProxyServiceAuthorization(opts),
       },
     );

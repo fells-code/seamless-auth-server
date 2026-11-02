@@ -9,13 +9,12 @@ import {
   type AdapterManifestSource,
   applyExternalDelivery,
   assertSecrets,
-  checkProxyIdentity,
   createAdapterManifestSource,
   DEV_JWKS_KID,
   handleManifestRoute,
   matchManifestRoute,
-  proxyRequest,
   redactSensitiveText,
+  getSeamlessLogger,
 } from "@seamless-auth/core";
 
 import { createEnsureCookiesHook, mountRelativePath } from "./hooks/ensureCookies.js";
@@ -23,14 +22,12 @@ import { createOriginGuardHook } from "./hooks/originGuard.js";
 import {
   buildInternalServiceAuthorization,
   buildProxyServiceAuthorization,
-  buildServiceAuthorization,
 } from "./internal/buildAuthorization.js";
 import { buildForwardedClientIp } from "./internal/buildForwardedClientIp.js";
 import { buildForwardedUserAgent } from "./internal/buildForwardedUserAgent.js";
 import { respond } from "./internal/respond.js";
 import { transportOf } from "./internal/transport.js";
 import type { ResolvedOptions, SeamlessAuthServerOptions } from "./options.js";
-import { PROXY_ROUTES, resolveUpstreamPath } from "./routes/proxyRoutes.js";
 import { registerAuthRoutes } from "./routes/authRoutes.js";
 import { registerAdminRoutes } from "./routes/adminRoutes.js";
 import { withRecoveryRefresh } from "./internal/recoveryRefresh.js";
@@ -40,7 +37,7 @@ function warnOnDevJwksKid(jwksKid: string | undefined): void {
     const state = jwksKid
       ? `is "${DEV_JWKS_KID}"`
       : `is not set and defaults to "${DEV_JWKS_KID}"`;
-    console.warn(
+    getSeamlessLogger().warn(
       `[SEAMLESS-AUTH-FASTIFY] - jwksKid ${state}, a placeholder. It is the kid header on the HS256 service tokens this adapter signs with serviceSecret; set it to name that key explicitly.`,
     );
   }
@@ -104,7 +101,6 @@ export const seamlessAuth: FastifyPluginAsync<
 
   registerAuthRoutes(fastify, resolved);
   registerAdminRoutes(fastify, resolved);
-  registerProxyRoutes(fastify, resolved);
   registerManifestRoutes(fastify, resolved, manifestSource);
 
   fastify.setErrorHandler((error, request, reply) => {
@@ -132,64 +128,6 @@ function clientErrorStatus(err: unknown): number | null {
         : null;
 
   return status !== null && status >= 400 && status < 500 ? status : null;
-}
-
-function registerProxyRoutes(
-  fastify: FastifyInstance,
-  opts: ResolvedOptions,
-): void {
-  for (const route of PROXY_ROUTES) {
-    fastify.route({
-      method: route.method,
-      url: route.path,
-      handler: async (req: FastifyRequest, reply: FastifyReply) => {
-        const rejection = checkProxyIdentity({
-          subject: req.cookiePayload?.sub,
-          refreshed: req.cookiePayload?.refreshed === true,
-          cookies: req.cookies ?? {},
-          identity: route.identity,
-          accessCookieName: opts.accessCookieName,
-          preAuthCookieName: opts.preAuthCookieName,
-          registrationCookieName: opts.registrationCookieName,
-          transport: transportOf(req),
-          authorization: req.headers.authorization,
-        });
-
-        if (rejection) {
-          if (rejection.warn) {
-            req.log.warn(
-              `[SEAMLESS-AUTH-FASTIFY] - (proxy) - ${rejection.warn}`,
-            );
-          }
-
-          return reply
-            .status(rejection.status)
-            .send({ error: rejection.errorCode });
-        }
-
-        const result = await proxyRequest({
-          authServerUrl: opts.authServerUrl,
-          path: resolveUpstreamPath(
-            route.upstream,
-            req.params as Record<string, unknown>,
-          ),
-          method: route.method,
-          authorization: buildServiceAuthorization(req),
-          serviceAuthorization: buildProxyServiceAuthorization(opts),
-          forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
-          forwardedUserAgent: buildForwardedUserAgent(req),
-          query: req.query as Record<string, unknown>,
-          body: req.body,
-          raw: route.raw,
-        });
-
-        respond(reply, await withRecoveryRefresh(req, result), opts);
-        // Returned so Fastify waits for a streamed download rather than finishing the
-        // reply when this handler resolves.
-        return reply;
-      },
-    });
-  }
 }
 
 /**
@@ -238,7 +176,9 @@ function registerManifestRoutes(
         },
       );
 
-      respond(reply, result, opts);
+      respond(reply, await withRecoveryRefresh(req, result), opts);
+      // Returned so Fastify waits for a streamed download rather than finishing the
+      // reply when this handler resolves.
       return reply;
     },
   });
