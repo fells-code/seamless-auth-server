@@ -1,4 +1,5 @@
 import type { AuthServerIssuerOption } from "../authServerIssuer.js";
+import { withoutTokens } from "../bodyTokens.js";
 import { authFetch } from "../authFetch.js";
 import { sessionResult } from "../upstreamSession.js";
 import type { AuthTransport } from "../transport.js";
@@ -66,7 +67,7 @@ async function verifyOtp(
   if (!data?.token) {
     return {
       status: up.status,
-      body: data,
+      body: opts.transport === "bearer" ? data : withoutTokens(data),
     };
   }
 

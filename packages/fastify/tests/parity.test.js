@@ -538,18 +538,42 @@ describe("fastify and express adapters agree", () => {
     expect(fastify).toEqual(expressResult);
   });
 
+  it("answers an unknown path with a JSON 404", async () => {
+    const { fastify, express: expressResult } = await bothAdapters(
+      { method: "get", path: "/not-a-route" },
+      upstream(200, {}),
+    );
+
+    expect(fastify.status).toBe(404);
+    expect(fastify.body).toEqual({ error: "not_found" });
+    expect(expressResult).toEqual(fastify);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  // These were hand-registered passthroughs that returned the upstream body as-is.
+  it("keeps tokens out of a former passthrough route's cookie-transport body", async () => {
+    const { fastify, express: expressResult } = await bothAdapters(
+      { method: "get", path: "/organizations", cookie: accessCookie() },
+      upstream(200, { organizations: [], token: "leaked", refreshToken: "leaked" }),
+    );
+
+    expect(fastify.status).toBe(200);
+    expect(fastify.body).toEqual({ organizations: [] });
+    expect(expressResult).toEqual(fastify);
+  });
+
   it("answers an upstream redirect as a 502 rather than following it", async () => {
     const scenario = {
       method: "post",
-      path: "/users/update",
+      path: "/users/credentials",
       cookie: accessCookie(),
-      payload: { email: "a@b.c" },
+      payload: { credentialId: "c1" },
     };
     const { fastify, express: expressResult } = await bothAdapters(
       scenario,
       new Response(null, {
         status: 302,
-        headers: { location: "https://elsewhere.example.com/users/update" },
+        headers: { location: "https://elsewhere.example.com/users/credentials" },
       }),
     );
 
@@ -829,9 +853,9 @@ describe("fastify and express adapters agree", () => {
     async (site, origin, status) => {
       const scenario = {
         method: "post",
-        path: "/users/update",
+        path: "/users/credentials",
         cookie: accessCookie(),
-        payload: { email: "a@b.c" },
+        payload: { credentialId: "c1" },
         headers: { "sec-fetch-site": site, ...(origin ? { origin } : {}) },
         options: { allowedOrigins: ["https://app.example.com"] },
       };

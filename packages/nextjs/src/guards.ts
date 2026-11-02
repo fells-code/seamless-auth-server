@@ -5,6 +5,7 @@ import {
   checkOrigin,
   type GuardRejection,
   type GuardUser,
+  getSeamlessLogger,
 } from "@seamless-auth/core";
 
 import { readCookies } from "./internal/context.js";
@@ -58,14 +59,8 @@ function refuse(status: number, error: string): Response {
   return Response.json({ error }, { status });
 }
 
-// The core rejections carry the Express wording; these guards answer with the
-// codes the other adapters use.
 function toResponse(rejection: GuardRejection): Response {
-  if (rejection.status === 401) {
-    return refuse(401, "unauthenticated");
-  }
-
-  return refuse(403, rejection.errorCode);
+  return refuse(rejection.status, rejection.errorCode);
 }
 
 function prepare(name: string, opts: SeamlessGuardOptions) {
@@ -116,7 +111,7 @@ function prepare(name: string, opts: SeamlessGuardOptions) {
 
     if (rejection) {
       if (rejection.warn) {
-        console.warn(`${LOG_PREFIX} - (${name}) - ${rejection.warn}`);
+        getSeamlessLogger().warn(`${LOG_PREFIX} - (${name}) - ${rejection.warn}`);
       }
 
       return { response: toResponse(rejection) };

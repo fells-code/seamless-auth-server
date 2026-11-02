@@ -28,6 +28,7 @@ export async function verifyMagicLink(
     },
     {
       authServerUrl: opts.authServerUrl,
+      transport: transportOf(req),
       serviceAuthorization: buildProxyServiceAuthorization(opts),
       forwardedClientIp: buildForwardedClientIp(req, opts.resolveClientIp),
       forwardedUserAgent: buildForwardedUserAgent(req),

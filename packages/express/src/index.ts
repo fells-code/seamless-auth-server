@@ -32,6 +32,11 @@ export type {
   SmsMessage,
   SmsTransport,
 } from "@seamless-auth/core";
-export { hasScopedRole, roleGrantsAccess } from "@seamless-auth/core";
+export {
+  hasScopedRole,
+  roleGrantsAccess,
+  setSeamlessLogger,
+} from "@seamless-auth/core";
+export type { SeamlessLogger } from "@seamless-auth/core";
 
 export default createSeamlessAuthServer;

@@ -32,21 +32,17 @@ import {
 } from "./handlers/oauth.js";
 import * as admin from "./handlers/admin.js";
 import {
-  AuthFetchOptions,
-  checkProxyIdentity,
   createAdapterManifestSource,
-  encodePathParam,
   handleManifestRoute,
   matchManifestRoute,
-  proxyRequest,
   redactSensitiveText,
   SERVICE_TOKEN_AUDIENCE,
   SERVICE_TOKEN_ISSUER,
+  getSeamlessLogger,
 } from "@seamless-auth/core";
 import {
   buildInternalServiceAuthorization,
   buildProxyServiceAuthorization,
-  buildServiceAuthorization,
 } from "./internal/buildAuthorization.js";
 import {
   assertSecrets,
@@ -266,56 +262,6 @@ export function createSeamlessAuthServer(
     resolveClientIp: opts.resolveClientIp,
   };
 
-  const proxyWithIdentity =
-    (
-      path: string | ((req: Request) => string),
-      identity: "preAuth" | "access" | "register",
-      method: AuthFetchOptions["method"] = "POST",
-      { raw = false }: { raw?: boolean } = {},
-    ) =>
-    async (req: Request & { cookiePayload?: any }, res: Response) => {
-      const rejection = checkProxyIdentity({
-        subject: req.cookiePayload?.sub,
-        refreshed: req.cookiePayload?.refreshed === true,
-        cookies: req.cookies ?? {},
-        identity,
-        accessCookieName: resolvedOpts.accessCookieName,
-        preAuthCookieName: resolvedOpts.preAuthCookieName,
-        registrationCookieName: resolvedOpts.registrationCookieName,
-        transport: transportOf(req),
-        authorization: req.headers.authorization,
-      });
-
-      if (rejection) {
-        if (rejection.warn) {
-          console.warn(
-            `[SEAMLESS-AUTH-EXPRESS] - (proxyWithIdentity) - ${rejection.warn}`,
-          );
-        }
-
-        res.status(rejection.status).json({ error: rejection.errorCode });
-        return;
-      }
-
-      const result = await proxyRequest({
-        authServerUrl: resolvedOpts.authServerUrl,
-        path: typeof path === "function" ? path(req) : path,
-        method,
-        authorization: buildServiceAuthorization(req, resolvedOpts),
-        serviceAuthorization: buildProxyServiceAuthorization(resolvedOpts),
-        forwardedClientIp: buildForwardedClientIp(
-          req,
-          resolvedOpts.resolveClientIp,
-        ),
-        forwardedUserAgent: buildForwardedUserAgent(req),
-        query: req.query,
-        body: req.body,
-        raw,
-      });
-
-      respond(res, await withRecoveryRefresh(req, res, result), resolvedOpts);
-    };
-
   // Runs before ensureCookies and the routes so a blocked cross-site request
   // never triggers a token refresh or reaches a handler.
   r.use(
@@ -351,18 +297,10 @@ export function createSeamlessAuthServer(
     }),
   );
 
-  r.post(
-    "/webAuthn/login/start",
-    proxyWithIdentity("webAuthn/login/start", "preAuth"),
-  );
   r.post("/webAuthn/login/finish", (req, res) =>
     finishLogin(req, res, resolvedOpts),
   );
 
-  r.get(
-    "/webAuthn/register/start",
-    proxyWithIdentity("webAuthn/register/start", "access", "GET"),
-  );
   r.post("/webAuthn/register/finish", (req, res) =>
     finishRegister(req, res, resolvedOpts),
   );
@@ -419,98 +357,10 @@ export function createSeamlessAuthServer(
     deleteAccount(req, res, resolvedOpts),
   );
 
-  r.get("/organizations", proxyWithIdentity("organizations", "access", "GET"));
-  r.post("/organizations", proxyWithIdentity("organizations", "access"));
-  r.get(
-    "/organizations/:organizationId",
-    proxyWithIdentity(
-      (req) =>
-        `organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}`,
-      "access",
-      "GET",
-    ),
-  );
-  r.patch(
-    "/organizations/:organizationId",
-    proxyWithIdentity(
-      (req) =>
-        `organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}`,
-      "access",
-      "PATCH",
-    ),
-  );
   r.post("/organizations/:organizationId/switch", (req, res) =>
     switchOrganization(req, res, resolvedOpts),
   );
-  r.get(
-    "/organizations/:organizationId/members",
-    proxyWithIdentity(
-      (req) =>
-        `organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}/members`,
-      "access",
-      "GET",
-    ),
-  );
-  r.post(
-    "/organizations/:organizationId/members",
-    proxyWithIdentity(
-      (req) =>
-        `organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}/members`,
-      "access",
-    ),
-  );
-  r.patch(
-    "/organizations/:organizationId/members/:userId",
-    proxyWithIdentity(
-      (req) =>
-        `organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}/members/${encodePathParam(routeParam(req, "userId"), "userId")}`,
-      "access",
-      "PATCH",
-    ),
-  );
-  r.delete(
-    "/organizations/:organizationId/members/:userId",
-    proxyWithIdentity(
-      (req) =>
-        `organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}/members/${encodePathParam(routeParam(req, "userId"), "userId")}`,
-      "access",
-      "DELETE",
-    ),
-  );
 
-  r.get(
-    "/step-up/status",
-    proxyWithIdentity("step-up/status", "access", "GET"),
-  );
-  r.post(
-    "/step-up/webauthn/start",
-    proxyWithIdentity("step-up/webauthn/start", "access"),
-  );
-  r.post(
-    "/step-up/webauthn/finish",
-    proxyWithIdentity("step-up/webauthn/finish", "access"),
-  );
-  r.get("/totp/status", proxyWithIdentity("totp/status", "access", "GET"));
-  r.post(
-    "/totp/enroll/start",
-    proxyWithIdentity("totp/enroll/start", "access"),
-  );
-  r.post(
-    "/totp/enroll/verify",
-    proxyWithIdentity("totp/enroll/verify", "access"),
-  );
-  r.post("/totp/disable", proxyWithIdentity("totp/disable", "access"));
-  r.post("/totp/verify-mfa", proxyWithIdentity("totp/verify-mfa", "access"));
-
-  r.post("/users/update", proxyWithIdentity("users/update", "access"));
-  r.post(
-    "/users/credentials",
-    proxyWithIdentity("users/credentials", "access"),
-  );
-  r.delete(
-    "/users/credentials",
-    proxyWithIdentity("users/credentials", "access", "DELETE"),
-  );
   r.post("/magic-link", (req, res) => requestMagicLink(req, res, resolvedOpts));
   r.get("/magic-link/verify/:token", (req, res) =>
     verifyMagicLink(req, res, routeParam(req, "token"), resolvedOpts),
@@ -533,33 +383,6 @@ export function createSeamlessAuthServer(
 
   r.patch("/system-config/admin", (req, res) =>
     updateSystemConfig(req, res, resolvedOpts),
-  );
-
-  r.get(
-    "/system-config/oauth-providers",
-    proxyWithIdentity("system-config/oauth-providers", "access", "GET"),
-  );
-  r.post(
-    "/system-config/oauth-providers",
-    proxyWithIdentity("system-config/oauth-providers", "access", "POST"),
-  );
-  r.patch(
-    "/system-config/oauth-providers/:id",
-    proxyWithIdentity(
-      (req) =>
-        `system-config/oauth-providers/${encodePathParam(routeParam(req, "id"), "id")}`,
-      "access",
-      "PATCH",
-    ),
-  );
-  r.delete(
-    "/system-config/oauth-providers/:id",
-    proxyWithIdentity(
-      (req) =>
-        `system-config/oauth-providers/${encodePathParam(routeParam(req, "id"), "id")}`,
-      "access",
-      "DELETE",
-    ),
   );
 
   r.get("/internal/auth-events/summary", (req, res) =>
@@ -621,129 +444,6 @@ export function createSeamlessAuthServer(
     admin.getCredentialCount(req, res, resolvedOpts),
   );
 
-  r.get(
-    "/admin/organizations",
-    proxyWithIdentity("admin/organizations", "access", "GET"),
-  );
-  r.post(
-    "/admin/organizations",
-    proxyWithIdentity("admin/organizations", "access"),
-  );
-  r.get(
-    "/admin/organizations/:organizationId",
-    proxyWithIdentity(
-      (req) =>
-        `admin/organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}`,
-      "access",
-      "GET",
-    ),
-  );
-  r.patch(
-    "/admin/organizations/:organizationId",
-    proxyWithIdentity(
-      (req) =>
-        `admin/organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}`,
-      "access",
-      "PATCH",
-    ),
-  );
-  r.delete(
-    "/admin/organizations/:organizationId",
-    proxyWithIdentity(
-      (req) =>
-        `admin/organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}`,
-      "access",
-      "DELETE",
-    ),
-  );
-  r.get(
-    "/admin/organizations/:organizationId/members",
-    proxyWithIdentity(
-      (req) =>
-        `admin/organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}/members`,
-      "access",
-      "GET",
-    ),
-  );
-  r.post(
-    "/admin/organizations/:organizationId/members",
-    proxyWithIdentity(
-      (req) =>
-        `admin/organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}/members`,
-      "access",
-    ),
-  );
-  r.patch(
-    "/admin/organizations/:organizationId/members/:userId",
-    proxyWithIdentity(
-      (req) =>
-        `admin/organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}/members/${encodePathParam(routeParam(req, "userId"), "userId")}`,
-      "access",
-      "PATCH",
-    ),
-  );
-  r.delete(
-    "/admin/organizations/:organizationId/members/:userId",
-    proxyWithIdentity(
-      (req) =>
-        `admin/organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}/members/${encodePathParam(routeParam(req, "userId"), "userId")}`,
-      "access",
-      "DELETE",
-    ),
-  );
-  r.put(
-    "/admin/organizations/:organizationId/oauth-providers/:providerId/retirement",
-    proxyWithIdentity(
-      (req) =>
-        `admin/organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}/oauth-providers/${encodePathParam(routeParam(req, "providerId"), "providerId")}/retirement`,
-      "access",
-      "PUT",
-    ),
-  );
-  r.delete(
-    "/admin/organizations/:organizationId/oauth-providers/:providerId/retirement",
-    proxyWithIdentity(
-      (req) =>
-        `admin/organizations/${encodePathParam(routeParam(req, "organizationId"), "organizationId")}/oauth-providers/${encodePathParam(routeParam(req, "providerId"), "providerId")}/retirement`,
-      "access",
-      "DELETE",
-    ),
-  );
-
-  r.get(
-    "/admin/enrollment",
-    proxyWithIdentity("admin/enrollment", "access", "GET"),
-  );
-  r.post(
-    "/admin/enrollment/invites",
-    proxyWithIdentity("admin/enrollment/invites", "access"),
-  );
-  r.get(
-    "/admin/auth-events/integrity",
-    proxyWithIdentity("admin/auth-events/integrity", "access", "GET"),
-  );
-  r.get(
-    "/admin/auth-events/export",
-    proxyWithIdentity("admin/auth-events/export", "access", "GET", {
-      raw: true,
-    }),
-  );
-  r.get(
-    "/admin/reports/authentication-coverage",
-    proxyWithIdentity(
-      "admin/reports/authentication-coverage",
-      "access",
-      "GET",
-      {
-        raw: true,
-      },
-    ),
-  );
-  r.get(
-    "/admin/review-accounts",
-    proxyWithIdentity("admin/review-accounts", "access", "GET"),
-  );
-
   r.get("/admin/sessions", (req, res) =>
     admin.listAllSessions(req, res, resolvedOpts),
   );
@@ -768,7 +468,7 @@ export function createSeamlessAuthServer(
   );
 
   // Last, so a route with a handler of its own always wins.
-  r.use(async (req: Request & { cookiePayload?: any }, res, next) => {
+  r.use(async (req: Request & { cookiePayload?: any }, res) => {
     const match = matchManifestRoute(
       await manifestSource.get(),
       req.method,
@@ -776,7 +476,7 @@ export function createSeamlessAuthServer(
     );
 
     if (!match) {
-      next();
+      res.status(404).json({ error: "not_found" });
       return;
     }
 
@@ -804,7 +504,7 @@ export function createSeamlessAuthServer(
       },
     );
 
-    respond(res, result, resolvedOpts);
+    respond(res, await withRecoveryRefresh(req, res, result), resolvedOpts);
   });
 
   // Express 5 forwards rejected handler promises here. Without this, the
@@ -823,9 +523,8 @@ export function createSeamlessAuthServer(
     if (status >= 500) {
       const detail =
         err instanceof Error ? (err.stack ?? err.message) : String(err);
-      console.error(
-        "[SEAMLESS-AUTH-EXPRESS] - Unhandled route error.",
-        redactSensitiveText(detail),
+      getSeamlessLogger().error(
+        `[SEAMLESS-AUTH-EXPRESS] - Unhandled route error. ${redactSensitiveText(detail)}`,
       );
       res.status(500).json({ error: "internal_error" });
       return;

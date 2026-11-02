@@ -133,6 +133,52 @@ describe("routes proxied from the adapter manifest", () => {
     );
 
     expect(res.status).toBe(404);
+    expect(res.headers["content-type"]).toMatch(/application\/json/);
+    expect(res.body).toEqual({ error: "not_found" });
+  });
+
+  // These were hand-registered passthroughs that returned the upstream body as-is.
+  it("keeps tokens out of a former passthrough route's cookie-transport body", async () => {
+    routeFetch({
+      "GET /organizations": async () =>
+        json(200, { organizations: [], token: "leaked", refreshToken: "leaked" }),
+    });
+    const token = await signAccessToken();
+    const access = cookie("seamless-access", { sub: "user-1", token });
+
+    const res = await request(createApp({ fetchManifest: false }))
+      .get("/auth/organizations")
+      .set("Cookie", access);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ organizations: [] });
+    const [[, init]] = upstreamCalls("/organizations");
+    expect(init.headers.Authorization).toBe(`Bearer ${token}`);
+  });
+
+  it("returns a former passthrough route's body whole in bearer transport", async () => {
+    routeFetch({
+      "GET /organizations": async () => json(200, { organizations: [], token: "kept" }),
+    });
+
+    const res = await request(createApp({ fetchManifest: false }))
+      .get("/auth/organizations")
+      .set("x-seamless-auth-transport", "bearer")
+      .set("Authorization", "Bearer access-token");
+
+    expect(res.body).toEqual({ organizations: [], token: "kept" });
+  });
+
+  it("no longer serves /users/update, which the auth API does not have", async () => {
+    routeFetch({});
+
+    const res = await request(createApp({ fetchManifest: false }))
+      .post("/auth/users/update")
+      .set("Cookie", cookie("seamless-access", { sub: "user-1", token: await signAccessToken() }))
+      .send({});
+
+    expect(res.status).toBe(404);
+    expect(upstreamCalls("/users/update")).toHaveLength(0);
   });
 
   it("does not expose a deprecated GET the manifest leaves out", async () => {

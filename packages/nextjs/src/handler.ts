@@ -5,7 +5,6 @@ import {
   applyCookies,
   assertSecrets,
   checkOrigin,
-  checkProxyIdentity,
   createAdapterManifestSource,
   DEV_JWKS_KID,
   ensureCookies,
@@ -13,18 +12,17 @@ import {
   handleManifestRoute,
   InvalidPathParamError,
   matchManifestRoute,
-  proxyRequest,
   redactSensitiveText,
   refreshAfterRecoveryEnrollment,
   SERVICE_TOKEN_AUDIENCE,
   SERVICE_TOKEN_ISSUER,
   type SessionCookie,
+  getSeamlessLogger,
 } from "@seamless-auth/core";
 
 import {
   buildInternalServiceAuthorization,
   buildProxyServiceAuthorization,
-  buildServiceAuthorization,
 } from "./internal/buildAuthorization.js";
 import {
   createClientIpResolver,
@@ -45,7 +43,6 @@ import { matchRoute, type Route } from "./internal/router.js";
 import type { ResolvedOptions, SeamlessAuthHandlerOptions } from "./options.js";
 import { ADMIN_ROUTES } from "./routes/adminRoutes.js";
 import { AUTH_ROUTES } from "./routes/authRoutes.js";
-import { PROXY_ROUTES, resolveUpstreamPath } from "./routes/proxyRoutes.js";
 
 export type RouteHandler = (request: Request) => Promise<Response>;
 
@@ -75,59 +72,14 @@ export function resolveOptions(
   };
 }
 
-const PASSTHROUGH_ROUTES: Route[] = PROXY_ROUTES.map((definition) => ({
-  method: definition.method,
-  path: definition.path,
-  run: async (ctx, opts) => {
-    const rejection = checkProxyIdentity({
-      subject: ctx.cookiePayload?.sub,
-      refreshed: ctx.cookiePayload?.refreshed === true,
-      cookies: ctx.cookies,
-      identity: definition.identity,
-      accessCookieName: opts.accessCookieName,
-      preAuthCookieName: opts.preAuthCookieName,
-      registrationCookieName: opts.registrationCookieName,
-      transport: ctx.transport,
-      authorization: ctx.request.headers.get("authorization") ?? undefined,
-    });
-
-    if (rejection) {
-      if (rejection.warn) {
-        console.warn(`[SEAMLESS-AUTH-NEXTJS] - (proxy) - ${rejection.warn}`);
-      }
-
-      return { status: rejection.status, errorCode: rejection.errorCode };
-    }
-
-    return proxyRequest({
-      authServerUrl: opts.authServerUrl,
-      path: resolveUpstreamPath(definition.upstream, ctx.params),
-      method: definition.method,
-      authorization: buildServiceAuthorization(ctx),
-      serviceAuthorization: buildProxyServiceAuthorization(opts),
-      forwardedClientIp: opts.clientIpOf(ctx.request),
-      forwardedUserAgent: forwardedUserAgent(ctx.request),
-      query: ctx.query,
-      body: ctx.body,
-      raw: definition.raw,
-    });
-  },
-}));
-
-// Mount order of the other adapters: handler-backed routes first, so a
-// passthrough can never shadow one.
-const ROUTES: Route[] = [
-  ...AUTH_ROUTES,
-  ...ADMIN_ROUTES,
-  ...PASSTHROUGH_ROUTES,
-];
+const ROUTES: Route[] = [...AUTH_ROUTES, ...ADMIN_ROUTES];
 
 function warnOnDevJwksKid(jwksKid: string | undefined): void {
   if (!jwksKid || jwksKid === DEV_JWKS_KID) {
     const state = jwksKid
       ? `is "${DEV_JWKS_KID}"`
       : `is not set and defaults to "${DEV_JWKS_KID}"`;
-    console.warn(
+    getSeamlessLogger().warn(
       `[SEAMLESS-AUTH-NEXTJS] - jwksKid ${state}, a placeholder. It is the kid header on the HS256 service tokens this adapter signs with serviceSecret; set it to name that key explicitly.`,
     );
   }
@@ -178,13 +130,12 @@ export function createSeamlessAuthHandler(
         return collector.json(400, { error: "bad_request" });
       }
 
-      console.error(
-        "[SEAMLESS-AUTH-NEXTJS] - Unhandled route error.",
-        redactSensitiveText(
+      getSeamlessLogger().error(
+        `[SEAMLESS-AUTH-NEXTJS] - Unhandled route error. ${redactSensitiveText(
           error instanceof Error
             ? (error.stack ?? error.message)
             : String(error),
-        ),
+        )}`,
       );
       // The same collector, so a refresh that ensureCookies already rotated
       // still reaches the browser. Dropping it would leave the browser holding a

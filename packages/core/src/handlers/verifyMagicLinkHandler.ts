@@ -1,4 +1,5 @@
 import { encodePathParam } from "../pathParam.js";
+import { withoutTokens } from "../bodyTokens.js";
 import { authFetch } from "../authFetch.js";
 import { readPassthroughFailure } from "../upstreamError.js";
 import type { ResultFailure } from "../result.js";
@@ -18,6 +19,8 @@ export interface VerifyMagicLinkInput {
 
 export interface VerifyMagicLinkOptions {
   authServerUrl: string;
+  /** Cookie transport (the default) drops any token from the body. */
+  transport?: AuthTransport;
   serviceAuthorization?: string;
   forwardedClientIp?: string;
   forwardedUserAgent?: string;
@@ -90,6 +93,6 @@ export async function verifyMagicLinkHandler(
 
   return {
     status: up.status,
-    body: data,
+    body: opts.transport === "bearer" ? data : withoutTokens(data),
   };
 }

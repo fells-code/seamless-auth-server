@@ -18,6 +18,12 @@ import { verifyCookieJwt } from "./verifyCookieJwt.js";
  */
 export type { SeamlessAuthUser } from "@seamless-auth/types";
 
+/** What every first-party guard answers for a missing, invalid or pre-auth credential. */
+export const UNAUTHENTICATED = "unauthenticated";
+
+/** What a role guard answers for a session that holds none of the required roles. */
+export const INSUFFICIENT_ROLE = "insufficient_role";
+
 /**
  * A guard's decision to refuse a request. Adapters render it as
  * `{ error: errorCode, ...detail }` and log `warn` when it is set.
@@ -206,7 +212,7 @@ export function authenticateCookie(input: CookieAuthInput): CookieAuthResult {
     return {
       rejection: {
         status: 401,
-        errorCode: "Failed to find authentication token required",
+        errorCode: UNAUTHENTICATED,
         warn: "Missing expected auth cookie.",
       },
     };
@@ -216,7 +222,7 @@ export function authenticateCookie(input: CookieAuthInput): CookieAuthResult {
 
   if (!payload || !payload.sub || !holdsAccessToken(payload.token)) {
     return {
-      rejection: { status: 401, errorCode: "Invalid or expired session" },
+      rejection: { status: 401, errorCode: UNAUTHENTICATED },
     };
   }
 
@@ -255,7 +261,7 @@ export type AuthResult = CookieAuthResult;
 function missingTokenRejection(warn: string): GuardRejection {
   return {
     status: 401,
-    errorCode: "Failed to find authentication token required",
+    errorCode: UNAUTHENTICATED,
     warn,
   };
 }
@@ -291,7 +297,7 @@ export async function authenticateBearer(
 
   if (!claims) {
     return {
-      rejection: { status: 401, errorCode: "Invalid or expired session" },
+      rejection: { status: 401, errorCode: UNAUTHENTICATED },
     };
   }
 
@@ -381,7 +387,7 @@ async function verifyCookieAccessToken(
 
   if (!claims || claims.sub !== user.id) {
     return {
-      rejection: { status: 401, errorCode: "Invalid or expired session" },
+      rejection: { status: 401, errorCode: UNAUTHENTICATED },
     };
   }
 
@@ -408,19 +414,17 @@ export function authorizeRoles(
   const roles = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
 
   if (!user) {
-    return { status: 401, errorCode: "Authentication required" };
+    return { status: 401, errorCode: UNAUTHENTICATED };
   }
 
   if (!Array.isArray(user.roles)) {
-    return { status: 403, errorCode: "User has no roles assigned" };
+    return { status: 403, errorCode: INSUFFICIENT_ROLE };
   }
 
+  // The body names neither the user's roles nor the required ones: the client
+  // gains nothing from them, and they map out the app's authorization model.
   if (!hasScopedRole(user.roles, roles)) {
-    return {
-      status: 403,
-      errorCode: "Insufficient role",
-      detail: { required: roles, actual: user.roles },
-    };
+    return { status: 403, errorCode: INSUFFICIENT_ROLE };
   }
 
   return undefined;

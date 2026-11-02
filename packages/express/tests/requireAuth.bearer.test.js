@@ -106,7 +106,7 @@ describe("requireAuth with bearer tokens (express)", () => {
       .set("Authorization", `Bearer ${token}`);
 
     expect(res.status).toBe(401);
-    expect(res.body).toEqual({ error: "Failed to find authentication token required" });
+    expect(res.body).toEqual({ error: "unauthenticated" });
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
@@ -122,7 +122,7 @@ describe("requireAuth with bearer tokens (express)", () => {
       .set("Authorization", `Bearer ${token}`);
 
     expect(res.status).toBe(401);
-    expect(res.body).toEqual({ error: "Invalid or expired session" });
+    expect(res.body).toEqual({ error: "unauthenticated" });
   });
 
   it("still honours the cookie, and prefers it over a bearer header", async () => {
@@ -164,7 +164,7 @@ describe("requireAuth with bearer tokens (express)", () => {
         .set("Cookie", [cookieFor({ sub: "user-1", roles: ["admin"], token: INNER })]);
 
       expect(res.status).toBe(401);
-      expect(res.body).toEqual({ error: "Invalid or expired session" });
+      expect(res.body).toEqual({ error: "unauthenticated" });
     });
 
     it("refuses a cookie naming a different subject than its inner token", async () => {
@@ -352,7 +352,7 @@ describe("authServerIssuer (express)", () => {
 
     for (const res of [unconfigured, misconfigured]) {
       expect(res.status).toBe(401);
-      expect(res.body).toEqual({ error: "Invalid or expired session" });
+      expect(res.body).toEqual({ error: "unauthenticated" });
     }
   });
 

@@ -691,6 +691,38 @@ Compatibility rules:
 - `admin:write` grants `admin:read`
 - `admin:read` does not grant write access or satisfy `requireRole("admin")`
 
+`requireAuth` and `requireRole` refuse a request with these bodies:
+
+| Refusal | Status | Body |
+| --- | --- | --- |
+| No session, an invalid or expired one, or a sign-in flow's ephemeral token | 401 | `{"error":"unauthenticated"}` |
+| A recovery session, unless `allowRecoverySession: true` | 403 | `{"error":"enrollment_required"}` |
+| None of the roles granted, or no roles at all | 403 | `{"error":"insufficient_role"}` |
+
+The body never names the user's roles or the required ones. These are the codes
+the other Seamless Auth adapters answer with.
+
+Under the `/auth` router, a path that neither a route of its own nor the auth API's adapter
+manifest lists answers `404 { "error": "not_found" }` as JSON, rather than falling through to
+the application's own 404 handler.
+
+### Logging
+
+The adapter writes its warnings and errors through one logger, `console` by
+default. `setSeamlessLogger` sends them elsewhere: anything with `warn(message)`
+and `error(message)` works, including `pino` or a platform logger. Call it with
+no argument to go back to `console`.
+
+```ts
+import { setSeamlessLogger } from "@seamless-auth/express";
+
+setSeamlessLogger({
+  warn: (message) => logger.warn(message),
+  error: (message) => logger.error(message),
+});
+```
+
+
 ---
 
 ### `createResourceServer(options)`

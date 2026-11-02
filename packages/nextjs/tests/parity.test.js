@@ -511,18 +511,42 @@ describe("next.js and express adapters agree", () => {
     expect(next).toEqual(expressResult);
   });
 
+  it("answers an unknown path with a JSON 404", async () => {
+    const { next, express: expressResult } = await bothAdapters(
+      { method: "get", path: "/not-a-route" },
+      upstream(200, {}),
+    );
+
+    expect(next.status).toBe(404);
+    expect(next.body).toEqual({ error: "not_found" });
+    expect(expressResult).toEqual(next);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  // These were hand-registered passthroughs that returned the upstream body as-is.
+  it("keeps tokens out of a former passthrough route's cookie-transport body", async () => {
+    const { next, express: expressResult } = await bothAdapters(
+      { method: "get", path: "/organizations", cookie: accessCookie() },
+      upstream(200, { organizations: [], token: "leaked", refreshToken: "leaked" }),
+    );
+
+    expect(next.status).toBe(200);
+    expect(next.body).toEqual({ organizations: [] });
+    expect(expressResult).toEqual(next);
+  });
+
   it("answers an upstream redirect as a 502 rather than following it", async () => {
     const scenario = {
       method: "post",
-      path: "/users/update",
+      path: "/users/credentials",
       cookie: accessCookie(),
-      payload: { email: "a@b.c" },
+      payload: { credentialId: "c1" },
     };
     const { next, express: expressResult } = await bothAdapters(
       scenario,
       new Response(null, {
         status: 302,
-        headers: { location: "https://elsewhere.example.com/users/update" },
+        headers: { location: "https://elsewhere.example.com/users/credentials" },
       }),
     );
 
@@ -805,9 +829,9 @@ describe("next.js and express adapters agree", () => {
     async (site, origin, status) => {
       const scenario = {
         method: "post",
-        path: "/users/update",
+        path: "/users/credentials",
         cookie: accessCookie(),
-        payload: { email: "a@b.c" },
+        payload: { credentialId: "c1" },
         headers: { "sec-fetch-site": site, ...(origin ? { origin } : {}) },
         options: { allowedOrigins: ["https://app.example.com"] },
       };
@@ -2140,6 +2164,7 @@ describe("next.js and express route guards agree", () => {
     expect(next.status).toBe(status);
     expect(expressResult.status).toBe(status);
     expect(next.body).toEqual({ error });
+    expect(expressResult.body).toEqual(next.body);
   });
 
   it("blocks a cross-site state change on a cookie session but not on a bearer one", async () => {

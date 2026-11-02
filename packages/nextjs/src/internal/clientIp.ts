@@ -1,3 +1,4 @@
+import { getSeamlessLogger } from "@seamless-auth/core";
 import { BlockList, isIP } from "node:net";
 
 import type { ClientIpResolver } from "../options.js";
@@ -117,7 +118,7 @@ export function warnOnNoClientIp(opts: ClientIpOptions): void {
   }
 
   warnedNoClientIp = true;
-  console.warn(
+  getSeamlessLogger().warn(
     "[SEAMLESS-AUTH-NEXTJS] - Neither resolveClientIp nor trustedProxies is set, so no client IP is forwarded to the auth API and its rate limits and audit log see none. Set trustedProxies to your proxy addresses, or resolveClientIp to read the header your platform sets.",
   );
 }

@@ -109,7 +109,7 @@ describe("requireAuth (fastify)", () => {
     const res = await get(await buildApp({ cookieSecret: COOKIE_SECRET }));
 
     expect(res.status).toBe(401);
-    expect(res.body).toEqual({ error: "Failed to find authentication token required" });
+    expect(res.body).toEqual({ error: "unauthenticated" });
   });
 
   it("rejects a cookie signed by another secret", async () => {
@@ -120,7 +120,7 @@ describe("requireAuth (fastify)", () => {
     });
 
     expect(res.status).toBe(401);
-    expect(res.body).toEqual({ error: "Invalid or expired session" });
+    expect(res.body).toEqual({ error: "unauthenticated" });
   });
 
   it("accepts the auth API's access token when authServerUrl and audience are configured", async () => {
@@ -159,7 +159,7 @@ describe("requireAuth (fastify)", () => {
     );
 
     expect(res.status).toBe(401);
-    expect(res.body).toEqual({ error: "Invalid or expired session" });
+    expect(res.body).toEqual({ error: "unauthenticated" });
   });
 
   it("prefers the cookie over a bearer header", async () => {
@@ -194,7 +194,7 @@ describe("requireAuth (fastify)", () => {
     );
 
     expect(res.status).toBe(401);
-    expect(res.body).toEqual({ error: "Invalid or expired session" });
+    expect(res.body).toEqual({ error: "unauthenticated" });
   });
 
   it("takes a cookie session's roles from its verified inner token", async () => {
@@ -234,7 +234,8 @@ describe("requireAuth (fastify)", () => {
       { authorization: `Bearer ${await accessToken(server)}` },
     );
     expect(denied.status).toBe(403);
-    expect(denied.body.error).toBe("Insufficient role");
+    // The user's roles and the required ones stay out of the body.
+    expect(denied.body).toEqual({ error: "insufficient_role" });
   });
 
   it("refuses a half-configured option pair at setup", () => {
@@ -380,7 +381,7 @@ describe("authServerIssuer (fastify)", () => {
 
     for (const res of [unconfigured, misconfigured]) {
       expect(res.status).toBe(401);
-      expect(res.body).toEqual({ error: "Invalid or expired session" });
+      expect(res.body).toEqual({ error: "unauthenticated" });
     }
   });
 

@@ -104,7 +104,7 @@ describe("authenticateBearer", () => {
 
     expect(result.rejection).toMatchObject({
       status: 401,
-      errorCode: "Failed to find authentication token required",
+      errorCode: "unauthenticated",
     });
     expect(result.rejection.warn).toMatch(/bearer/i);
   });
@@ -120,7 +120,7 @@ describe("authenticateBearer", () => {
 
     expect(result.rejection.status).toBe(401);
     expect(result.rejection.errorCode).toBe(
-      "Failed to find authentication token required",
+      "unauthenticated",
     );
   });
 
@@ -136,7 +136,7 @@ describe("authenticateBearer", () => {
 
     expect(result.rejection).toEqual({
       status: 401,
-      errorCode: "Invalid or expired session",
+      errorCode: "unauthenticated",
     });
   });
 
@@ -150,7 +150,7 @@ describe("authenticateBearer", () => {
       audience: "https://someone-else.example.com",
     });
 
-    expect(result.rejection.errorCode).toBe("Invalid or expired session");
+    expect(result.rejection.errorCode).toBe("unauthenticated");
   });
 });
 
@@ -183,7 +183,7 @@ describe("authenticateRequest", () => {
     });
     expect(withoutCookie.rejection).toMatchObject({
       status: 401,
-      errorCode: "Failed to find authentication token required",
+      errorCode: "unauthenticated",
       warn: "Missing expected auth cookie.",
     });
   });
@@ -201,7 +201,7 @@ describe("authenticateRequest", () => {
 
     expect(result.rejection).toEqual({
       status: 401,
-      errorCode: "Invalid or expired session",
+      errorCode: "unauthenticated",
     });
     expect(global.fetch).not.toHaveBeenCalled();
   });
@@ -246,7 +246,7 @@ describe("authenticateRequest", () => {
     });
     expect(unconfigured.rejection).toEqual({
       status: 401,
-      errorCode: "Invalid or expired session",
+      errorCode: "unauthenticated",
     });
   });
 
@@ -263,7 +263,7 @@ describe("authenticateRequest", () => {
 
     expect(result.rejection).toEqual({
       status: 401,
-      errorCode: "Invalid or expired session",
+      errorCode: "unauthenticated",
     });
   });
 

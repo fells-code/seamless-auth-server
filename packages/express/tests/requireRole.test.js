@@ -51,9 +51,27 @@ describe("requireRole", () => {
     });
   });
 
-  it("rejects read roles on write routes", async () => {
+  it("rejects read roles on write routes without naming any role", async () => {
     const res = await request(appWithRoles(["admin:read"])).post("/protected");
 
     expect(res.status).toBe(403);
+    expect(res.body).toEqual({ error: "insufficient_role" });
+  });
+
+  it("rejects a user with no roles as lacking the role", async () => {
+    const res = await request(appWithRoles(undefined)).get("/protected");
+
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ error: "insufficient_role" });
+  });
+
+  it("rejects a request no guard authenticated", async () => {
+    const app = express();
+    app.get("/protected", requireRole("admin"), (_req, res) => res.json({}));
+
+    const res = await request(app).get("/protected");
+
+    expect(res.status).toBe(401);
+    expect(res.body).toEqual({ error: "unauthenticated" });
   });
 });

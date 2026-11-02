@@ -105,7 +105,7 @@ describe("route error handling", () => {
 
   it("answers 400 for a malformed JSON body", async () => {
     const res = await request(createApp())
-      .post("/auth/users/update")
+      .post("/auth/users/credentials")
       .set("Content-Type", "application/json")
       .send("{bad json");
 
@@ -115,7 +115,7 @@ describe("route error handling", () => {
 
   it("answers 413 for a body over the parser limit", async () => {
     const res = await request(createApp())
-      .post("/auth/users/update")
+      .post("/auth/users/credentials")
       .set("Content-Type", "application/json")
       .send(JSON.stringify({ name: "a".repeat(200 * 1024) }));
 
@@ -125,7 +125,7 @@ describe("route error handling", () => {
 
   it("does not echo the rejected payload back to the client", async () => {
     const res = await request(createApp())
-      .post("/auth/users/update")
+      .post("/auth/users/credentials")
       .set("Content-Type", "application/json")
       .send('{"secret":"SECRET_INTERNAL_DETAIL"');
 
@@ -135,7 +135,7 @@ describe("route error handling", () => {
 
   it("does not log client errors at error level", async () => {
     await request(createApp())
-      .post("/auth/users/update")
+      .post("/auth/users/credentials")
       .set("Content-Type", "application/json")
       .send("{bad json");
 
@@ -150,8 +150,9 @@ describe("route error handling", () => {
       .set("Cookie", createPreAuthCookie());
 
     expect(errorSpy).toHaveBeenCalledWith(
-      "[SEAMLESS-AUTH-EXPRESS] - Unhandled route error.",
-      expect.stringContaining("network down"),
+      expect.stringMatching(
+        /^\[SEAMLESS-AUTH-EXPRESS\] - Unhandled route error\. .*network down/s,
+      ),
     );
   });
 
@@ -164,7 +165,7 @@ describe("route error handling", () => {
       .get("/auth/magic-link/check")
       .set("Cookie", createPreAuthCookie());
 
-    const [, logged] = errorSpy.mock.calls[0];
+    const [logged] = errorSpy.mock.calls[0];
     expect(logged).not.toContain("sk-secret-token-value");
     expect(logged).toContain("[REDACTED]");
   });

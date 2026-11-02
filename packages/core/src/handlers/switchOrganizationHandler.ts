@@ -1,5 +1,6 @@
 import { encodePathParam } from "../pathParam.js";
 import type { AuthServerIssuerOption } from "../authServerIssuer.js";
+import { withoutTokens } from "../bodyTokens.js";
 import { authFetch } from "../authFetch.js";
 import { sessionResult } from "../upstreamSession.js";
 import type { AuthTransport } from "../transport.js";
@@ -61,7 +62,7 @@ export async function switchOrganizationHandler(
   if (!data?.token || !data?.sub) {
     return {
       status: up.status,
-      body: data,
+      body: opts.transport === "bearer" ? data : withoutTokens(data),
     };
   }
 
