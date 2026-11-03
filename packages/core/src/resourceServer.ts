@@ -19,6 +19,11 @@ import { extractBearerToken } from "./verifyAccessToken.js";
  */
 export interface ResourceServerClaims {
   clientId: string;
+  /**
+   * A client credentials token, where `sub` is the client id: a machine acting
+   * for itself, with no user behind it. `id` is then a client id, not a user id.
+   */
+  isClient: boolean;
   scopes: string[];
   sid?: string;
   orgId?: string;
@@ -243,6 +248,7 @@ function toUser(claims: JWTPayload, token: string): ResourceServerUser | null {
   return {
     id: sub,
     clientId,
+    isClient: sub === clientId,
     scopes: scope ? scope.split(" ").filter(Boolean) : [],
     roles: roles ?? [],
     amr: amr ?? [],

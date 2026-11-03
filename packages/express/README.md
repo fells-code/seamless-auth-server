@@ -803,8 +803,9 @@ the key set cannot be fetched, the request gets `401 invalid_token`; nothing fai
 `max_age` to send the user back through the provider with.
 
 The verified user has `id` (`sub`), `clientId`, `scopes`, `roles`, `sid`, `orgId`, `acr`, `amr`
-and `authTime`. A client credentials token (`sub` equal to `client_id`) verifies too, and fails
-role and step-up checks.
+and `authTime`. A client credentials token (`sub` equal to `client_id`) verifies too, with
+`isClient` set to `true` and the client id in `id`, and fails role and step-up checks. Check
+`isClient` before treating `id` as a user id.
 
 ---
 
