@@ -138,9 +138,9 @@ describe("refreshAccessToken", () => {
     expect(authFetchMock).toHaveBeenCalledTimes(1);
   });
 
-  // A completed rotation is not shared: the stale cookie is a replay the auth
-  // API must see (#258).
-  it("sends a follow-up call with the stale cookie to the auth API", async () => {
+  // Another tab sending the stale cookie a moment later shares the completed
+  // rotation rather than tripping reuse detection (#258).
+  it("reuses the freshly-rotated result for an immediate follow-up call with the stale cookie", async () => {
     const { refreshAccessToken } =
       await import("../dist/refreshAccessToken.js");
 
@@ -182,6 +182,6 @@ describe("refreshAccessToken", () => {
     });
 
     expect(first).toEqual(second);
-    expect(authFetchMock).toHaveBeenCalledTimes(2);
+    expect(authFetchMock).toHaveBeenCalledTimes(1);
   });
 });
