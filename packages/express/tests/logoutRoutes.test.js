@@ -119,6 +119,7 @@ describe("logout routes", () => {
 
     const res = await request(createApp())
       .post("/auth/magic-link")
+      .set("Content-Type", "application/json")
       .set("Cookie", createPreAuthCookie());
 
     expect(res.status).toBe(200);

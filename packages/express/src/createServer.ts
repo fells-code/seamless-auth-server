@@ -239,6 +239,18 @@ export function createSeamlessAuthServer(
   });
 
   r.use(express.json());
+  // A body-less request declares JSON to force a CORS preflight, which
+  // express.json() reads as `{}`. Keep it as no body, as the other adapters do,
+  // so nothing is forwarded upstream that the client never sent.
+  r.use((req, _res, next) => {
+    if (
+      req.headers["transfer-encoding"] === undefined &&
+      !Number(req.headers["content-length"] ?? 0)
+    ) {
+      req.body = undefined;
+    }
+    next();
+  });
   r.use(cookieParser());
 
   const resolvedOpts: ResolvedSeamlessAuthServerOptions = {
@@ -266,8 +278,6 @@ export function createSeamlessAuthServer(
   // never triggers a token refresh or reaches a handler.
   r.use(
     createOriginGuardMiddleware({
-      cookieSecure: resolvedOpts.cookieSecure,
-      cookieSameSite: resolvedOpts.cookieSameSite,
       allowedOrigins: resolvedOpts.allowedOrigins,
     }),
   );

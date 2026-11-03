@@ -91,9 +91,33 @@ export const seamlessAuth: FastifyPluginAsync<
 
   await fastify.register(cookie);
 
+  // A body-less POST declares JSON so the browser preflights it, which
+  // express.json() reads as no body. Fastify's own parser refuses an empty one.
+  // This plugin is encapsulated, so the adopter's other routes keep the default.
+  const parseJson = fastify.getDefaultJsonParser(
+    fastify.initialConfig.onProtoPoisoning ?? "error",
+    fastify.initialConfig.onConstructorPoisoning ?? "error",
+  );
+  fastify.removeContentTypeParser("application/json");
+  fastify.addContentTypeParser(
+    "application/json",
+    { parseAs: "string" },
+    (request, body, done) => {
+      const text = body.toString();
+      if (text === "") {
+        done(null, undefined);
+        return;
+      }
+      parseJson(request, text, done);
+    },
+  );
+
   // Ordering matches the Express adapter: a blocked cross-site request must
   // never trigger a token refresh or reach a handler.
-  fastify.addHook("onRequest", createOriginGuardHook(resolved));
+  fastify.addHook(
+    "onRequest",
+    createOriginGuardHook(resolved, fastify.prefix),
+  );
   fastify.addHook(
     "onRequest",
     createEnsureCookiesHook(resolved, fastify.prefix, manifestSource),

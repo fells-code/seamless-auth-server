@@ -119,13 +119,23 @@ function parseBody(text) {
   }
 }
 
+// What the browser client sends: a state-changing request declares JSON even
+// with no body, which forces a CORS preflight (#256).
+function clientHeaders(method, headers) {
+  const declared = Object.keys(headers ?? {}).some(
+    (name) => name.toLowerCase() === "content-type",
+  );
+  return method.toLowerCase() === "get" || declared
+    ? (headers ?? {})
+    : { "content-type": "application/json", ...(headers ?? {}) };
+}
+
 async function viaNext({ method, path, cookie, headers, payload, options }) {
   const handlers = createSeamlessAuthHandler({ ...OPTIONS, ...options });
   const verb = method.toUpperCase();
   const requestHeaders = {
-    ...(headers ?? {}),
+    ...clientHeaders(method, headers),
     ...(cookie ? { cookie } : {}),
-    ...(payload === undefined ? {} : { "content-type": "application/json" }),
   };
 
   const res = await handlers[verb](
@@ -145,7 +155,7 @@ async function viaNext({ method, path, cookie, headers, payload, options }) {
 
 async function viaExpress({ method, path, cookie, headers, payload, options }) {
   let req = request(buildExpress(options))[method](`/auth${path}`);
-  if (headers) req = req.set(headers);
+  req = req.set(clientHeaders(method, headers));
   if (cookie) req = req.set("Cookie", cookie);
   if (payload !== undefined) req = req.send(payload);
 

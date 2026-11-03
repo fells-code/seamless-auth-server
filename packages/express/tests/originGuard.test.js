@@ -47,6 +47,7 @@ describe("origin guard (#104)", () => {
   it("rejects a cross-site state-changing request", async () => {
     const res = await request(createApp())
       .post("/auth/magic-link")
+      .set("Content-Type", "application/json")
       .set("Sec-Fetch-Site", "cross-site");
 
     expect(res.status).toBe(403);
@@ -56,6 +57,7 @@ describe("origin guard (#104)", () => {
   it("accepts a same-origin request", async () => {
     const res = await request(createApp())
       .post("/auth/magic-link")
+      .set("Content-Type", "application/json")
       .set("Sec-Fetch-Site", "same-origin");
 
     expect(res.status).not.toBe(403);
@@ -65,6 +67,7 @@ describe("origin guard (#104)", () => {
   it("accepts a same-site request", async () => {
     const res = await request(createApp())
       .post("/auth/magic-link")
+      .set("Content-Type", "application/json")
       .set("Sec-Fetch-Site", "same-site");
 
     expect(res.status).not.toBe(403);
@@ -72,7 +75,8 @@ describe("origin guard (#104)", () => {
   });
 
   it("accepts a server-to-server request with no Origin or Sec-Fetch-Site", async () => {
-    const res = await request(createApp()).post("/auth/magic-link");
+    const res = await request(createApp()).post("/auth/magic-link")
+      .set("Content-Type", "application/json");
 
     expect(res.status).not.toBe(403);
     expect(res.body).not.toEqual(BLOCKED);
@@ -81,6 +85,7 @@ describe("origin guard (#104)", () => {
   it("rejects a literal null Origin", async () => {
     const res = await request(createApp())
       .post("/auth/magic-link")
+      .set("Content-Type", "application/json")
       .set("Origin", "null");
 
     expect(res.status).toBe(403);
@@ -108,6 +113,7 @@ describe("origin guard (#104)", () => {
   it("rejects a cross-site POST to the magic link confirm step", async () => {
     const res = await request(createApp())
       .post("/auth/magic-link/verify/some-token/confirm")
+      .set("Content-Type", "application/json")
       .set("Sec-Fetch-Site", "cross-site");
 
     expect(res.status).toBe(403);
@@ -118,6 +124,7 @@ describe("origin guard (#104)", () => {
   it("accepts a same-origin POST to the magic link confirm step", async () => {
     const res = await request(createApp())
       .post("/auth/magic-link/verify/some-token/confirm")
+      .set("Content-Type", "application/json")
       .set("Sec-Fetch-Site", "same-origin");
 
     expect(res.status).toBe(200);
@@ -136,13 +143,16 @@ describe("origin guard (#104)", () => {
     expect(res.body).not.toEqual(BLOCKED);
   });
 
-  it("does nothing when cookieSameSite is lax, even cross-site", async () => {
+  // A Lax cookie still rides a same-site request, so the cookie policy no
+  // longer switches the guard off (#256).
+  it("rejects cross-site when cookieSameSite is lax too", async () => {
     const res = await request(createApp({ cookieSameSite: "lax" }))
       .post("/auth/magic-link")
+      .set("Content-Type", "application/json")
       .set("Sec-Fetch-Site", "cross-site");
 
-    expect(res.status).not.toBe(403);
-    expect(res.body).not.toEqual(BLOCKED);
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual(BLOCKED);
   });
 
   describe("Sec-Fetch-Site absent fallback", () => {
@@ -151,6 +161,7 @@ describe("origin guard (#104)", () => {
         createApp({ allowedOrigins: ["https://app.example.com"] }),
       )
         .post("/auth/magic-link")
+      .set("Content-Type", "application/json")
         .set("Origin", "https://app.example.com");
 
       expect(res.status).not.toBe(403);
@@ -162,6 +173,7 @@ describe("origin guard (#104)", () => {
         createApp({ allowedOrigins: ["https://app.example.com"] }),
       )
         .post("/auth/magic-link")
+      .set("Content-Type", "application/json")
         .set("Origin", "https://evil.example.com");
 
       expect(res.status).toBe(403);
@@ -171,6 +183,7 @@ describe("origin guard (#104)", () => {
     it("accepts any Origin when allowedOrigins is unset", async () => {
       const res = await request(createApp())
         .post("/auth/magic-link")
+      .set("Content-Type", "application/json")
         .set("Origin", "https://evil.example.com");
 
       expect(res.status).not.toBe(403);
@@ -187,6 +200,7 @@ describe("origin guard (#104)", () => {
     it("rejects a same-site request from an Origin not on the list", async () => {
       const res = await request(allowlisted())
         .post("/auth/magic-link")
+      .set("Content-Type", "application/json")
         .set("Sec-Fetch-Site", "same-site")
         .set("Origin", "https://evil.example.com");
 
@@ -197,6 +211,7 @@ describe("origin guard (#104)", () => {
     it("rejects a same-site request with no Origin", async () => {
       const res = await request(allowlisted())
         .post("/auth/magic-link")
+      .set("Content-Type", "application/json")
         .set("Sec-Fetch-Site", "same-site");
 
       expect(res.status).toBe(403);
@@ -206,6 +221,7 @@ describe("origin guard (#104)", () => {
     it("accepts a same-site request from a listed Origin", async () => {
       const res = await request(allowlisted())
         .post("/auth/magic-link")
+      .set("Content-Type", "application/json")
         .set("Sec-Fetch-Site", "same-site")
         .set("Origin", "https://APP.example.com");
 
@@ -215,6 +231,7 @@ describe("origin guard (#104)", () => {
     it("accepts a same-origin request whatever the list says", async () => {
       const res = await request(allowlisted())
         .post("/auth/magic-link")
+      .set("Content-Type", "application/json")
         .set("Sec-Fetch-Site", "same-origin")
         .set("Origin", "https://auth-adapter.example.com");
 
@@ -224,6 +241,7 @@ describe("origin guard (#104)", () => {
     it("still rejects cross-site from a listed Origin", async () => {
       const res = await request(allowlisted())
         .post("/auth/magic-link")
+      .set("Content-Type", "application/json")
         .set("Sec-Fetch-Site", "cross-site")
         .set("Origin", "https://app.example.com");
 

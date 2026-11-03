@@ -64,6 +64,7 @@ describe("login OTP routes", () => {
 
     const res = await request(createApp())
       .post("/auth/otp/generate-login-email-otp")
+      .set("Content-Type", "application/json")
       .set("Cookie", createPreAuthCookie());
 
     expect(res.status).toBe(200);

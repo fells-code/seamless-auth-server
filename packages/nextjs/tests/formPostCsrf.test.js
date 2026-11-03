@@ -43,7 +43,11 @@ async function send({ method = "POST", path, headers, payload, options }) {
     }),
   );
   const text = await res.text();
-  return { status: res.status, body: text ? JSON.parse(text) : null };
+  return {
+    status: res.status,
+    body: text ? JSON.parse(text) : null,
+    setCookie: res.headers.getSetCookie(),
+  };
 }
 
 function upstreamCalls(path) {
@@ -173,14 +177,45 @@ describe("form POST CSRF with SameSite=Lax cookies (#256)", () => {
     expect(upstreamCalls("/recovery-codes")).toHaveLength(1);
   });
 
-  it("does not require a content type on DELETE, which always preflights", async () => {
+  it("refuses a body-less DELETE that declares nothing", async () => {
     const res = await send({
       method: "DELETE",
       path: "/sessions/s-1",
       headers: { cookie: accessCookie(), "sec-fetch-site": "same-origin" },
     });
 
-    expect(res.status).not.toBe(415);
-    expect(upstreamCalls("/sessions/s-1")).toHaveLength(1);
+    expect(res.status).toBe(415);
+    expect(upstreamCalls("/sessions/s-1")).toHaveLength(0);
   });
+
+  // The browser client up to now sends these bare, so they keep only the
+  // origin check.
+  it.each([
+    ["POST", "/refresh"],
+    ["DELETE", "/logout"],
+    ["DELETE", "/logout/all"],
+  ])("leaves %s %s out of the content-type gate", async (method, path) => {
+    const res = await send({
+      method,
+      path,
+      headers: { cookie: accessCookie(), "sec-fetch-site": "same-origin" },
+    });
+
+    expect(res.status).not.toBe(415);
+  });
+
+  it.each([["/logout"], ["/logout/all"]])(
+    "still applies the origin check to DELETE %s, clearing no cookie",
+    async (path) => {
+      const res = await send({
+        method: "DELETE",
+        path,
+        headers: { cookie: accessCookie(), "sec-fetch-site": "cross-site" },
+      });
+
+      expect(res.status).toBe(403);
+      expect(res.setCookie ?? []).toEqual([]);
+      expect(global.fetch).not.toHaveBeenCalled();
+    },
+  );
 });

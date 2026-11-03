@@ -61,6 +61,7 @@ describe("magic link redirect target", () => {
   async function post(body) {
     const req = request(createApp())
       .post("/auth/magic-link")
+      .set("Content-Type", "application/json")
       .set("Cookie", createPreAuthCookie());
 
     await (body === undefined ? req : req.send(body));

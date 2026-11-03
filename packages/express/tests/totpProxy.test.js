@@ -100,6 +100,7 @@ describe("TOTP proxy routes", () => {
 
     const res = await request(createApp())
       .post("/auth/totp/enroll/start")
+      .set("Content-Type", "application/json")
       .set("Cookie", createAccessCookie());
 
     expect(res.status).toBe(200);

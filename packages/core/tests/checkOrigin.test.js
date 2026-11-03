@@ -1,4 +1,4 @@
-import { checkOrigin } from "../dist/index.js";
+import { checkContentType, checkOrigin } from "../dist/index.js";
 
 const BLOCKED = { status: 403, errorCode: "cross_site_request_blocked" };
 const LISTED = "https://app.example.com";
@@ -65,5 +65,67 @@ describe("checkOrigin", () => {
         ).toBeUndefined();
       }
     });
+  });
+});
+
+describe("checkContentType", () => {
+  const REFUSED = { status: 415, errorCode: "unsupported_media_type" };
+
+  it.each([
+    ["POST", "application/x-www-form-urlencoded"],
+    ["POST", "multipart/form-data; boundary=x"],
+    ["POST", "text/plain"],
+    ["POST", undefined],
+    ["POST", "application/json-seq"],
+    ["DELETE", undefined],
+    ["PUT", "text/plain"],
+    ["PATCH", undefined],
+  ])("refuses %s with Content-Type %s", (method, contentType) => {
+    expect(checkContentType({ method, path: "/recovery-codes", contentType })).toEqual(
+      REFUSED,
+    );
+  });
+
+  it.each([
+    "application/json",
+    "Application/JSON; charset=utf-8",
+    " application/json ",
+  ])("accepts Content-Type %s with or without a body", (contentType) => {
+    expect(
+      checkContentType({ method: "POST", path: "/recovery-codes", contentType }),
+    ).toBeUndefined();
+  });
+
+  it.each(["bearer", "cookie", ""])(
+    "accepts any x-seamless-auth-transport value (%j)",
+    (transport) => {
+      expect(
+        checkContentType({ method: "POST", path: "/recovery-codes", transport }),
+      ).toBeUndefined();
+    },
+  );
+
+  it("leaves safe methods alone", () => {
+    for (const method of ["GET", "HEAD", "OPTIONS"]) {
+      expect(checkContentType({ method, path: "/recovery-codes" })).toBeUndefined();
+    }
+  });
+
+  it.each([
+    ["POST", "/refresh"],
+    ["POST", "/Refresh/"],
+    ["DELETE", "/logout"],
+    ["DELETE", "/logout/all"],
+  ])("exempts %s %s, which the browser client sends bare", (method, path) => {
+    expect(checkContentType({ method, path })).toBeUndefined();
+  });
+
+  it.each([
+    ["POST", "/logout"],
+    ["DELETE", "/refresh"],
+    ["POST", "/refresh/extra"],
+    ["DELETE", "/logout/everything"],
+  ])("does not stretch the exemption to %s %s", (method, path) => {
+    expect(checkContentType({ method, path })).toEqual(REFUSED);
   });
 });

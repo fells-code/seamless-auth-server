@@ -1,7 +1,7 @@
 import type { SeamlessAuthUser } from "@seamless-auth/types";
 import { decodeJwt } from "jose";
 
-import { resolveCookieSameSite, type CookieSameSite } from "./applyResult.js";
+import type { CookieSameSite } from "./applyResult.js";
 import { hasScopedRole } from "@seamless-auth/types/role/matching";
 import type { AuthServerIssuerOption } from "./authServerIssuer.js";
 import { assertSecretStrength } from "./validateSecrets.js";
@@ -47,8 +47,15 @@ export interface OriginCheckInput {
   secFetchSite?: string;
   /** `Origin`, already reduced to a single value. */
   origin?: string;
+  /**
+   * No longer consulted. The check runs whatever the cookie policy, because a
+   * `Lax` or `Strict` cookie still rides a same-site request. Kept so existing
+   * callers compile.
+   */
   cookieSecure?: boolean;
+  /** As `cookieSecure`. */
   cookieSameSite?: CookieSameSite;
+  /** Set, even to `[]`, it is enforced for same-site and metadata-free requests. */
   allowedOrigins?: string[];
 }
 
@@ -59,24 +66,22 @@ function normalizeOrigin(value: string): string {
 /**
  * Decides whether a cross-site state-changing request should be refused.
  *
- * Only matters when the adapter issues `SameSite=None` cookies, which the
- * browser would otherwise attach to a forged cross-site request. A `Lax` or
- * `Strict` cookie is not sent on one, so the check is inert there.
+ * Runs whatever the adapter's `SameSite` setting: `Lax` and `Strict` keep a
+ * cookie off a cross-site request but not off a same-site one, and a sibling
+ * subdomain is same-site.
  *
  * `Sec-Fetch-Site` is the primary signal: current browsers send it and page
  * JavaScript cannot forge it. `cross-site` is refused and `same-origin` passes.
  * `same-site` also covers a sibling subdomain, so when the adopter configured
- * `allowedOrigins` the `Origin` must be on it as well; without the allowlist a
- * same-site request passes, as it always has. When `Sec-Fetch-Site` is absent
- * the `Origin` is matched against `allowedOrigins`, again only when the adopter
- * opted in, so nothing regresses for callers that predate the guard.
+ * `allowedOrigins` the `Origin` must be on it as well. When `Sec-Fetch-Site` is
+ * absent the `Origin` is matched against `allowedOrigins`, again only when the
+ * adopter configured it. Without the list both pass here, and
+ * `checkContentType` is what keeps a forged form post out.
  */
 export function checkOrigin(
   input: OriginCheckInput,
 ): GuardRejection | undefined {
-  const active = resolveCookieSameSite(input) === "none";
-
-  if (!active || SAFE_METHODS.has(input.method)) {
+  if (SAFE_METHODS.has(input.method)) {
     return undefined;
   }
 
@@ -114,8 +119,6 @@ export function checkOrigin(
     return rejection;
   }
 
-  // Older browser, but the adopter has not opted into an allowlist. Preserve the
-  // pre-guard behavior rather than start rejecting these.
   if (!input.allowedOrigins) {
     return undefined;
   }
@@ -123,6 +126,65 @@ export function checkOrigin(
   return isAllowedOrigin(input.origin, input.allowedOrigins)
     ? undefined
     : rejection;
+}
+
+export interface ContentTypeCheckInput {
+  method: string;
+  /** Relative to the adapter's mount point, as the route tables name it. */
+  path: string;
+  /** `Content-Type`, already reduced to a single value. */
+  contentType?: string;
+  /** `x-seamless-auth-transport`, already reduced to a single value. */
+  transport?: string;
+}
+
+// The browser client up to now sends these with no body and no header, so
+// they stay open until a client that declares JSON on them is the floor. They
+// still get the origin check.
+const CONTENT_TYPE_EXEMPT = new Set([
+  "POST /refresh",
+  "DELETE /logout",
+  "DELETE /logout/all",
+]);
+
+function routeKey(method: string, path: string): string {
+  const normalized = path.toLowerCase().replace(/\/+$/, "") || "/";
+  return `${method.toUpperCase()} ${normalized}`;
+}
+
+/**
+ * Refuses a state-changing request to the adapter's auth routes that declares
+ * neither `Content-Type: application/json` nor an `x-seamless-auth-transport`
+ * header (any value). An HTML form can only send urlencoded, multipart or plain
+ * text, and a `no-cors` fetch can set neither, so requiring one forces a CORS
+ * preflight the adopter's CORS policy then decides.
+ *
+ * Applies even to a request with no body, because the routes act on the cookie
+ * alone. Not for an adopter's own routes behind a guard: those get the origin
+ * check only.
+ */
+export function checkContentType(
+  input: ContentTypeCheckInput,
+): GuardRejection | undefined {
+  const method = input.method.toUpperCase();
+
+  if (SAFE_METHODS.has(method)) {
+    return undefined;
+  }
+
+  if (CONTENT_TYPE_EXEMPT.has(routeKey(method, input.path))) {
+    return undefined;
+  }
+
+  if (input.transport !== undefined) {
+    return undefined;
+  }
+
+  const mediaType = input.contentType?.split(";")[0]?.trim().toLowerCase();
+
+  return mediaType === "application/json"
+    ? undefined
+    : { status: 415, errorCode: "unsupported_media_type" };
 }
 
 function isAllowedOrigin(origin: string, allowedOrigins: string[]): boolean {

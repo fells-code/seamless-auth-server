@@ -4,6 +4,8 @@ import {
   type AppliableResult,
   applyCookies,
   assertSecrets,
+  AUTH_TRANSPORT_HEADER,
+  checkContentType,
   checkOrigin,
   createAdapterManifestSource,
   DEV_JWKS_KID,
@@ -159,16 +161,24 @@ async function dispatch(
   collector: ResponseCollector,
   manifestSource: AdapterManifestSource,
 ): Promise<Response> {
+  const url = new URL(request.url);
+  const path = mountRelativePath(url.pathname, opts.basePath);
+
   // Ordering matches the other adapters: a blocked cross-site request must
   // never trigger a token refresh or reach a handler.
-  const originRejection = checkOrigin({
-    method: request.method,
-    secFetchSite: request.headers.get("sec-fetch-site") ?? undefined,
-    origin: request.headers.get("origin") ?? undefined,
-    cookieSecure: opts.cookieSecure,
-    cookieSameSite: opts.cookieSameSite,
-    allowedOrigins: opts.allowedOrigins,
-  });
+  const originRejection =
+    checkOrigin({
+      method: request.method,
+      secFetchSite: request.headers.get("sec-fetch-site") ?? undefined,
+      origin: request.headers.get("origin") ?? undefined,
+      allowedOrigins: opts.allowedOrigins,
+    }) ??
+    checkContentType({
+      method: request.method,
+      path,
+      contentType: request.headers.get("content-type") ?? undefined,
+      transport: request.headers.get(AUTH_TRANSPORT_HEADER) ?? undefined,
+    });
 
   if (originRejection) {
     return collector.json(originRejection.status, {
@@ -176,8 +186,6 @@ async function dispatch(
     });
   }
 
-  const url = new URL(request.url);
-  const path = mountRelativePath(url.pathname, opts.basePath);
   const manifest = await manifestSource.get();
   const target = resolveTarget(manifest, request, path, opts);
 

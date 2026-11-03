@@ -47,7 +47,7 @@ async function send(handler, method, path) {
           path: `/auth${path}`,
           headers: {
             cookie: accessCookie(),
-            ...(body ? { "content-type": "application/json" } : {}),
+            ...(method === "get" ? {} : { "content-type": "application/json" }),
           },
         },
         (res) => {
