@@ -2239,3 +2239,139 @@ describe("next.js and express route guards agree", () => {
     expect(await res.json()).toEqual({ params: { id: "t-1" } });
   });
 });
+
+// The API hands each invite back for the adopter's own messaging to send (#183).
+describe("next and express deliver enrollment invites through adopter messaging", () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  const invite = (to) => ({
+    kind: "enrollment_invite_email",
+    to,
+    signInUrl: "https://app.example.com/login",
+  });
+
+  const EXTERNAL_RESPONSE = {
+    sent: 3,
+    skipped: 1,
+    remaining: 4,
+    results: [
+      { userId: "u-1", status: "sent", delivery: invite("one@example.com") },
+      { userId: "u-2", status: "skipped", reason: "already_enrolled" },
+      { userId: "u-3", status: "sent", delivery: invite("three@example.com") },
+      { userId: "u-4", status: "sent", delivery: invite("four@example.com") },
+    ],
+  };
+
+  function invitesUpstream(body) {
+    return jest.fn(async (url) =>
+      String(url).endsWith("/.well-known/jwks.json")
+        ? upstream(200, { keys: [jwk] })
+        : upstream(200, body),
+    );
+  }
+
+  async function run(via, { body = EXTERNAL_RESPONSE, send, messaging = true } = {}) {
+    global.fetch = invitesUpstream(body);
+    const sendEnrollmentInviteEmail = jest.fn(send ?? (async () => {}));
+    const result = await via({
+      method: "post",
+      path: "/admin/enrollment/invites",
+      cookie: accessCookie(),
+      payload: { organizationId: "org-1" },
+      options: messaging ? { messaging: { handlers: { sendEnrollmentInviteEmail } } } : {},
+    });
+    const [, init] = global.fetch.mock.calls.find(([url]) =>
+      String(url).endsWith("/admin/enrollment/invites"),
+    );
+    return { result, init, sendEnrollmentInviteEmail };
+  }
+
+  async function both(scenario) {
+    const other = await run(viaNext, scenario);
+    const expressRun = await run(viaExpress, scenario);
+    return { other, express: expressRun };
+  }
+
+  it("asks for external delivery with the delivery service token", async () => {
+    const runs = await both();
+
+    for (const { init } of [runs.other, runs.express]) {
+      expect(init.headers["x-seamless-auth-delivery-mode"]).toBe("external");
+      expect(init.headers.Authorization).toBe(`Bearer ${ACCESS_TOKEN}`);
+      const serviceToken = jwt.decode(
+        init.headers["x-seamless-service-token"].replace(/^Bearer /, ""),
+      );
+      expect(serviceToken.sub).toBe("seamless-auth-external-delivery");
+    }
+  });
+
+  it("sends each invite and keeps addresses and links out of the response", async () => {
+    const runs = await both();
+
+    for (const { result, sendEnrollmentInviteEmail } of [runs.other, runs.express]) {
+      expect(sendEnrollmentInviteEmail.mock.calls.map(([input]) => input)).toEqual([
+        { to: "one@example.com", signInUrl: "https://app.example.com/login" },
+        { to: "three@example.com", signInUrl: "https://app.example.com/login" },
+        { to: "four@example.com", signInUrl: "https://app.example.com/login" },
+      ]);
+      expect(result).toEqual({
+        status: 200,
+        body: {
+          sent: 3,
+          skipped: 1,
+          remaining: 4,
+          results: [
+            { userId: "u-1", status: "sent" },
+            { userId: "u-2", status: "skipped", reason: "already_enrolled" },
+            { userId: "u-3", status: "sent" },
+            { userId: "u-4", status: "sent" },
+          ],
+        },
+        cookies: [],
+      });
+    }
+    expect(runs.other.result).toEqual(runs.express.result);
+  });
+
+  it("reports an invite that could not be sent and sends the rest", async () => {
+    const runs = await both({
+      send: async ({ to }) => {
+        if (to === "three@example.com") throw new Error("smtp down");
+      },
+    });
+
+    for (const { result, sendEnrollmentInviteEmail } of [runs.other, runs.express]) {
+      expect(sendEnrollmentInviteEmail).toHaveBeenCalledTimes(3);
+      expect(result.status).toBe(200);
+      expect(result.body).toEqual({
+        sent: 2,
+        skipped: 2,
+        remaining: 4,
+        results: [
+          { userId: "u-1", status: "sent" },
+          { userId: "u-2", status: "skipped", reason: "already_enrolled" },
+          { userId: "u-3", status: "skipped", reason: "delivery_failed" },
+          { userId: "u-4", status: "sent" },
+        ],
+      });
+    }
+    expect(runs.other.result).toEqual(runs.express.result);
+  });
+
+  it("leaves delivery to the auth API without messaging", async () => {
+    const body = {
+      sent: 1,
+      skipped: 0,
+      results: [{ userId: "u-1", status: "sent" }],
+    };
+    const runs = await both({ body, messaging: false });
+
+    for (const { result, init } of [runs.other, runs.express]) {
+      expect(init.headers["x-seamless-auth-delivery-mode"]).toBeUndefined();
+      expect(result).toEqual({ status: 200, body, cookies: [] });
+    }
+  });
+});
