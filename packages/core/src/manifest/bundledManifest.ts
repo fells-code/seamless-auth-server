@@ -3,7 +3,7 @@ import type { AdapterManifest } from "./adapterManifest.js";
 
 export const BUNDLED_ADAPTER_MANIFEST: AdapterManifest = {
   "schemaVersion": 1,
-  "apiVersion": "0.21.0",
+  "apiVersion": "0.22.0",
   "session": {
     "subject": "sub",
     "token": "token",
@@ -40,6 +40,21 @@ export const BUNDLED_ADAPTER_MANIFEST: AdapterManifest = {
     {
       "method": "PUT",
       "path": "/admin/applications/{id}/keys",
+      "credential": "access"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/applications/{id}/links",
+      "credential": "access"
+    },
+    {
+      "method": "DELETE",
+      "path": "/admin/applications/{id}/links/{linkedId}",
+      "credential": "access"
+    },
+    {
+      "method": "PUT",
+      "path": "/admin/applications/{id}/links/{linkedId}",
       "credential": "access"
     },
     {
