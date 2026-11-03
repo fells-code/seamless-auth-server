@@ -91,8 +91,6 @@ function prepare(name: string, opts: SeamlessGuardOptions) {
         method: request.method,
         secFetchSite: request.headers.get("sec-fetch-site") ?? undefined,
         origin: request.headers.get("origin") ?? undefined,
-        cookieSecure: opts.cookieSecure,
-        cookieSameSite: opts.cookieSameSite,
         allowedOrigins: opts.allowedOrigins,
       });
 

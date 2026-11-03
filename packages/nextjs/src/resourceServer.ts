@@ -9,6 +9,11 @@ import {
 
 /** What a route requires beyond a valid token. Checked in this order. */
 export interface ResourceServerRequirements {
+  /**
+   * Accept a client credentials token (`isClient`). Defaults to `true`. With
+   * `false`, such a token is refused with `403 user_required`.
+   */
+  allowClients?: boolean;
   /** Every one of the scopes. */
   scopes?: string | string[];
   /** Any one of the roles, with scoped role matching. */
@@ -92,6 +97,7 @@ export function createResourceServer(
   ): Promise<ResourceServerResult> {
     const { user, rejection } = await verifier.authenticate(
       request.headers.get("authorization") ?? undefined,
+      { allowClients: requirements.allowClients },
     );
     if (rejection) return { response: toResponse(rejection) };
 

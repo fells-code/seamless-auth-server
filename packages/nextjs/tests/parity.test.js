@@ -119,13 +119,23 @@ function parseBody(text) {
   }
 }
 
+// What the browser client sends: a state-changing request declares JSON even
+// with no body, which forces a CORS preflight (#256).
+function clientHeaders(method, headers) {
+  const declared = Object.keys(headers ?? {}).some(
+    (name) => name.toLowerCase() === "content-type",
+  );
+  return method.toLowerCase() === "get" || declared
+    ? (headers ?? {})
+    : { "content-type": "application/json", ...(headers ?? {}) };
+}
+
 async function viaNext({ method, path, cookie, headers, payload, options }) {
   const handlers = createSeamlessAuthHandler({ ...OPTIONS, ...options });
   const verb = method.toUpperCase();
   const requestHeaders = {
-    ...(headers ?? {}),
+    ...clientHeaders(method, headers),
     ...(cookie ? { cookie } : {}),
-    ...(payload === undefined ? {} : { "content-type": "application/json" }),
   };
 
   const res = await handlers[verb](
@@ -145,7 +155,7 @@ async function viaNext({ method, path, cookie, headers, payload, options }) {
 
 async function viaExpress({ method, path, cookie, headers, payload, options }) {
   let req = request(buildExpress(options))[method](`/auth${path}`);
-  if (headers) req = req.set(headers);
+  req = req.set(clientHeaders(method, headers));
   if (cookie) req = req.set("Cookie", cookie);
   if (payload !== undefined) req = req.send(payload);
 
@@ -1805,8 +1815,8 @@ describe("next and express serve the OAuth provider discovery refresh", () => {
 });
 
 // A recovery session that enrolls a factor is rotated at once, so its new access
-// cookie drops the recovery claim (#235). Refresh tokens are unique per run: the
-// adapters replay a recent refresh for the same token, which would hide the call.
+// cookie drops the recovery claim (#235). Refresh tokens are unique per run, as
+// in a real rotation chain, so each run's refresh call is its own.
 describe("next and express rotate a recovery session after enrollment", () => {
   const originalFetch = global.fetch;
   afterEach(() => {

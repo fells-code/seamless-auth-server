@@ -287,9 +287,11 @@ app.set("trust proxy", 1);
 app.set("trust proxy", "10.0.0.0/8");
 ```
 
-With `trust proxy` set to `true`, Express takes `req.ip` from the leftmost `X-Forwarded-For` entry,
-which any client can set. The adapter detects that case, logs a startup warning, and forwards no
-client IP at all rather than forwarding an attacker-chosen one.
+With `trust proxy` set to `true`, or to anything else that trusts every address (subnets that
+together cover the whole address space, or a function that always returns `true`), Express takes
+`req.ip` from the leftmost `X-Forwarded-For` entry, which any client can set. The adapter detects
+that case, logs a warning, and forwards no client IP at all rather than forwarding an
+attacker-chosen one.
 
 If your topology cannot be expressed as a hop count or subnet, supply `resolveClientIp` and derive
 the address yourself, for example from a load-balancer header you know is stripped at the edge:
@@ -339,33 +341,44 @@ app.use(
 
 #### Cross-site request protection
 
-A `SameSite=None` cookie is attached to cross-site requests, so a page on any
-origin could drive a state-changing call to the adapter with the signed-in
-user's session. When the effective `sameSite` is `none`, the router rejects
-cross-site state-changing requests with `403 { "error":
-"cross_site_request_blocked" }`. This runs by default and needs no configuration.
+A session cookie rides any request the browser considers allowed by its
+`SameSite` setting: every cross-site request for `None`, and every same-site
+request (a sibling subdomain included) for `Lax` and `Strict`. So the router
+guards state-changing requests whatever the cookie policy. This runs by default
+and needs no configuration.
 
 - The guard reads `Sec-Fetch-Site`, which current Chrome, Firefox, and Safari
   send and page JavaScript cannot forge. A non-safe request (anything other than
-  `GET`, `HEAD`, or `OPTIONS`) is rejected when that header is `cross-site`.
-  Same-origin single-page-app calls send `same-origin` or `same-site` and pass
-  with no allowlist; with `allowedOrigins` set, a `same-site` call must also
-  come from a listed `Origin`.
+  `GET`, `HEAD`, or `OPTIONS`) is rejected with `403 { "error":
+  "cross_site_request_blocked" }` when that header is `cross-site`. Same-origin
+  single-page-app calls send `same-origin` or `same-site` and pass with no
+  allowlist; with `allowedOrigins` set, a `same-site` call must also come from a
+  listed `Origin`.
+- A non-safe request must also declare `Content-Type: application/json` or carry
+  an `x-seamless-auth-transport` header (any value), even with no body, or it is
+  rejected with `415 { "error": "unsupported_media_type" }`. An HTML form or a
+  `no-cors` fetch can send neither, so this forces a CORS preflight. `POST
+  /refresh`, `DELETE /logout` and `DELETE /logout/all` are exempt for now,
+  because the browser client sends them bare; they still get the origin check.
 - Safe methods are never gated, so `GET /magic-link/verify/:token` and the CORS
   preflight (`OPTIONS`) are unaffected. `POST /magic-link/verify/:token/confirm`
   is a state change and is guarded like any other, so serve the page that calls
   it from your own site.
+- A literal `null` `Origin` (a sandboxed or opaque document) is refused
+  whatever `Sec-Fetch-Site` and `allowedOrigins` say.
 - A caller that sends neither `Origin` nor `Sec-Fetch-Site`, such as a
-  server-to-server request, passes.
+  server-to-server request, passes the origin check, but still needs the JSON
+  content type or the transport header.
 
 `allowedOrigins` is an opt-in `Origin` allowlist. When it is set, the request
 `Origin` must appear in the list for a state-changing request that is
 `same-site`, and for one from an older browser that sends no `Sec-Fetch-Site`;
 otherwise the request is rejected. `same-site` covers every subdomain of your
 registrable domain, so without the list a page on a sibling subdomain can send
-a request that carries a `SameSite=None` cookie. A `same-origin` request always
-passes. When `allowedOrigins` is unset the guard behaves as before (a
-`same-site` request passes, as does one with no `Sec-Fetch-Site`), so setting it
+a request that carries your cookie. A `same-origin` request always passes. An
+empty list is a configured list: it admits no `same-site` request and no
+metadata-free request that names an `Origin`. When `allowedOrigins` is unset a
+`same-site` request passes, as does one with no `Sec-Fetch-Site`, so setting it
 is never required. Set it when you do not trust every subdomain of your site, or
 support browsers old enough to lack `Sec-Fetch-Site`:
 
@@ -532,7 +545,8 @@ routes serve a second contract when the request carries the header
   the pair in the response. The auth API rotates refresh tokens and treats a replayed one as theft
   (revoking the whole chain, `401 { "error": "refresh_token_reused" }`), so refresh once at a time.
   Concurrent rotations of the same token that reach the adapter together are collapsed into one
-  upstream call.
+  upstream call. One that arrives after that rotation completed goes to the auth API as a replay,
+  however soon after.
 - Message delivery, client IP and user agent forwarding, and the service token behave exactly as
   in cookie transport, since the adapter attaches them regardless of how the client carries its
   session.
@@ -569,6 +583,10 @@ To accept the same access token on your own routes, configure
 
 `POST /auth/refresh` also works in cookie transport, rotating the refresh cookie into fresh
 session cookies, for a browser client that wants an explicit refresh rather than the silent one.
+Browser tabs share one refresh cookie, so cookie transport also shares a completed rotation for 5
+seconds: a request presenting the old refresh cookie within 5 seconds of a successful rotation gets
+that rotated session without calling the auth API. After 5 seconds the old cookie goes to the auth
+API as a replay. A failed rotation is never shared.
 
 ---
 
@@ -624,8 +642,17 @@ app.get("/api/profile", guard, (req, res) => {
   audience?: string;       // expected `aud` on a bearer token: the auth server's ISSUER
   authServerIssuer?: string; // expected `iss` on a bearer token (defaults to authServerUrl)
   allowRecoverySession?: boolean; // accept a recovery session (default false)
+  allowedOrigins?: string[]; // origin allowlist, as on createSeamlessAuthServer
 }
 ```
+
+On a cookie session the guard runs the same origin check as the auth router on a
+state-changing request: a `cross-site` one or a literal `null` `Origin` is
+refused with `403 { "error": "cross_site_request_blocked" }`, and with
+`allowedOrigins` set (pass the router's list) a `same-site` one or one with no
+`Sec-Fetch-Site` must come from a listed `Origin`. A bearer request is not
+checked, since no browser attaches its token on its own. Your own routes need no
+JSON content type.
 
 A recovery session comes from account recovery or a recovery code, and its access token carries
 `recovery: true`. It can only enroll a new passkey or authenticator app, so the guard refuses it
@@ -697,6 +724,7 @@ Compatibility rules:
 | --- | --- | --- |
 | No session, an invalid or expired one, or a sign-in flow's ephemeral token | 401 | `{"error":"unauthenticated"}` |
 | A recovery session, unless `allowRecoverySession: true` | 403 | `{"error":"enrollment_required"}` |
+| A cookie request the origin check refuses (see `allowedOrigins`) | 403 | `{"error":"cross_site_request_blocked"}` |
 | None of the roles granted, or no roles at all | 403 | `{"error":"insufficient_role"}` |
 
 The body never names the user's roles or the required ones. These are the codes
@@ -752,6 +780,15 @@ app.post(
 `requireAuth()` sets `req.user`. The other guards only trust a user it verified, so they cannot
 be satisfied by a cookie session or anything else that set `req.user`.
 
+`requireAuth({ allowClients: false })` refuses a client credentials token with
+`403 { "error": "user_required" }`, after the token itself has verified (a bad token still gets
+`401`). The guards mounted after it then only ever see a user, so put the option on
+`requireAuth` rather than on `requireScope`, `requireRole` or `requireStepUp`:
+
+```ts
+app.get("/me/orders", api.requireAuth({ allowClients: false }), api.requireRole("member"), listMine);
+```
+
 Tokens are verified the same way in every Seamless adapter (Express, Fastify, Next.js, Go,
 Python and Rust), held to shared signed test vectors:
 
@@ -771,6 +808,7 @@ the key set cannot be fetched, the request gets `401 invalid_token`; nothing fai
 | No bearer token            | 401    | `missing_token`                    | `Bearer`                                                                           |
 | Token fails verification   | 401    | `invalid_token`                    | `Bearer error="invalid_token"`                                                     |
 | Missing scope (all needed) | 403    | `insufficient_scope`, plus `scope` | `Bearer error="insufficient_scope", scope="..."`                                   |
+| Client token, users only   | 403    | `user_required`                    | none                                                                               |
 | Missing role (any one)     | 403    | `insufficient_role`                | none                                                                               |
 | Step-up not met            | 401    | `insufficient_user_authentication` | RFC 9470 challenge with `error_description`, and `acr_values` / `max_age` if set   |
 
@@ -780,8 +818,9 @@ the key set cannot be fetched, the request gets `401 invalid_token`; nothing fai
 `max_age` to send the user back through the provider with.
 
 The verified user has `id` (`sub`), `clientId`, `scopes`, `roles`, `sid`, `orgId`, `acr`, `amr`
-and `authTime`. A client credentials token (`sub` equal to `client_id`) verifies too, and fails
-role and step-up checks.
+and `authTime`. A client credentials token (`sub` equal to `client_id`) verifies too, with
+`isClient` set to `true` and the client id in `id`, and fails role and step-up checks. Check
+`isClient` before treating `id` as a user id, or pass `allowClients: false` to `requireAuth`.
 
 ---
 

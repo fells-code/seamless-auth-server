@@ -19,6 +19,11 @@ import { extractBearerToken } from "./verifyAccessToken.js";
  */
 export interface ResourceServerClaims {
   clientId: string;
+  /**
+   * A client credentials token, where `sub` is the client id: a machine acting
+   * for itself, with no user behind it. `id` is then a client id, not a user id.
+   */
+  isClient: boolean;
   scopes: string[];
   sid?: string;
   orgId?: string;
@@ -53,6 +58,15 @@ export type ResourceServerAuthResult =
   | { user: ResourceServerUser; rejection?: undefined }
   | { user?: undefined; rejection: GuardRejection };
 
+export interface ResourceServerAuthOptions {
+  /**
+   * Accept a client credentials token (`isClient`). Defaults to `true`. With
+   * `false`, such a token is refused with `403 user_required`, so only a token
+   * issued to a user gets through.
+   */
+  allowClients?: boolean;
+}
+
 export interface StepUpRequirement {
   /** Any of these `acr` values. `phr` is also met by `phrh`. */
   acrValues?: string[];
@@ -68,6 +82,7 @@ export interface ResourceServer {
   /** Verifies the raw `Authorization` header. */
   authenticate(
     authorization: string | undefined,
+    options?: ResourceServerAuthOptions,
   ): Promise<ResourceServerAuthResult>;
   /** All of the scopes. */
   authorizeScopes(
@@ -110,6 +125,11 @@ const MORE_RECENT = "More recent authentication is required";
 const INSUFFICIENT_ROLE: GuardRejection = {
   status: 403,
   errorCode: "insufficient_role",
+};
+
+const USER_REQUIRED: GuardRejection = {
+  status: 403,
+  errorCode: "user_required",
 };
 
 function requiredValues(guard: string, values: string | string[]): string[] {
@@ -243,6 +263,7 @@ function toUser(claims: JWTPayload, token: string): ResourceServerUser | null {
   return {
     id: sub,
     clientId,
+    isClient: sub === clientId,
     scopes: scope ? scope.split(" ").filter(Boolean) : [],
     roles: roles ?? [],
     amr: amr ?? [],
@@ -381,12 +402,15 @@ export function createResourceServer(
 
   async function authenticate(
     authorization: string | undefined,
+    { allowClients = true }: ResourceServerAuthOptions = {},
   ): Promise<ResourceServerAuthResult> {
     const token = extractBearerToken(authorization);
     if (!token) return { rejection: MISSING_TOKEN };
 
     const user = await verify(token);
-    return user ? { user } : { rejection: INVALID_TOKEN };
+    if (!user) return { rejection: INVALID_TOKEN };
+    if (user.isClient && !allowClients) return { rejection: USER_REQUIRED };
+    return { user };
   }
 
   function scopeCheck(scopes: string | string[]) {

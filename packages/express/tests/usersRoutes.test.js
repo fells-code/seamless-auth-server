@@ -117,6 +117,7 @@ describe("users proxy routes", () => {
 
     const res = await request(createApp())
       .delete("/auth/users/delete")
+      .set("Content-Type", "application/json")
       .set("Cookie", createAccessCookie());
 
     expect(res.status).toBe(200);
@@ -148,6 +149,7 @@ describe("users proxy routes", () => {
 
     const res = await request(createApp())
       .delete("/auth/users/delete")
+      .set("Content-Type", "application/json")
       .set("Cookie", createAccessCookie());
 
     expect(res.status).toBe(404);
@@ -158,7 +160,9 @@ describe("users proxy routes", () => {
   });
 
   it("does not reach the auth API for a deletion without a session", async () => {
-    const res = await request(createApp()).delete("/auth/users/delete");
+    const res = await request(createApp())
+      .delete("/auth/users/delete")
+      .set("Content-Type", "application/json");
 
     expect([400, 401]).toContain(res.status);
     expect(global.fetch).not.toHaveBeenCalled();

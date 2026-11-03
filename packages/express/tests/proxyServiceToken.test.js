@@ -147,6 +147,50 @@ describe("proxied service token", () => {
     warn.mockRestore();
   });
 
+  // Each of these trusts every address as a proxy, so req.ip is the leftmost
+  // X-Forwarded-For entry the client wrote (#257). Express refuses a /0 range, so
+  // the whole IPv4 space is written as its two halves.
+  it.each([
+    ["two subnets covering every IPv4 address", "0.0.0.0/1, 128.0.0.0/1"],
+    ["a function that trusts every address", () => true],
+  ])("drops the client IP when trust proxy is %s", async (_label, setting) => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const app = createApp((a) => a.set("trust proxy", setting));
+
+    await request(app)
+      .delete("/auth/admin/users")
+      .set("Cookie", createAccessCookie())
+      .set("X-Forwarded-For", "1.2.3.4")
+      .send({ userId: "user-1" });
+
+    expect(lastHeaders()).not.toHaveProperty("x-seamless-client-ip");
+    warn.mockRestore();
+  });
+
+  it("forwards the client IP behind two trusted hops", async () => {
+    const app = createApp((a) => a.set("trust proxy", 2));
+
+    await request(app)
+      .delete("/auth/admin/users")
+      .set("Cookie", createAccessCookie())
+      .set("X-Forwarded-For", "1.2.3.4, 203.0.113.44, 10.0.0.2")
+      .send({ userId: "user-1" });
+
+    expect(lastHeaders()["x-seamless-client-ip"]).toBe("203.0.113.44");
+  });
+
+  it("forwards the client IP when trust proxy names the proxy address", async () => {
+    const app = createApp((a) => a.set("trust proxy", "loopback"));
+
+    await request(app)
+      .delete("/auth/admin/users")
+      .set("Cookie", createAccessCookie())
+      .set("X-Forwarded-For", "203.0.113.44")
+      .send({ userId: "user-1" });
+
+    expect(lastHeaders()["x-seamless-client-ip"]).toBe("203.0.113.44");
+  });
+
   // The auth API records the user agent on every audit row and folds it into a
   // device class. Without this header it only ever sees this adapter's own.
   it("forwards the browser user agent", async () => {

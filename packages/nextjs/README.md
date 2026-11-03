@@ -287,6 +287,17 @@ export const POST = api.protect(
 `protect` checks `scopes`, then `roles`, then `stepUp`. `api.authenticate(request, requirements)`
 returns `{ user }` or the `{ response }` to send, for handlers that branch on it.
 
+`allowClients: false` in the requirements refuses a client credentials token with
+`403 { "error": "user_required" }`. It is checked once the token has verified (a bad token still
+gets `401`) and before `scopes`, `roles` and `stepUp`:
+
+```ts
+export const GET = api.protect(
+  async (_request, _context, user) => Response.json(await listOrdersFor(user.id)),
+  { allowClients: false, roles: "member" },
+);
+```
+
 Tokens are verified the same way in every Seamless adapter (Express, Fastify, Next.js, Go,
 Python and Rust), held to shared signed test vectors:
 
@@ -306,6 +317,7 @@ the key set cannot be fetched, the request gets `401 invalid_token`; nothing fai
 | No bearer token            | 401    | `missing_token`                    | `Bearer`                                                                           |
 | Token fails verification   | 401    | `invalid_token`                    | `Bearer error="invalid_token"`                                                     |
 | Missing scope (all needed) | 403    | `insufficient_scope`, plus `scope` | `Bearer error="insufficient_scope", scope="..."`                                   |
+| Client token, users only   | 403    | `user_required`                    | none                                                                               |
 | Missing role (any one)     | 403    | `insufficient_role`                | none                                                                               |
 | Step-up not met            | 401    | `insufficient_user_authentication` | RFC 9470 challenge with `error_description`, and `acr_values` / `max_age` if set   |
 
@@ -315,8 +327,9 @@ the key set cannot be fetched, the request gets `401 invalid_token`; nothing fai
 `max_age` to send the user back through the provider with.
 
 The verified user has `id` (`sub`), `clientId`, `scopes`, `roles`, `sid`, `orgId`, `acr`, `amr`
-and `authTime`. A client credentials token (`sub` equal to `client_id`) verifies too, and fails
-role and step-up checks.
+and `authTime`. A client credentials token (`sub` equal to `client_id`) verifies too, with
+`isClient` set to `true` and the client id in `id`, and fails role and step-up checks. Check
+`isClient` before treating `id` as a user id, or pass `allowClients: false`.
 
 ## Options
 
@@ -335,7 +348,7 @@ adapters, plus `basePath`.
 | `cookieDomain` | none | Domain attribute for the auth cookies |
 | `cookieSecure` | `true` | Set `false` only for local HTTP development |
 | `cookieSameSite` | `none` when secure, else `lax` | SameSite policy |
-| `allowedOrigins` | none | Origin allowlist for state-changing requests that are `same-site` or come from browsers without `Sec-Fetch-Site` |
+| `allowedOrigins` | none | Origin allowlist for state-changing requests that are `same-site` or come from browsers without `Sec-Fetch-Site`. Set, even to `[]`, it is enforced. Whatever it says, a `cross-site` request or a literal `null` `Origin` is refused with `403 cross_site_request_blocked` |
 | `accessCookieName` | `seamless-access` | Session cookie name |
 | `registrationCookieName` | `seamless-ephemeral` | Registration cookie name |
 | `refreshCookieName` | `seamless-refresh` | Refresh cookie name |
@@ -343,6 +356,16 @@ adapters, plus `basePath`.
 | `messaging` | none | Adopter-supplied delivery transports and overrides |
 | `resolveClientIp` | none | Picks the end user's IP to forward |
 | `trustedProxies` | none | Addresses or CIDR ranges of your proxies; the client IP is read from `X-Forwarded-For` past them |
+
+Every state-changing request to the auth routes (anything but `GET`, `HEAD` and
+`OPTIONS`) must declare `Content-Type: application/json` or carry an
+`x-seamless-auth-transport` header (any value), even with no body, or it is
+refused with `415 {"error":"unsupported_media_type"}`. An HTML form or a
+`no-cors` fetch can send neither, so this forces a CORS preflight. `POST
+/refresh`, `DELETE /logout` and `DELETE /logout/all` are exempt for now, because
+the browser client sends them bare; they still get the origin check, which runs
+whatever `cookieSameSite` is. Guards on your own routes get the origin check
+only.
 
 The session helpers take `authServerUrl`, `cookieSecret`, and optionally
 `serviceSecret`, `jwksKid`, the cookie names, `userAgent`, `headers`,

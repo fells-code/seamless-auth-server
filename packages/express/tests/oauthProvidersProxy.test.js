@@ -140,6 +140,7 @@ describe("oauth provider admin proxy routes", () => {
 
     const res = await request(createApp())
       .delete("/auth/system-config/oauth-providers/google")
+      .set("Content-Type", "application/json")
       .set("Cookie", createAccessCookie());
 
     expect(res.status).toBe(200);

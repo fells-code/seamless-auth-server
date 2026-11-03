@@ -120,8 +120,8 @@ const preAuthCookie = () =>
     { algorithm: "HS256", expiresIn: "300s" },
   )}`;
 
-// Each silent refresh needs its own refresh token: core replays a recent
-// refresh result for the same token rather than calling the auth API again.
+// Each silent refresh uses its own refresh token, as a real rotation chain does,
+// so no two tests share a rotation core still has in flight.
 let refreshCount = 0;
 const silentRefresh = () => ({
   method: "get",

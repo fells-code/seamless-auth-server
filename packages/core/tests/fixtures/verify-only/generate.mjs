@@ -2,6 +2,15 @@
 // adapter's verify-only mode is tested against (Express, Fastify and Next.js
 // here, and the Go, Python and Rust adapters, which copy vectors.json).
 //
+// A consumer reads only the keys it knows, so additions stay out of the way of
+// an adapter that has not implemented them yet:
+//
+// - `verify[].is_client` sits beside `user`, not in it, because consumers
+//   compare `user` whole.
+// - `user_required_requests` holds requests for an auth guard set to refuse
+//   client credentials tokens (`auth.allow_clients` false). It is its own list
+//   because an adapter without the option would answer them as `requests`.
+//
 // RS256 signatures are deterministic, so rerunning with the committed keys
 // reproduces the file byte for byte. The keys are test-only.
 //
@@ -235,7 +244,12 @@ const accepted = {
 
 const verify = Object.keys(tokens).map((name) =>
   name in accepted
-    ? { name, valid: true, user: user(accepted[name]) }
+    ? {
+        name,
+        valid: true,
+        user: user(accepted[name]),
+        is_client: accepted[name].sub === accepted[name].client_id,
+      }
     : { name, valid: false },
 );
 
@@ -261,6 +275,11 @@ const scopeDenied = (scope) => ({
 const roleDenied = {
   status: 403,
   body: { error: "insufficient_role" },
+  www_authenticate: null,
+};
+const userRequired = {
+  status: 403,
+  body: { error: "user_required" },
   www_authenticate: null,
 };
 
@@ -471,6 +490,53 @@ const requests = [
   },
 ];
 
+const usersOnly = { allow_clients: false };
+
+const userRequiredRequests = [
+  {
+    name: "user_required_client_credentials",
+    authorization: bearer("client_credentials"),
+    auth: usersOnly,
+    guard: null,
+    expect: userRequired,
+  },
+  {
+    name: "user_required_user",
+    authorization: bearer("user_otp"),
+    auth: usersOnly,
+    guard: null,
+    expect: ok,
+  },
+  {
+    name: "user_required_missing_token",
+    authorization: null,
+    auth: usersOnly,
+    guard: null,
+    expect: missing,
+  },
+  {
+    name: "user_required_invalid_token_first",
+    authorization: bearer("expired"),
+    auth: usersOnly,
+    guard: null,
+    expect: invalid,
+  },
+  {
+    name: "user_required_before_scope",
+    authorization: bearer("client_credentials"),
+    auth: usersOnly,
+    guard: { kind: "scope", scopes: ["reports:read"] },
+    expect: userRequired,
+  },
+  {
+    name: "user_required_user_with_scope",
+    authorization: bearer("user_passkey"),
+    auth: usersOnly,
+    guard: { kind: "scope", scopes: ["orders:write"] },
+    expect: ok,
+  },
+];
+
 const vectors = {
   version: 1,
   issuer: ISSUER,
@@ -481,6 +547,7 @@ const vectors = {
   tokens,
   verify,
   requests,
+  user_required_requests: userRequiredRequests,
 };
 
 writeFileSync(

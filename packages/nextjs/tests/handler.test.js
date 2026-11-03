@@ -104,7 +104,10 @@ describe("createSeamlessAuthHandler", () => {
     });
 
     it("answers 404 for a known path under the wrong method", async () => {
-      const res = await call("/auth/oauth/providers", { method: "DELETE" });
+      const res = await call("/auth/oauth/providers", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+      });
 
       expect(res.status).toBe(404);
     });
@@ -174,12 +177,17 @@ describe("createSeamlessAuthHandler", () => {
       expect(await res.json()).toEqual({ error: "payload_too_large" });
     });
 
+    // The transport header gets it past the content-type gate (#256), so this
+    // reaches the body parser.
     it("ignores a body that is not JSON", async () => {
       global.fetch = jest.fn(async () => upstream(400, { error: "invalid" }));
 
       await call("/auth/login", {
         method: "POST",
-        headers: { "content-type": "text/plain" },
+        headers: {
+          "content-type": "text/plain",
+          "x-seamless-auth-transport": "cookie",
+        },
         body: "identifier=a@b.c",
       });
 

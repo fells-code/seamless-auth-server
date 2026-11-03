@@ -3,6 +3,7 @@ import {
   createResourceServer as createCoreResourceServer,
   type GuardRejection,
   type ResourceServer,
+  type ResourceServerAuthOptions,
   type ResourceServerOptions,
   type ResourceServerUser,
   type StepUpRequirement,
@@ -14,8 +15,12 @@ type PreHandler = (
 ) => Promise<unknown>;
 
 export interface FastifyResourceServer {
-  /** Verifies `Authorization: Bearer` and sets `request.user`. Run before the other guards. */
-  requireAuth(): PreHandler;
+  /**
+   * Verifies `Authorization: Bearer` and sets `request.user`. Run before the
+   * other guards. `{ allowClients: false }` refuses a client credentials token
+   * with `403 user_required`, and the guards after it then only see users.
+   */
+  requireAuth(options?: ResourceServerAuthOptions): PreHandler;
   /** Every one of the scopes. */
   requireScope(scopes: string | string[]): PreHandler;
   /** Any one of the roles. Scoped names match as in `requireRole`. */
@@ -72,13 +77,14 @@ export function createResourceServer(
 
   return {
     verifier,
-    requireAuth() {
+    requireAuth(options) {
       return async function resourceServerAuth(
         req: FastifyRequest,
         reply: FastifyReply,
       ) {
         const { user, rejection } = await verifier.authenticate(
           req.headers.authorization,
+          options,
         );
         if (rejection) return reject(reply, rejection);
 

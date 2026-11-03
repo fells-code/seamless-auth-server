@@ -40,6 +40,7 @@ export type {
   DeliveryResult,
   EmailMessage,
   EmailTransport,
+  ResourceServerAuthOptions,
   ResourceServerClaims,
   ResourceServerOptions,
   ResourceServerUser,

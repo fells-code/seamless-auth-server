@@ -138,6 +138,8 @@ describe("refreshAccessToken", () => {
     expect(authFetchMock).toHaveBeenCalledTimes(1);
   });
 
+  // Another tab sending the stale cookie a moment later shares the completed
+  // rotation rather than tripping reuse detection (#258).
   it("reuses the freshly-rotated result for an immediate follow-up call with the stale cookie", async () => {
     const { refreshAccessToken } =
       await import("../dist/refreshAccessToken.js");

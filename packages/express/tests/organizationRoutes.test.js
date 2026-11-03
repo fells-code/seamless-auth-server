@@ -120,6 +120,7 @@ describe("organization proxy routes", () => {
 
     const res = await request(createApp())
       .delete("/auth/admin/organizations/org-1")
+      .set("Content-Type", "application/json")
       .set("Cookie", createAccessCookie());
 
     expect(res.status).toBe(200);
@@ -138,9 +139,11 @@ describe("organization proxy routes", () => {
   // Without a session the adapter must answer on its own rather than forwarding a
   // destructive call upstream with no identity attached.
   it("refuses organization deletion without an access session", async () => {
-    const res = await request(createApp()).delete(
-      "/auth/admin/organizations/org-1",
-    );
+    const res = await request(createApp())
+      .delete(
+        "/auth/admin/organizations/org-1",
+      )
+      .set("Content-Type", "application/json");
 
     expect(res.status).toBe(401);
     expect(global.fetch).not.toHaveBeenCalled();
@@ -190,6 +193,7 @@ describe("organization proxy routes", () => {
 
       const res = await request(createApp())
         [verb]("/auth/admin/organizations/org-1/oauth-providers/legacy-idp/retirement")
+        .set("Content-Type", "application/json")
         .set("Cookie", createAccessCookie());
 
       expect(res.status).toBe(200);
@@ -207,9 +211,11 @@ describe("organization proxy routes", () => {
   );
 
   it("refuses OAuth provider retirement without an access session", async () => {
-    const res = await request(createApp()).put(
-      "/auth/admin/organizations/org-1/oauth-providers/legacy-idp/retirement",
-    );
+    const res = await request(createApp())
+      .put(
+        "/auth/admin/organizations/org-1/oauth-providers/legacy-idp/retirement",
+      )
+      .set("Content-Type", "application/json");
 
     expect(res.status).toBe(401);
     expect(global.fetch).not.toHaveBeenCalled();
