@@ -102,10 +102,18 @@ from a recovery session, so the new access cookie drops the claim at once. If th
 refresh fails, the next `POST /auth/refresh` drops it instead. A bearer client
 calls `/auth/refresh` itself.
 
+On a cookie session, `requireAuth` runs the same origin check as the plugin on a
+state-changing request: a `cross-site` one or a literal `null` `Origin` is
+refused, and with `allowedOrigins` set (pass the plugin's list) a `same-site` one
+or one with no `Sec-Fetch-Site` must come from a listed `Origin`. A bearer
+request is not checked, since no browser attaches its token on its own. Your own
+routes need no JSON content type.
+
 | Refusal | Status | Body |
 | --- | --- | --- |
 | No session, an invalid or expired one, or a sign-in flow's ephemeral token | 401 | `{"error":"unauthenticated"}` |
 | A recovery session, unless `allowRecoverySession: true` | 403 | `{"error":"enrollment_required"}` |
+| A cookie request the origin check refuses (see `allowedOrigins`) | 403 | `{"error":"cross_site_request_blocked"}` |
 | None of the roles granted, or no roles at all | 403 | `{"error":"insufficient_role"}` |
 
 The body never names the user's roles or the required ones. These are the codes
@@ -261,13 +269,23 @@ into the dashboard work: the upstream answers them with the SPA shell.
 | `cookieDomain` | none | Domain attribute for the auth cookies |
 | `cookieSecure` | `true` | Set `false` only for local HTTP development |
 | `cookieSameSite` | `none` when secure, else `lax` | SameSite policy |
-| `allowedOrigins` | none | Origin allowlist for state-changing requests that are `same-site` or come from browsers without `Sec-Fetch-Site` |
+| `allowedOrigins` | none | Origin allowlist for state-changing requests that are `same-site` or come from browsers without `Sec-Fetch-Site`. Set, even to `[]`, it is enforced. Whatever it says, a `cross-site` request or a literal `null` `Origin` is refused with `403 cross_site_request_blocked` |
 | `accessCookieName` | `seamless-access` | Session cookie name |
 | `registrationCookieName` | `seamless-ephemeral` | Registration cookie name |
 | `refreshCookieName` | `seamless-refresh` | Refresh cookie name |
 | `preAuthCookieName` | `seamless-ephemeral` | Login-initiation cookie name |
 | `messaging` | none | Adopter-supplied delivery transports and overrides |
 | `resolveClientIp` | none | Resolver for the end user's IP |
+
+Every state-changing request to the auth routes (anything but `GET`, `HEAD` and
+`OPTIONS`) must declare `Content-Type: application/json` or carry an
+`x-seamless-auth-transport` header (any value), even with no body, or it is
+refused with `415 {"error":"unsupported_media_type"}`. An HTML form or a
+`no-cors` fetch can send neither, so this forces a CORS preflight. `POST
+/refresh`, `DELETE /logout` and `DELETE /logout/all` are exempt for now, because
+the browser client sends them bare; they still get the origin check, which runs
+whatever `cookieSameSite` is. Guards on your own routes get the origin check
+only.
 
 ### Client IP
 

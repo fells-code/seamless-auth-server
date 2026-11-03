@@ -362,6 +362,8 @@ and needs no configuration.
   preflight (`OPTIONS`) are unaffected. `POST /magic-link/verify/:token/confirm`
   is a state change and is guarded like any other, so serve the page that calls
   it from your own site.
+- A literal `null` `Origin` (a sandboxed or opaque document) is refused
+  whatever `Sec-Fetch-Site` and `allowedOrigins` say.
 - A caller that sends neither `Origin` nor `Sec-Fetch-Site`, such as a
   server-to-server request, passes the origin check, but still needs the JSON
   content type or the transport header.
@@ -633,8 +635,17 @@ app.get("/api/profile", guard, (req, res) => {
   audience?: string;       // expected `aud` on a bearer token: the auth server's ISSUER
   authServerIssuer?: string; // expected `iss` on a bearer token (defaults to authServerUrl)
   allowRecoverySession?: boolean; // accept a recovery session (default false)
+  allowedOrigins?: string[]; // origin allowlist, as on createSeamlessAuthServer
 }
 ```
+
+On a cookie session the guard runs the same origin check as the auth router on a
+state-changing request: a `cross-site` one or a literal `null` `Origin` is
+refused with `403 { "error": "cross_site_request_blocked" }`, and with
+`allowedOrigins` set (pass the router's list) a `same-site` one or one with no
+`Sec-Fetch-Site` must come from a listed `Origin`. A bearer request is not
+checked, since no browser attaches its token on its own. Your own routes need no
+JSON content type.
 
 A recovery session comes from account recovery or a recovery code, and its access token carries
 `recovery: true`. It can only enroll a new passkey or authenticator app, so the guard refuses it
@@ -706,6 +717,7 @@ Compatibility rules:
 | --- | --- | --- |
 | No session, an invalid or expired one, or a sign-in flow's ephemeral token | 401 | `{"error":"unauthenticated"}` |
 | A recovery session, unless `allowRecoverySession: true` | 403 | `{"error":"enrollment_required"}` |
+| A cookie request the origin check refuses (see `allowedOrigins`) | 403 | `{"error":"cross_site_request_blocked"}` |
 | None of the roles granted, or no roles at all | 403 | `{"error":"insufficient_role"}` |
 
 The body never names the user's roles or the required ones. These are the codes
