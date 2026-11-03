@@ -776,11 +776,14 @@ describe("next.js and express adapters agree", () => {
       global.fetch = refreshUpstream(forged);
       const expressResult = await viaExpress(scenario);
 
-      expect(next.status).toBe(401);
+      // A rotated session that fails verification is not the auth API refusing
+      // the token, so the cookies stay.
+      expect(next.status).toBe(502);
+      expect(next.body).toEqual({ error: "upstream_unavailable" });
+      expect(next.cookies).toEqual([]);
       expect(next.status).toBe(expressResult.status);
       expect(next.body).toEqual(expressResult.body);
       expect(next.cookies).toEqual(expressResult.cookies);
-      expect(next.cookies.some((c) => c.includes("=<signed>"))).toBe(false);
       expect(nextCalls.some((url) => url.endsWith("/users/me"))).toBe(false);
     } finally {
       spy.mockRestore();
@@ -2373,5 +2376,202 @@ describe("next and express deliver enrollment invites through adopter messaging"
       expect(init.headers["x-seamless-auth-delivery-mode"]).toBeUndefined();
       expect(result).toEqual({ status: 200, body, cookies: [] });
     }
+  });
+});
+
+// A refresh that fails ends the session only when the auth API refused the
+// token or the refresh cookie cannot be read. After a network failure or any
+// other answer the token may still be good, or rotated with the answer lost, so
+// the cookies stay for the next attempt (seamless-auth-go#22).
+describe("next and express keep the session through a refresh that fails transiently", () => {
+  const originalFetch = global.fetch;
+  let errorSpy;
+  beforeEach(() => {
+    errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    global.fetch = originalFetch;
+    errorSpy.mockRestore();
+  });
+
+  let run = 0;
+  const refreshCookie = (secret = COOKIE_SECRET) => {
+    run += 1;
+    const value = jwt.sign(
+      { sub: "user-123", refreshToken: `transient-${run}` },
+      secret,
+      { algorithm: "HS256", expiresIn: "3600s" },
+    );
+    return `seamless-refresh=${value}`;
+  };
+
+  function failingUpstream(answer) {
+    return jest.fn(async (url) => {
+      const href = String(url);
+      if (href.endsWith("/.well-known/jwks.json")) return upstream(200, { keys: [jwk] });
+      if (href.endsWith("/refresh")) return answer();
+      return upstream(200, { user: { id: "u1" } });
+    });
+  }
+
+  async function both(scenario, answer) {
+    global.fetch = failingUpstream(answer);
+    const other = await viaNext({ ...scenario, cookie: scenario.cookie() });
+    const otherCalls = global.fetch.mock.calls.map(([url]) => new URL(String(url)).pathname);
+
+    global.fetch = failingUpstream(answer);
+    const expressResult = await viaExpress({ ...scenario, cookie: scenario.cookie() });
+    const expressCalls = global.fetch.mock.calls.map(([url]) => new URL(String(url)).pathname);
+
+    return { other, express: expressResult, otherCalls, expressCalls };
+  }
+
+  const names = (cookies) => cookies.map((cookie) => cookie.split("; ")[0]);
+
+  const SILENT = { method: "get", path: "/users/me", cookie: () => refreshCookie() };
+  const ROUTE = { method: "post", path: "/refresh", cookie: () => refreshCookie() };
+
+  const forgedSession = async () =>
+    upstream(200, {
+      sub: "user-123",
+      token: await accessToken(
+        { sub: "user-123", typ: "access" },
+        (await generateKeyPair("RS256")).privateKey,
+      ),
+      refreshToken: "rotated",
+      ttl: 300,
+      refreshTtl: 3600,
+    });
+
+  const KEPT = [
+    [
+      "the auth API cannot be reached",
+      () => Promise.reject(new TypeError("fetch failed")),
+      502,
+      { error: "upstream_unavailable" },
+    ],
+    ["the auth API answers 503", () => upstream(503, { error: "maintenance" }), 503, { error: "maintenance" }],
+    ["the auth API answers 500", () => upstream(500, { error: "internal" }), 500, { error: "internal" }],
+    ["the auth API answers 429", () => upstream(429, { error: "rate_limited" }), 429, { error: "rate_limited" }],
+    ["the rotated session fails verification", forgedSession, 502, { error: "upstream_unavailable" }],
+    ["the auth API answers 200 without a session", () => upstream(200, { message: "ok" }), 502, { error: "upstream_unavailable" }],
+  ];
+
+  describe.each([
+    ["a silent refresh", SILENT],
+    ["POST /refresh", ROUTE],
+  ])("%s", (_flow, scenario) => {
+    it.each(KEPT)("keeps the cookies when %s", async (_label, answer, status, body) => {
+      const result = await both(scenario, answer);
+
+      expect(result.other).toEqual({ status, body, cookies: [] });
+      expect(result.express).toEqual(result.other);
+      expect(result.otherCalls).not.toContain("/users/me");
+    });
+  });
+
+  it("clears the session when the auth API refuses a silent refresh", async () => {
+    const result = await both(SILENT, () => upstream(401, { error: "refresh_token_reused" }));
+
+    expect(result.other.status).toBe(401);
+    expect(result.other.body).toEqual({ error: "Refresh failed" });
+    expect(names(result.other.cookies)).toEqual(
+      expect.arrayContaining(["seamless-access=<cleared>", "seamless-refresh=<cleared>"]),
+    );
+    expect(result.express).toEqual(result.other);
+  });
+
+  it("clears the session when the auth API refuses POST /refresh", async () => {
+    const result = await both(ROUTE, () => upstream(401, { error: "refresh_token_reused" }));
+
+    expect(result.other.status).toBe(401);
+    expect(result.other.body).toEqual({ error: "invalid_refresh_token" });
+    expect(names(result.other.cookies)).toEqual([
+      "seamless-access=<cleared>",
+      "seamless-refresh=<cleared>",
+    ]);
+    expect(result.express).toEqual(result.other);
+  });
+
+  it.each([
+    ["a silent refresh", { ...SILENT, cookie: () => refreshCookie("another-secret-another-secret-another") }],
+    ["POST /refresh", { ...ROUTE, cookie: () => refreshCookie("another-secret-another-secret-another") }],
+  ])("clears the session when %s holds an unreadable refresh cookie", async (_label, scenario) => {
+    const result = await both(scenario, () => upstream(200, {}));
+
+    expect(result.other.status).toBe(401);
+    expect(names(result.other.cookies)).toEqual(
+      expect.arrayContaining(["seamless-access=<cleared>", "seamless-refresh=<cleared>"]),
+    );
+    expect(result.otherCalls).not.toContain("/refresh");
+    expect(result.express).toEqual(result.other);
+  });
+});
+
+// Nothing passes a request's abort signal to the upstream call, so a caller
+// that goes away cannot cancel a rotation other callers share
+// (seamless-auth-go#22).
+describe("next.js shares a rotation whose first caller went away", () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it("hands the rotated session to the callers still waiting", async () => {
+    let releaseRefresh;
+    const refreshAnswered = new Promise((resolve) => {
+      releaseRefresh = resolve;
+    });
+    let refreshStarted;
+    const started = new Promise((resolve) => {
+      refreshStarted = resolve;
+    });
+    const refreshSignals = [];
+
+    global.fetch = jest.fn(async (url, init) => {
+      const href = String(url);
+      if (href.endsWith("/.well-known/jwks.json")) return upstream(200, { keys: [jwk] });
+      if (href.endsWith("/refresh")) {
+        refreshSignals.push(init?.signal);
+        refreshStarted();
+        await refreshAnswered;
+        return upstream(200, {
+          sub: "user-123",
+          token: REFRESHED_ACCESS_TOKEN,
+          refreshToken: "after-abort",
+          roles: ["admin"],
+          ttl: 300,
+          refreshTtl: 3600,
+        });
+      }
+      return upstream(200, { user: { id: "u1" } });
+    });
+
+    const handlers = createSeamlessAuthHandler(OPTIONS);
+    const cookie = `seamless-refresh=${signed({ sub: "user-123", refreshToken: "shared-abort" }, "3600s")}`;
+    const leaving = new AbortController();
+    const call = (signal) =>
+      handlers.GET(
+        new Request("http://localhost/auth/users/me", {
+          headers: { cookie },
+          ...(signal ? { signal } : {}),
+        }),
+      );
+
+    const first = call(leaving.signal);
+    await started;
+    const second = call();
+    leaving.abort();
+    releaseRefresh();
+
+    const [firstRes, secondRes] = await Promise.all([first, second]);
+
+    expect(refreshSignals).toHaveLength(1);
+    expect(refreshSignals[0]?.aborted).toBe(false);
+    expect(secondRes.status).toBe(200);
+    expect(firstRes.status).toBe(200);
+    expect(
+      secondRes.headers.getSetCookie().some((c) => c.startsWith("seamless-refresh=") && !c.startsWith("seamless-refresh=;")),
+    ).toBe(true);
   });
 });
