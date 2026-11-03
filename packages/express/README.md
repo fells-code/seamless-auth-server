@@ -545,7 +545,8 @@ routes serve a second contract when the request carries the header
   the pair in the response. The auth API rotates refresh tokens and treats a replayed one as theft
   (revoking the whole chain, `401 { "error": "refresh_token_reused" }`), so refresh once at a time.
   Concurrent rotations of the same token that reach the adapter together are collapsed into one
-  upstream call. One that arrives after that rotation completed goes to the auth API as a replay.
+  upstream call. One that arrives after that rotation completed goes to the auth API as a replay,
+  however soon after.
 - Message delivery, client IP and user agent forwarding, and the service token behave exactly as
   in cookie transport, since the adapter attaches them regardless of how the client carries its
   session.
@@ -582,6 +583,10 @@ To accept the same access token on your own routes, configure
 
 `POST /auth/refresh` also works in cookie transport, rotating the refresh cookie into fresh
 session cookies, for a browser client that wants an explicit refresh rather than the silent one.
+Browser tabs share one refresh cookie, so cookie transport also shares a completed rotation for 5
+seconds: a request presenting the old refresh cookie within 5 seconds of a successful rotation gets
+that rotated session without calling the auth API. After 5 seconds the old cookie goes to the auth
+API as a replay. A failed rotation is never shared.
 
 ---
 

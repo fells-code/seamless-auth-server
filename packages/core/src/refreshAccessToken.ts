@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { authFetch } from "./authFetch.js";
 import { createServiceToken } from "./createServiceToken.js";
 import { verifyRefreshCookie } from "./verifyRefreshCookie.js";
@@ -40,7 +42,8 @@ const inFlightRefreshes = new Map<
  * Only a rotation still in flight is shared. Once it completes, a caller that
  * presents the same token again goes to the auth API, whose reuse detection is
  * what catches a stolen token; handing that caller the new session would hide
- * the replay.
+ * the replay. The refresh cookie is the one exception, see
+ * `completedCookieRefreshes`.
  */
 async function dedupeRefresh<T extends RefreshAccessTokenResult>(
   key: string,
@@ -61,13 +64,78 @@ async function dedupeRefresh<T extends RefreshAccessTokenResult>(
   }
 }
 
+/**
+ * Browser tabs share one cookie jar, so a second tab can send the old refresh
+ * cookie just after the first tab's rotation completed, before its response set
+ * the new one. Sending that to the auth API would revoke the session for both
+ * tabs, so a successful cookie rotation is kept for a few seconds and handed to
+ * a caller presenting the same old cookie. Bearer and session token refreshes
+ * never use this: their clients hold the token themselves, so a late repeat is
+ * a replay for the auth API to judge.
+ *
+ * Keyed on a hash of the cookie so the map never holds a live refresh token.
+ */
+const COMPLETED_COOKIE_REFRESH_TTL_MS = 5000;
+// Rotated cookies are never looked up again, so expired entries are swept on
+// insert (throttled to once per TTL) and the size is capped as a backstop
+// against a burst of distinct cookies.
+const MAX_COMPLETED_COOKIE_REFRESHES = 10_000;
+const completedCookieRefreshes = new Map<
+  string,
+  { result: RefreshAccessTokenResult; expiresAt: number }
+>();
+let lastCompletedPruneAt = 0;
+
+function pruneCompletedCookieRefreshes(now: number): void {
+  if (now - lastCompletedPruneAt >= COMPLETED_COOKIE_REFRESH_TTL_MS) {
+    for (const [key, entry] of completedCookieRefreshes) {
+      if (entry.expiresAt <= now) completedCookieRefreshes.delete(key);
+    }
+    lastCompletedPruneAt = now;
+  }
+
+  while (completedCookieRefreshes.size >= MAX_COMPLETED_COOKIE_REFRESHES) {
+    const oldest = completedCookieRefreshes.keys().next().value;
+    if (oldest === undefined) break;
+    completedCookieRefreshes.delete(oldest);
+  }
+}
+
+async function dedupeCookieRefresh(
+  refreshCookie: string,
+  run: () => Promise<RefreshAccessTokenResult | null>,
+): Promise<RefreshAccessTokenResult | null> {
+  const key = createHash("sha256").update(refreshCookie).digest("base64url");
+
+  const completed = completedCookieRefreshes.get(key);
+  if (completed) {
+    if (completed.expiresAt > Date.now()) return completed.result;
+    completedCookieRefreshes.delete(key);
+  }
+
+  const result = await dedupeRefresh(`cookie:${key}`, run);
+
+  // Every caller sharing the in-flight rotation reaches this; only the first
+  // insert matters, and a later one must not extend the window.
+  if (result && !completedCookieRefreshes.has(key)) {
+    const now = Date.now();
+    pruneCompletedCookieRefreshes(now);
+    completedCookieRefreshes.set(key, {
+      result,
+      expiresAt: now + COMPLETED_COOKIE_REFRESH_TTL_MS,
+    });
+  }
+
+  return result;
+}
+
 export async function refreshAccessToken(
   refreshCookie: string,
   opts: RefreshAccessTokenOptions,
 ): Promise<RefreshAccessTokenResult | null> {
   assertSecrets(opts, { allowPlaceholder: true });
 
-  return dedupeRefresh(`cookie:${refreshCookie}`, async () => {
+  return dedupeCookieRefresh(refreshCookie, async () => {
     const payload = verifyRefreshCookie(refreshCookie, opts.cookieSecret);
     if (!payload) return null;
     return rotate(payload, opts);

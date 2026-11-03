@@ -5,6 +5,8 @@
 "@seamless-auth/nextjs": patch
 ---
 
-Stop replaying a completed refresh rotation to later callers (#258). After a successful rotation, the adapter used to hand the new session to any caller presenting the same old refresh cookie or bearer refresh token for the next 5 seconds, without calling the auth API, so a stolen refresh token replayed in that window got the new tokens and the auth API's reuse detection never saw it.
+Stop replaying a completed bearer refresh rotation to later callers (#258). After a successful rotation, the adapter used to hand the new session to any caller presenting the same old refresh cookie or bearer refresh token for the next 5 seconds, without calling the auth API, so a stolen bearer refresh token replayed in that window got the new tokens and the auth API's reuse detection never saw it.
 
-Only a rotation still in flight is shared now. A request that presents a refresh token after its rotation completed goes to the auth API, which treats it as a replay: the cookie path answers as an expired session, and a bearer client gets the API's `401 {"error":"refresh_token_reused"}`. Two browser tabs that send the same old refresh cookie a moment apart, rather than at the same time, can now trip that reuse detection and sign the user out.
+Bearer transport now shares only a rotation still in flight. A bearer client that presents a refresh token after its rotation completed goes to the auth API, which treats it as a replay and answers `401 {"error":"refresh_token_reused"}`.
+
+Cookie transport keeps the 5 second window, because browser tabs share one refresh cookie and a second tab sending the old cookie just after the first tab's rotation is expected. Within 5 seconds of a successful rotation the old refresh cookie gets the same rotated session; after that it goes to the auth API as a replay. A failed rotation is never kept, and the window is keyed on a hash of the cookie.
