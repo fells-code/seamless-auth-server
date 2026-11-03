@@ -70,6 +70,8 @@ function normalizeOrigin(value: string): string {
  * cookie off a cross-site request but not off a same-site one, and a sibling
  * subdomain is same-site.
  *
+ * A literal `null` `Origin` is refused first, in every case.
+ *
  * `Sec-Fetch-Site` is the primary signal: current browsers send it and page
  * JavaScript cannot forge it. `cross-site` is refused and `same-origin` passes.
  * `same-site` also covers a sibling subdomain, so when the adopter configured
@@ -89,6 +91,12 @@ export function checkOrigin(
     status: 403,
     errorCode: "cross_site_request_blocked",
   };
+
+  // A literal `null` origin is opaque or sandboxed, never the adopter's own
+  // page, so it is refused whatever `Sec-Fetch-Site` and the allowlist say.
+  if (input.origin?.trim().toLowerCase() === "null") {
+    return rejection;
+  }
 
   if (input.secFetchSite !== undefined) {
     const site = input.secFetchSite.toLowerCase();
@@ -111,12 +119,6 @@ export function checkOrigin(
   // server-to-server caller.
   if (input.origin === undefined) {
     return undefined;
-  }
-
-  // A literal `null` origin is opaque or sandboxed, which is cross-site
-  // regardless of the allowlist.
-  if (input.origin === "null") {
-    return rejection;
   }
 
   if (!input.allowedOrigins) {

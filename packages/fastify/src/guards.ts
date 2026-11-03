@@ -3,6 +3,7 @@ import {
   assertSecretStrength,
   authenticateRequest,
   authorizeRoles,
+  checkOrigin,
 } from "@seamless-auth/core";
 
 import { requestCookies } from "./internal/requestCookies.js";
@@ -38,6 +39,14 @@ export interface RequireAuthOptions {
    * 403 `enrollment_required`; turn it on only for routes that drive that enrollment.
    */
   allowRecoverySession?: boolean;
+  /**
+   * `Origin` allowlist for a state-changing request on a cookie session that is
+   * `same-site` or carries no `Sec-Fetch-Site`, as on the auth router. Pass the
+   * same list. Set, even to `[]`, it is enforced; left out, such a request
+   * passes. A `cross-site` one or a literal `null` `Origin` is refused either
+   * way.
+   */
+  allowedOrigins?: string[];
 }
 
 /**
@@ -71,6 +80,7 @@ export function requireAuth(opts: RequireAuthOptions) {
     audience,
     authServerIssuer,
     allowRecoverySession,
+    allowedOrigins,
   } = opts;
 
   // Eagerly, so a weak secret fails at setup rather than on the first request.
@@ -104,8 +114,24 @@ export function requireAuth(opts: RequireAuthOptions) {
     req: FastifyRequest,
     reply: FastifyReply,
   ) {
+    const token = requestCookies(req)[cookieName];
+
+    // A cookie rides a forged request on its own; a bearer token never does.
+    if (token) {
+      const blocked = checkOrigin({
+        method: req.method,
+        secFetchSite: firstHeader(req.headers["sec-fetch-site"]),
+        origin: firstHeader(req.headers.origin),
+        allowedOrigins,
+      });
+
+      if (blocked) {
+        return reply.status(blocked.status).send({ error: blocked.errorCode });
+      }
+    }
+
     const { user, rejection } = await authenticateRequest({
-      token: requestCookies(req)[cookieName],
+      token,
       cookieSecret,
       authorization: req.headers.authorization,
       bearer,
@@ -155,4 +181,8 @@ export function requireRole(requiredRoles: string | string[]) {
         .send({ error: rejection.errorCode, ...rejection.detail });
     }
   };
+}
+
+function firstHeader(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
 }
