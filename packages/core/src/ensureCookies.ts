@@ -1,7 +1,9 @@
 import { holdsAccessToken } from "./guards.js";
 import { verifyCookieJwt } from "./verifyCookieJwt.js";
 import type { ResultFailure } from "./result.js";
-import { refreshAccessToken } from "./refreshAccessToken.js";
+import { refreshCookieSession } from "./refreshAccessToken.js";
+import { UPSTREAM_UNAVAILABLE_ERROR_CODE } from "./authFetch.js";
+import { readPassthroughFailure } from "./upstreamError.js";
 import { assertSecrets } from "./validateSecrets.js";
 import {
   type AdapterManifest,
@@ -284,7 +286,7 @@ async function refreshRequiredCookie(
     return null;
   }
 
-  const refreshed = await refreshAccessToken(refreshCookie, {
+  const outcome = await refreshCookieSession(refreshCookie, {
     authServerUrl: opts.authServerUrl,
     cookieSecret: opts.cookieSecret,
     serviceSecret: opts.serviceSecret,
@@ -295,19 +297,37 @@ async function refreshRequiredCookie(
     forwardedUserAgent: opts.forwardedUserAgent,
   });
 
-  const failure: EnsureCookiesResult = {
+  if (outcome.type === "rejected") {
+    return {
+      type: "error",
+      status: 401,
+      errorCode: "Refresh failed",
+      clearCookies: [
+        cookieName,
+        opts.registrationCookieName,
+        opts.refreshCookieName,
+      ],
+    };
+  }
+
+  // The token may still be good, or rotated with the answer lost, so the
+  // cookies stay for the next attempt.
+  if (outcome.type === "answered") {
+    return {
+      type: "error",
+      status: outcome.status,
+      ...readPassthroughFailure(outcome.body),
+    };
+  }
+
+  const unavailable: EnsureCookiesResult = {
     type: "error",
-    status: 401,
-    errorCode: "Refresh failed",
-    clearCookies: [
-      cookieName,
-      opts.registrationCookieName,
-      opts.refreshCookieName,
-    ],
+    status: 502,
+    errorCode: UPSTREAM_UNAVAILABLE_ERROR_CODE,
   };
 
-  if (!refreshed?.token) {
-    return failure;
+  if (outcome.type === "unavailable") {
+    return unavailable;
   }
 
   // The cookie signs whatever goes into it with the adopter's own secret, and
@@ -318,7 +338,7 @@ async function refreshRequiredCookie(
   let setCookies: CookieInstruction[];
   try {
     setCookies = await issueSessionCookies(
-      refreshed as UpstreamSessionResponse,
+      outcome.session as UpstreamSessionResponse,
       {
         authServerUrl: opts.authServerUrl,
         audience: opts.accessTokenAudience || opts.authServerUrl,
@@ -329,7 +349,7 @@ async function refreshRequiredCookie(
       },
     );
   } catch {
-    return failure;
+    return unavailable;
   }
 
   const access = setCookies[0].value;

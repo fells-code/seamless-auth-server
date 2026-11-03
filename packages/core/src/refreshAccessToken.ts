@@ -29,10 +29,24 @@ type RefreshAccessTokenResult = {
   refreshTtl: number;
 };
 
-const inFlightRefreshes = new Map<
-  string,
-  Promise<RefreshAccessTokenResult | null>
->();
+/**
+ * How a cookie-transport rotation ended. Only `rejected` ends the session: the
+ * auth API refused the token, or the refresh cookie cannot be read. After a
+ * network failure or any other answer the token may still be good, or rotated
+ * with the answer lost, so the caller keeps the cookies for the next attempt.
+ */
+export type RefreshCookieOutcome =
+  | { type: "session"; session: RefreshAccessTokenResult }
+  | { type: "rejected" }
+  /** The auth API's own non-2xx answer. A transport failure arrives here as 502 `upstream_unavailable`. */
+  | { type: "answered"; status: number; body: unknown }
+  /** A 2xx that carried no session. */
+  | { type: "unavailable" };
+
+// Shared by callers racing one token. Nothing here is tied to the request that
+// started the rotation, so a caller going away cannot cancel it for the others:
+// authFetch's only abort signal is its own timeout.
+const inFlightRefreshes = new Map<string, Promise<unknown>>();
 
 /**
  * Runs one refresh per key at a time. The auth API rotates refresh tokens and
@@ -45,13 +59,13 @@ const inFlightRefreshes = new Map<
  * the replay. The refresh cookie is the one exception, see
  * `completedCookieRefreshes`.
  */
-async function dedupeRefresh<T extends RefreshAccessTokenResult>(
+async function dedupeRefresh<T>(
   key: string,
-  run: () => Promise<T | null>,
-): Promise<T | null> {
+  run: () => Promise<T>,
+): Promise<T> {
   const existingRefresh = inFlightRefreshes.get(key);
   if (existingRefresh) {
-    return existingRefresh as Promise<T | null>;
+    return existingRefresh as Promise<T>;
   }
 
   const refreshPromise = run();
@@ -103,43 +117,59 @@ function pruneCompletedCookieRefreshes(now: number): void {
 
 async function dedupeCookieRefresh(
   refreshCookie: string,
-  run: () => Promise<RefreshAccessTokenResult | null>,
-): Promise<RefreshAccessTokenResult | null> {
+  run: () => Promise<RefreshCookieOutcome>,
+): Promise<RefreshCookieOutcome> {
   const key = createHash("sha256").update(refreshCookie).digest("base64url");
 
   const completed = completedCookieRefreshes.get(key);
   if (completed) {
-    if (completed.expiresAt > Date.now()) return completed.result;
+    if (completed.expiresAt > Date.now()) {
+      return { type: "session", session: completed.result };
+    }
     completedCookieRefreshes.delete(key);
   }
 
-  const result = await dedupeRefresh(`cookie:${key}`, run);
+  const outcome = await dedupeRefresh(`cookie:${key}`, run);
 
   // Every caller sharing the in-flight rotation reaches this; only the first
   // insert matters, and a later one must not extend the window.
-  if (result && !completedCookieRefreshes.has(key)) {
+  if (outcome.type === "session" && !completedCookieRefreshes.has(key)) {
     const now = Date.now();
     pruneCompletedCookieRefreshes(now);
     completedCookieRefreshes.set(key, {
-      result,
+      result: outcome.session,
       expiresAt: now + COMPLETED_COOKIE_REFRESH_TTL_MS,
     });
   }
 
-  return result;
+  return outcome;
 }
 
-export async function refreshAccessToken(
+/**
+ * Rotates the session held in a signed refresh cookie and says how it ended, so
+ * the caller can tell a refusal (clear the session) from a failure to complete
+ * the rotation (keep it).
+ */
+export async function refreshCookieSession(
   refreshCookie: string,
   opts: RefreshAccessTokenOptions,
-): Promise<RefreshAccessTokenResult | null> {
+): Promise<RefreshCookieOutcome> {
   assertSecrets(opts, { allowPlaceholder: true });
 
   return dedupeCookieRefresh(refreshCookie, async () => {
     const payload = verifyRefreshCookie(refreshCookie, opts.cookieSecret);
-    if (!payload) return null;
+    if (!payload) return { type: "rejected" };
     return rotate(payload, opts);
   });
+}
+
+/** {@link refreshCookieSession} reduced to the session, or `null` for any failure. */
+export async function refreshAccessToken(
+  refreshCookie: string,
+  opts: RefreshAccessTokenOptions,
+): Promise<RefreshAccessTokenResult | null> {
+  const outcome = await refreshCookieSession(refreshCookie, opts);
+  return outcome.type === "session" ? outcome.session : null;
 }
 
 /**
@@ -153,15 +183,16 @@ export async function refreshSessionToken(
 ): Promise<RefreshAccessTokenResult | null> {
   assertSecrets(opts, { allowPlaceholder: true });
 
-  return dedupeRefresh(`token:${payload.refreshToken}`, () =>
+  const outcome = await dedupeRefresh(`token:${payload.refreshToken}`, () =>
     rotate(payload, opts),
   );
+  return outcome.type === "session" ? outcome.session : null;
 }
 
 async function rotate(
   payload: { sub: string; refreshToken: string },
   opts: RefreshAccessTokenOptions,
-): Promise<RefreshAccessTokenResult | null> {
+): Promise<RefreshCookieOutcome> {
   const serviceToken = createServiceToken({
     subject: payload.sub,
     issuer: opts.issuer,
@@ -179,9 +210,25 @@ async function rotate(
     forwardedUserAgent: opts.forwardedUserAgent,
   });
 
-  if (!response.ok) return null;
+  const body: unknown = await response.json();
 
-  return response.json();
+  if (response.status === 401) return { type: "rejected" };
+  if (!response.ok) {
+    return { type: "answered", status: response.status, body };
+  }
+
+  return isSession(body)
+    ? { type: "session", session: body }
+    : { type: "unavailable" };
+}
+
+function isSession(body: unknown): body is RefreshAccessTokenResult {
+  return (
+    typeof body === "object" &&
+    body !== null &&
+    typeof (body as { token?: unknown }).token === "string" &&
+    (body as { token: string }).token !== ""
+  );
 }
 
 class UpstreamRefreshFailure extends Error {

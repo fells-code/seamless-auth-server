@@ -1,9 +1,11 @@
 import type { AuthServerIssuerOption } from "../authServerIssuer.js";
 import { extractBearerToken } from "../verifyAccessToken.js";
 import {
-  refreshAccessToken,
   refreshBearerSession,
+  refreshCookieSession,
 } from "../refreshAccessToken.js";
+import { UPSTREAM_UNAVAILABLE_ERROR_CODE } from "../authFetch.js";
+import { readPassthroughFailure } from "../upstreamError.js";
 import { SERVICE_TOKEN_AUDIENCE, SERVICE_TOKEN_ISSUER } from "../apiContract.js";
 import { sessionResult, type UpstreamSessionResponse } from "../upstreamSession.js";
 import type { AuthTransport } from "../transport.js";
@@ -98,7 +100,7 @@ export async function refreshHandler(
     return { status: 401, errorCode: "refresh token required" };
   }
 
-  const rotated = await refreshAccessToken(input.refreshCookie, {
+  const rotated = await refreshCookieSession(input.refreshCookie, {
     authServerUrl: opts.authServerUrl,
     cookieSecret: opts.cookieSecret,
     serviceSecret: opts.serviceSecret,
@@ -110,7 +112,7 @@ export async function refreshHandler(
     ...forwarding,
   });
 
-  if (!rotated) {
+  if (rotated.type === "rejected") {
     return {
       status: 401,
       errorCode: "invalid_refresh_token",
@@ -118,8 +120,22 @@ export async function refreshHandler(
     };
   }
 
-  return {
-    status: 200,
-    ...(await sessionResult(rotated as UpstreamSessionResponse, session)),
-  };
+  // Short of a refusal the token may still be good, or rotated with the answer
+  // lost, so the cookies stay for the next attempt.
+  if (rotated.type === "answered") {
+    return { status: rotated.status, ...readPassthroughFailure(rotated.body) };
+  }
+
+  if (rotated.type === "unavailable") {
+    return { status: 502, errorCode: UPSTREAM_UNAVAILABLE_ERROR_CODE };
+  }
+
+  try {
+    return {
+      status: 200,
+      ...(await sessionResult(rotated.session as UpstreamSessionResponse, session)),
+    };
+  } catch {
+    return { status: 502, errorCode: UPSTREAM_UNAVAILABLE_ERROR_CODE };
+  }
 }

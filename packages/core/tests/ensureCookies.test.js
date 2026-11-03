@@ -8,8 +8,13 @@ jest.unstable_mockModule("../dist/verifyCookieJwt.js", () => ({
   verifyCookieJwt: verifyCookieJwtMock,
 }));
 
+// A null session stands for the auth API refusing the token.
 jest.unstable_mockModule("../dist/refreshAccessToken.js", () => ({
   refreshAccessToken: refreshAccessTokenMock,
+  refreshCookieSession: async (...args) => {
+    const session = await refreshAccessTokenMock(...args);
+    return session ? { type: "session", session } : { type: "rejected" };
+  },
 }));
 
 jest.unstable_mockModule("../dist/verifySignedAuthResponse.js", () => ({
@@ -310,11 +315,13 @@ describe("ensureCookies", () => {
 
       const result = await silentRefresh();
 
+      // Not a refusal from the auth API, so the session cookies stay.
       expect(result.type).toBe("error");
-      expect(result.status).toBe(401);
+      expect(result.status).toBe(502);
+      expect(result.errorCode).toBe("upstream_unavailable");
       expect(result.setCookies).toBeUndefined();
       expect(result.user).toBeUndefined();
-      expect(result.clearCookies).toEqual(["access", "registration", "refresh"]);
+      expect(result.clearCookies).toBeUndefined();
     });
 
     it("issues no cookie when the token names a different subject than the body", async () => {
@@ -322,8 +329,9 @@ describe("ensureCookies", () => {
 
       const result = await silentRefresh();
 
-      expect(result.status).toBe(401);
+      expect(result.status).toBe(502);
       expect(result.setCookies).toBeUndefined();
+      expect(result.clearCookies).toBeUndefined();
     });
 
     it("verifies against the access token audience, not the service token's", async () => {

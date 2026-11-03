@@ -290,10 +290,12 @@ describe("authServerIssuer", () => {
       await mockUpstream(AUTH);
       const misconfigured = await run(silentRefresh(), DOCKER_OPTIONS);
 
-      // The 401 clears the session cookies, so their names still appear.
+      // A rotated session that fails verification is not the auth API refusing
+      // the token, so the answer is 502 and the cookies stay.
       for (const res of [unconfigured, misconfigured]) {
-        expect(res.status).toBe(401);
-        expect(res.body).toEqual({ error: "Refresh failed" });
+        expect(res.status).toBe(502);
+        expect(res.body).toEqual({ error: "upstream_unavailable" });
+        expect(res.cookies).toEqual([]);
       }
     });
   });

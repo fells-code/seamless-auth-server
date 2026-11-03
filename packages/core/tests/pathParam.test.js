@@ -4,6 +4,7 @@ const authFetchMock = jest.fn();
 
 jest.unstable_mockModule("../dist/authFetch.js", () => ({
   authFetch: authFetchMock,
+  UPSTREAM_UNAVAILABLE_ERROR_CODE: "upstream_unavailable",
 }));
 
 const {
