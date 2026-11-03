@@ -775,6 +775,15 @@ app.post(
 `requireAuth()` sets `req.user`. The other guards only trust a user it verified, so they cannot
 be satisfied by a cookie session or anything else that set `req.user`.
 
+`requireAuth({ allowClients: false })` refuses a client credentials token with
+`403 { "error": "user_required" }`, after the token itself has verified (a bad token still gets
+`401`). The guards mounted after it then only ever see a user, so put the option on
+`requireAuth` rather than on `requireScope`, `requireRole` or `requireStepUp`:
+
+```ts
+app.get("/me/orders", api.requireAuth({ allowClients: false }), api.requireRole("member"), listMine);
+```
+
 Tokens are verified the same way in every Seamless adapter (Express, Fastify, Next.js, Go,
 Python and Rust), held to shared signed test vectors:
 
@@ -794,6 +803,7 @@ the key set cannot be fetched, the request gets `401 invalid_token`; nothing fai
 | No bearer token            | 401    | `missing_token`                    | `Bearer`                                                                           |
 | Token fails verification   | 401    | `invalid_token`                    | `Bearer error="invalid_token"`                                                     |
 | Missing scope (all needed) | 403    | `insufficient_scope`, plus `scope` | `Bearer error="insufficient_scope", scope="..."`                                   |
+| Client token, users only   | 403    | `user_required`                    | none                                                                               |
 | Missing role (any one)     | 403    | `insufficient_role`                | none                                                                               |
 | Step-up not met            | 401    | `insufficient_user_authentication` | RFC 9470 challenge with `error_description`, and `acr_values` / `max_age` if set   |
 
@@ -805,7 +815,7 @@ the key set cannot be fetched, the request gets `401 invalid_token`; nothing fai
 The verified user has `id` (`sub`), `clientId`, `scopes`, `roles`, `sid`, `orgId`, `acr`, `amr`
 and `authTime`. A client credentials token (`sub` equal to `client_id`) verifies too, with
 `isClient` set to `true` and the client id in `id`, and fails role and step-up checks. Check
-`isClient` before treating `id` as a user id.
+`isClient` before treating `id` as a user id, or pass `allowClients: false` to `requireAuth`.
 
 ---
 

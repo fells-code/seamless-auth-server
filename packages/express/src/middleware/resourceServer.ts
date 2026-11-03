@@ -3,14 +3,19 @@ import {
   createResourceServer as createCoreResourceServer,
   type GuardRejection,
   type ResourceServer,
+  type ResourceServerAuthOptions,
   type ResourceServerOptions,
   type ResourceServerUser,
   type StepUpRequirement,
 } from "@seamless-auth/core";
 
 export interface ExpressResourceServer {
-  /** Verifies `Authorization: Bearer` and sets `req.user`. Mount before the other guards. */
-  requireAuth(): RequestHandler;
+  /**
+   * Verifies `Authorization: Bearer` and sets `req.user`. Mount before the other
+   * guards. `{ allowClients: false }` refuses a client credentials token with
+   * `403 user_required`, and the guards after it then only see users.
+   */
+  requireAuth(options?: ResourceServerAuthOptions): RequestHandler;
   /** Every one of the scopes. */
   requireScope(scopes: string | string[]): RequestHandler;
   /** Any one of the roles. Scoped names match as in `requireRole`. */
@@ -74,10 +79,11 @@ export function createResourceServer(
 
   return {
     verifier,
-    requireAuth() {
+    requireAuth(options) {
       return async (req: Request, res: Response, next: NextFunction) => {
         const { user, rejection } = await verifier.authenticate(
           req.headers.authorization,
+          options,
         );
         if (rejection) {
           reject(res, rejection);
