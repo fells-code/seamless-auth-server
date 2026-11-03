@@ -91,6 +91,19 @@ describe("shared verify-only vectors", () => {
 });
 
 describe("createResourceServer", () => {
+  // A client credentials token's `sub` is the client id, so without a marker an
+  // adopter reading `user.id` takes a machine for a user (#260).
+  it("marks a client credentials token as a client, and a user token as not", async () => {
+    const server = vectorServer();
+
+    const client = await server.verify(vectors.tokens.client_credentials);
+    const user = await server.verify(vectors.tokens.user_passkey);
+
+    expect(client.id).toBe(client.clientId);
+    expect(client.isClient).toBe(true);
+    expect(user.isClient).toBe(false);
+  });
+
   it("refuses an empty audience or a non-URL issuer at setup", () => {
     expect(() =>
       createResourceServer({ issuer: vectors.issuer, audience: "" }),
