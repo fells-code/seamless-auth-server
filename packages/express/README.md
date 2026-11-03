@@ -541,7 +541,7 @@ routes serve a second contract when the request carries the header
   the pair in the response. The auth API rotates refresh tokens and treats a replayed one as theft
   (revoking the whole chain, `401 { "error": "refresh_token_reused" }`), so refresh once at a time.
   Concurrent rotations of the same token that reach the adapter together are collapsed into one
-  upstream call.
+  upstream call. One that arrives after that rotation completed goes to the auth API as a replay.
 - Message delivery, client IP and user agent forwarding, and the service token behave exactly as
   in cookie transport, since the adapter attaches them regardless of how the client carries its
   session.

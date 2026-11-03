@@ -1815,8 +1815,8 @@ describe("next and express serve the OAuth provider discovery refresh", () => {
 });
 
 // A recovery session that enrolls a factor is rotated at once, so its new access
-// cookie drops the recovery claim (#235). Refresh tokens are unique per run: the
-// adapters replay a recent refresh for the same token, which would hide the call.
+// cookie drops the recovery claim (#235). Refresh tokens are unique per run, as
+// in a real rotation chain, so each run's refresh call is its own.
 describe("next and express rotate a recovery session after enrollment", () => {
   const originalFetch = global.fetch;
   afterEach(() => {

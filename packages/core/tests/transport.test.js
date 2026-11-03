@@ -237,11 +237,12 @@ describe("refreshBearerSession", () => {
     expect(b.body).toEqual(a.body);
     expect(global.fetch).toHaveBeenCalledTimes(1);
 
-    // A straggler just after completion gets the same rotated pair rather than
-    // replaying a token the auth API has already retired.
-    const third = await refreshBearerSession("same-token", opts);
-    expect(third.body).toEqual(a.body);
-    expect(global.fetch).toHaveBeenCalledTimes(1);
+    // Once the rotation completes, the same token is a replay for the auth API
+    // to judge, not a share of the new pair (#258).
+    const third = refreshBearerSession("same-token", opts);
+    resolveUpstream();
+    await third;
+    expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 
   it("passes the auth API's failure through and does not cache it", async () => {

@@ -31,53 +31,21 @@ const inFlightRefreshes = new Map<
   string,
   Promise<RefreshAccessTokenResult | null>
 >();
-const recentRefreshResults = new Map<
-  string,
-  { result: RefreshAccessTokenResult; expiresAt: number }
->();
-const RECENT_REFRESH_RESULT_TTL_MS = 5000;
-// Refresh cookies rotate, so a completed entry's key is never looked up again and
-// would live forever without this. Sweep expired entries (throttled so it stays off
-// the hot path) and cap total size as a backstop against a burst of distinct cookies.
-const MAX_RECENT_REFRESH_RESULTS = 10_000;
-let lastPruneAt = 0;
-
-function pruneRecentRefreshResults(now: number): void {
-  if (now - lastPruneAt >= RECENT_REFRESH_RESULT_TTL_MS) {
-    for (const [key, entry] of recentRefreshResults) {
-      if (entry.expiresAt <= now) {
-        recentRefreshResults.delete(key);
-      }
-    }
-    lastPruneAt = now;
-  }
-
-  while (recentRefreshResults.size > MAX_RECENT_REFRESH_RESULTS) {
-    const oldest = recentRefreshResults.keys().next().value;
-    if (oldest === undefined) break;
-    recentRefreshResults.delete(oldest);
-  }
-}
 
 /**
- * Runs one refresh per key at a time and replays a recent success to callers
- * arriving just after it. The auth API rotates refresh tokens and treats a
- * replay as theft, revoking the whole chain, so two requests that race the same
- * token must be collapsed here rather than both reach it.
+ * Runs one refresh per key at a time. The auth API rotates refresh tokens and
+ * treats a replay as theft, revoking the whole chain, so two requests that race
+ * the same token must be collapsed here rather than both reach it.
+ *
+ * Only a rotation still in flight is shared. Once it completes, a caller that
+ * presents the same token again goes to the auth API, whose reuse detection is
+ * what catches a stolen token; handing that caller the new session would hide
+ * the replay.
  */
 async function dedupeRefresh<T extends RefreshAccessTokenResult>(
   key: string,
   run: () => Promise<T | null>,
 ): Promise<T | null> {
-  const now = Date.now();
-  const recentRefresh = recentRefreshResults.get(key);
-  if (recentRefresh && recentRefresh.expiresAt > now) {
-    return recentRefresh.result as T;
-  }
-  if (recentRefresh) {
-    recentRefreshResults.delete(key);
-  }
-
   const existingRefresh = inFlightRefreshes.get(key);
   if (existingRefresh) {
     return existingRefresh as Promise<T | null>;
@@ -87,16 +55,7 @@ async function dedupeRefresh<T extends RefreshAccessTokenResult>(
   inFlightRefreshes.set(key, refreshPromise);
 
   try {
-    const result = await refreshPromise;
-    if (result) {
-      const insertedAt = Date.now();
-      pruneRecentRefreshResults(insertedAt);
-      recentRefreshResults.set(key, {
-        result,
-        expiresAt: insertedAt + RECENT_REFRESH_RESULT_TTL_MS,
-      });
-    }
-    return result;
+    return await refreshPromise;
   } finally {
     inFlightRefreshes.delete(key);
   }
@@ -202,8 +161,6 @@ export async function refreshBearerSession(
       });
 
       if (!response.ok) {
-        // Not cached, so a failed rotation is reported to every caller that
-        // asked for it rather than replayed as a success.
         throw new UpstreamRefreshFailure(response.status, await response.json());
       }
 
