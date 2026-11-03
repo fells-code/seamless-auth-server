@@ -16,6 +16,7 @@ jest.unstable_mockModule("../dist/deliverAuthMessage.js", () => ({
   applyExternalDelivery: applyExternalDeliveryMock,
   deliverAuthMessage: deliverAuthMessageMock,
   deliverableNoticeKinds: deliverableNoticeKindsMock,
+  deliverEnrollmentInvites: jest.fn(),
 }));
 
 const { handleManifestRoute } = await import("../dist/manifestProxy.js");

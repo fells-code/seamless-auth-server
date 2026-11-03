@@ -370,3 +370,73 @@ export async function applyExternalDelivery(
 
   return body;
 }
+
+interface EnrollmentInviteResult {
+  userId: string;
+  status: "sent" | "skipped";
+  reason?: string;
+  delivery?: AuthDeliveryInstruction;
+}
+
+/**
+ * Sends each invite the auth API handed back from `POST /admin/enrollment/invites` and
+ * drops the payloads, which carry addresses and links the browser has no use for.
+ *
+ * One recipient's failed delivery does not fail the batch: it is reported with the API's
+ * own `delivery_failed` skip reason and the counts follow. The API has already stamped
+ * that user as invited, so an immediate retry reports them as `recently_invited`.
+ */
+export async function deliverEnrollmentInvites(
+  messaging: SeamlessAuthMessagingOptions | undefined,
+  body: unknown,
+): Promise<unknown> {
+  if (
+    !body ||
+    typeof body !== "object" ||
+    !Array.isArray((body as { results?: unknown }).results)
+  ) {
+    return body;
+  }
+
+  const results: EnrollmentInviteResult[] = [];
+  let failed = 0;
+
+  for (const entry of (body as { results: EnrollmentInviteResult[] })
+    .results) {
+    if (!entry || typeof entry !== "object" || !("delivery" in entry)) {
+      results.push(entry);
+      continue;
+    }
+
+    const { delivery, ...result } = entry;
+
+    if (result.status !== "sent") {
+      results.push(result);
+      continue;
+    }
+
+    try {
+      await deliverAuthMessage(messaging, delivery);
+      results.push(result);
+    } catch (error) {
+      getSeamlessLogger().error(
+        `[SeamlessAuth] An enrollment invite could not be sent: ${
+          error instanceof Error ? error.name : "unknown error"
+        }.`,
+      );
+      failed += 1;
+      results.push({ ...result, status: "skipped", reason: "delivery_failed" });
+    }
+  }
+
+  const counts = body as { sent?: unknown; skipped?: unknown };
+
+  return {
+    ...body,
+    ...(typeof counts.sent === "number" ? { sent: counts.sent - failed } : {}),
+    ...(typeof counts.skipped === "number"
+      ? { skipped: counts.skipped + failed }
+      : {}),
+    results,
+  };
+}
