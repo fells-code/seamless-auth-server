@@ -19,8 +19,8 @@ const api = createResourceServer({
   currentDate: () => new Date(vectors.now * 1000),
 });
 
-function requirementsFor(guard) {
-  if (!guard) return undefined;
+function guardRequirements(guard) {
+  if (!guard) return {};
   if (guard.kind === "scope") return { scopes: guard.scopes };
   if (guard.kind === "role") return { roles: guard.roles };
   return {
@@ -32,6 +32,15 @@ function requirementsFor(guard) {
   };
 }
 
+function requirementsFor(entry) {
+  const requirements = guardRequirements(entry.guard);
+  if (entry.auth) requirements.allowClients = entry.auth.allow_clients;
+  return Object.keys(requirements).length ? requirements : undefined;
+}
+
+// `user_required_requests` run with the auth check refusing client tokens.
+const entries = [...vectors.requests, ...vectors.user_required_requests];
+
 function get(authorization) {
   return new Request("https://api.example.test/orders", {
     headers: authorization === null ? {} : { authorization },
@@ -39,12 +48,12 @@ function get(authorization) {
 }
 
 describe("Next.js resource server against the shared vectors", () => {
-  it.each(vectors.requests.map((entry) => [entry.name, entry]))(
+  it.each(entries.map((entry) => [entry.name, entry]))(
     "%s",
     async (_, entry) => {
       const handler = api.protect(
         (_request, _context, user) => Response.json({ sub: user.id }),
-        requirementsFor(entry.guard),
+        requirementsFor(entry),
       );
       const res = await handler(get(entry.authorization), {});
 

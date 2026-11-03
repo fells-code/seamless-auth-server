@@ -30,12 +30,18 @@ function guardFor(guard) {
   });
 }
 
+// `user_required_requests` run with the auth guard refusing client tokens.
+const entries = [...vectors.requests, ...vectors.user_required_requests];
+
 const app = Fastify();
-vectors.requests.forEach((entry, index) => {
+entries.forEach((entry, index) => {
   const guards = entry.guard ? [guardFor(entry.guard)] : [];
+  const auth = entry.auth
+    ? api.requireAuth({ allowClients: entry.auth.allow_clients })
+    : api.requireAuth();
   app.get(
     `/vector/${index}`,
-    { preHandler: [api.requireAuth(), ...guards] },
+    { preHandler: [auth, ...guards] },
     async (req) => ({ sub: req.user.id, clientId: req.user.clientId }),
   );
 });
@@ -43,7 +49,7 @@ vectors.requests.forEach((entry, index) => {
 afterAll(() => app.close());
 
 describe("Fastify resource server against the shared vectors", () => {
-  it.each(vectors.requests.map((entry, index) => [entry.name, entry, index]))(
+  it.each(entries.map((entry, index) => [entry.name, entry, index]))(
     "%s",
     async (_, entry, index) => {
       const res = await app.inject({

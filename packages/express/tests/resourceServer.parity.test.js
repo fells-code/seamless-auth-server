@@ -31,16 +31,22 @@ function guardFor(guard) {
   });
 }
 
+// `user_required_requests` run with the auth guard refusing client tokens.
+const entries = [...vectors.requests, ...vectors.user_required_requests];
+
 const app = express();
-vectors.requests.forEach((entry, index) => {
+entries.forEach((entry, index) => {
   const guards = entry.guard ? [guardFor(entry.guard)] : [];
-  app.get(`/vector/${index}`, api.requireAuth(), ...guards, (req, res) => {
+  const auth = entry.auth
+    ? api.requireAuth({ allowClients: entry.auth.allow_clients })
+    : api.requireAuth();
+  app.get(`/vector/${index}`, auth, ...guards, (req, res) => {
     res.json({ sub: req.user.id, clientId: req.user.clientId });
   });
 });
 
 describe("Express resource server against the shared vectors", () => {
-  it.each(vectors.requests.map((entry, index) => [entry.name, entry, index]))(
+  it.each(entries.map((entry, index) => [entry.name, entry, index]))(
     "%s",
     async (_, entry, index) => {
       let call = request(app).get(`/vector/${index}`);

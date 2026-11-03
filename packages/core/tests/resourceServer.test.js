@@ -58,6 +58,7 @@ describe("shared verify-only vectors", () => {
       if (entry.valid) {
         expect(user).not.toBeNull();
         expect(asVectorUser(user)).toEqual(entry.user);
+        expect(user.isClient).toBe(entry.is_client);
         expect(user.token).toBe(vectors.tokens[entry.name]);
       } else {
         expect(user).toBeNull();
@@ -65,12 +66,18 @@ describe("shared verify-only vectors", () => {
     },
   );
 
-  it.each(vectors.requests.map((entry) => [entry.name, entry]))(
+  it.each(
+    [...vectors.requests, ...vectors.user_required_requests].map((entry) => [
+      entry.name,
+      entry,
+    ]),
+  )(
     "request %s",
     async (_, entry) => {
       const check = guardFor(server, entry.guard);
       const { user, rejection: authRejection } = await server.authenticate(
         entry.authorization ?? undefined,
+        entry.auth && { allowClients: entry.auth.allow_clients },
       );
       const rejection = authRejection ?? check(user);
 
@@ -102,6 +109,27 @@ describe("createResourceServer", () => {
     expect(client.id).toBe(client.clientId);
     expect(client.isClient).toBe(true);
     expect(user.isClient).toBe(false);
+  });
+
+  it("lets a client credentials token through authenticate unless told not to", async () => {
+    const server = vectorServer();
+    const authorization = `Bearer ${vectors.tokens.client_credentials}`;
+
+    const byDefault = await server.authenticate(authorization);
+    const allowed = await server.authenticate(authorization, {
+      allowClients: true,
+    });
+    const refused = await server.authenticate(authorization, {
+      allowClients: false,
+    });
+
+    expect(byDefault.user.isClient).toBe(true);
+    expect(allowed.user.isClient).toBe(true);
+    expect(refused.user).toBeUndefined();
+    expect(refused.rejection).toEqual({
+      status: 403,
+      errorCode: "user_required",
+    });
   });
 
   it("refuses an empty audience or a non-URL issuer at setup", () => {

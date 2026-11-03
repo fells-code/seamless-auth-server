@@ -115,7 +115,8 @@
           "mfa"
         ],
         "auth_time": 1798761480
-      }
+      },
+      "is_client": false
     },
     {
       "name": "user_otp",
@@ -136,7 +137,8 @@
           "otp"
         ],
         "auth_time": 1798761480
-      }
+      },
+      "is_client": false
     },
     {
       "name": "user_stale_passkey",
@@ -159,7 +161,8 @@
           "mfa"
         ],
         "auth_time": 1798761000
-      }
+      },
+      "is_client": false
     },
     {
       "name": "user_no_auth_time",
@@ -182,7 +185,8 @@
           "mfa"
         ],
         "auth_time": null
-      }
+      },
+      "is_client": false
     },
     {
       "name": "client_credentials",
@@ -199,7 +203,8 @@
         "acr": null,
         "amr": [],
         "auth_time": null
-      }
+      },
+      "is_client": true
     },
     {
       "name": "aud_array",
@@ -220,7 +225,8 @@
           "otp"
         ],
         "auth_time": 1798761480
-      }
+      },
+      "is_client": false
     },
     {
       "name": "typ_application",
@@ -241,7 +247,8 @@
           "otp"
         ],
         "auth_time": 1798761480
-      }
+      },
+      "is_client": false
     },
     {
       "name": "typ_uppercase",
@@ -262,7 +269,8 @@
           "otp"
         ],
         "auth_time": 1798761480
-      }
+      },
+      "is_client": false
     },
     {
       "name": "exp_within_skew",
@@ -283,7 +291,8 @@
           "otp"
         ],
         "auth_time": 1798761480
-      }
+      },
+      "is_client": false
     },
     {
       "name": "nbf_within_skew",
@@ -304,7 +313,8 @@
           "otp"
         ],
         "auth_time": 1798761480
-      }
+      },
+      "is_client": false
     },
     {
       "name": "rotated_key",
@@ -325,7 +335,8 @@
           "otp"
         ],
         "auth_time": 1798761480
-      }
+      },
+      "is_client": false
     },
     {
       "name": "org_id_null",
@@ -346,7 +357,8 @@
           "otp"
         ],
         "auth_time": 1798761480
-      }
+      },
+      "is_client": false
     },
     {
       "name": "unknown_claims",
@@ -367,7 +379,8 @@
           "otp"
         ],
         "auth_time": 1798761480
-      }
+      },
+      "is_client": false
     },
     {
       "name": "wrong_aud",
@@ -1005,6 +1018,104 @@
           "max_age": 0
         },
         "www_authenticate": "Bearer error=\"insufficient_user_authentication\", error_description=\"More recent authentication is required\", max_age=\"0\""
+      }
+    }
+  ],
+  "user_required_requests": [
+    {
+      "name": "user_required_client_credentials",
+      "authorization": "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6InZvLTEiLCJ0eXAiOiJhdCtqd3QifQ.eyJpc3MiOiJodHRwczovL2xvZ2luLmV4YW1wbGUudGVzdCIsImF1ZCI6Imh0dHBzOi8vYXBpLmV4YW1wbGUudGVzdCIsImV4cCI6MTc5ODc2NTIwMCwiaWF0IjoxNzk4NzYxNDgwLCJqdGkiOiJqdGktMSIsInN1YiI6InN2Yy1yZXBvcnRzIiwiY2xpZW50X2lkIjoic3ZjLXJlcG9ydHMiLCJzY29wZSI6InJlcG9ydHM6cmVhZCJ9.PaT0ELDOlyKU5q_6CMxkjZYyz2jYhB1djlGIB0ebLcDBZO2gJDna2AxJTa4QKmREIcJOZAMGsyzAp8ojLNeGdJXuClbGNxHaStrPyLdu5sYyypWqTdy3sHBXaf04YjE6CmaREcNt6TymXF6n52BdgxCjVDfsmDJ30JCCQ-RCCf1HfLZHVnf8Y_I19R4lzJ1SuDVENi6x_LVIGxg0FGF4WkVq0_6lXItF01nAGb1Rg-GrfaYBBf-SEWiYedUHd7tUXH3btZeZ20g4XlBqifHonax9MBJpOeyOUG_NNDHYoSBj7tV3Qk5Vwb9exuSrJMroW33mjvqSakRc9PD67X5tqw",
+      "auth": {
+        "allow_clients": false
+      },
+      "guard": null,
+      "expect": {
+        "status": 403,
+        "body": {
+          "error": "user_required"
+        },
+        "www_authenticate": null
+      }
+    },
+    {
+      "name": "user_required_user",
+      "authorization": "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6InZvLTEiLCJ0eXAiOiJhdCtqd3QifQ.eyJpc3MiOiJodHRwczovL2xvZ2luLmV4YW1wbGUudGVzdCIsImF1ZCI6Imh0dHBzOi8vYXBpLmV4YW1wbGUudGVzdCIsImV4cCI6MTc5ODc2NTIwMCwiaWF0IjoxNzk4NzYxNDgwLCJqdGkiOiJqdGktMSIsInN1YiI6InVzZXItNDU2IiwiY2xpZW50X2lkIjoiYXBwLXdlYiIsInNjb3BlIjoib3JkZXJzOnJlYWQiLCJzaWQiOiJzZXNzLTIiLCJyb2xlcyI6WyJtZW1iZXIiXSwiYW1yIjpbIm90cCJdLCJhdXRoX3RpbWUiOjE3OTg3NjE0ODB9.Q9__hloZFJqysviQX_klUPKyZjdLSWcV0YQyFMMRzneBiHjEKMEuAVH3MLNMOZV1kp3SY_BrPb9ihRQULVYNIJu9og-kv0G0Wcd7at6RfNwfr41mY5BXA4r35FUgMOwdHvuSG0MMWUWeStzKCUgxlz7MV5S5Ye9ahl8G0Gb0dQHKV7x0W2t3a098oRseQvu2PjA67ad5W7HBSIArRSp0Z5mdq-adYYmcTIf-kZtEyFsp25gNUqoHrLZVoXyIfGwdMhWF9BVEtVAa47QiK13L5kulko4tJbTSA5gEDqfyer4Fcp8KXAcEr92VASYMqm-y50rZHYoOV7NCPaKjL3AhUQ",
+      "auth": {
+        "allow_clients": false
+      },
+      "guard": null,
+      "expect": {
+        "status": 200,
+        "body": null,
+        "www_authenticate": null
+      }
+    },
+    {
+      "name": "user_required_missing_token",
+      "authorization": null,
+      "auth": {
+        "allow_clients": false
+      },
+      "guard": null,
+      "expect": {
+        "status": 401,
+        "body": {
+          "error": "missing_token"
+        },
+        "www_authenticate": "Bearer"
+      }
+    },
+    {
+      "name": "user_required_invalid_token_first",
+      "authorization": "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6InZvLTEiLCJ0eXAiOiJhdCtqd3QifQ.eyJpc3MiOiJodHRwczovL2xvZ2luLmV4YW1wbGUudGVzdCIsImF1ZCI6Imh0dHBzOi8vYXBpLmV4YW1wbGUudGVzdCIsImV4cCI6MTc5ODc2MTU0MCwiaWF0IjoxNzk4NzYxNDgwLCJqdGkiOiJqdGktMSIsInN1YiI6InVzZXItNDU2IiwiY2xpZW50X2lkIjoiYXBwLXdlYiIsInNjb3BlIjoib3JkZXJzOnJlYWQiLCJzaWQiOiJzZXNzLTIiLCJyb2xlcyI6WyJtZW1iZXIiXSwiYW1yIjpbIm90cCJdLCJhdXRoX3RpbWUiOjE3OTg3NjE0ODB9.EHGExwM8o7uCLrFolhwJ4P9mU4V6aW_wR2O3Ezt75jMjhkzBqGivaX5L5xHQOsMdbU_yg_54OxGjBEDoQ4RLz3nqfBf-VhjgJNyGjzfQaJ-KlMUFN0ZtM5zf_8-vRBy1zfTJF6ebzDs8ILxMzJTcrQq5U0DOp0xXO20rzYR84Us46Gs4sprpxHlFJrnEeoQl6LoHrPiMl19jarNHAFmiy-K4TooZ8Zhl0Pb6ML29FJucLc0dL8pBZ8C5PeWVBQ6ZO8jnvfR-_v7gxytMaH9W-8QbF7dzDHz3XSmZUhAEY1vpP676j6idsccG3TY_Q9KKaw47Px3bV7Hv3ubzrwXaRQ",
+      "auth": {
+        "allow_clients": false
+      },
+      "guard": null,
+      "expect": {
+        "status": 401,
+        "body": {
+          "error": "invalid_token"
+        },
+        "www_authenticate": "Bearer error=\"invalid_token\""
+      }
+    },
+    {
+      "name": "user_required_before_scope",
+      "authorization": "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6InZvLTEiLCJ0eXAiOiJhdCtqd3QifQ.eyJpc3MiOiJodHRwczovL2xvZ2luLmV4YW1wbGUudGVzdCIsImF1ZCI6Imh0dHBzOi8vYXBpLmV4YW1wbGUudGVzdCIsImV4cCI6MTc5ODc2NTIwMCwiaWF0IjoxNzk4NzYxNDgwLCJqdGkiOiJqdGktMSIsInN1YiI6InN2Yy1yZXBvcnRzIiwiY2xpZW50X2lkIjoic3ZjLXJlcG9ydHMiLCJzY29wZSI6InJlcG9ydHM6cmVhZCJ9.PaT0ELDOlyKU5q_6CMxkjZYyz2jYhB1djlGIB0ebLcDBZO2gJDna2AxJTa4QKmREIcJOZAMGsyzAp8ojLNeGdJXuClbGNxHaStrPyLdu5sYyypWqTdy3sHBXaf04YjE6CmaREcNt6TymXF6n52BdgxCjVDfsmDJ30JCCQ-RCCf1HfLZHVnf8Y_I19R4lzJ1SuDVENi6x_LVIGxg0FGF4WkVq0_6lXItF01nAGb1Rg-GrfaYBBf-SEWiYedUHd7tUXH3btZeZ20g4XlBqifHonax9MBJpOeyOUG_NNDHYoSBj7tV3Qk5Vwb9exuSrJMroW33mjvqSakRc9PD67X5tqw",
+      "auth": {
+        "allow_clients": false
+      },
+      "guard": {
+        "kind": "scope",
+        "scopes": [
+          "reports:read"
+        ]
+      },
+      "expect": {
+        "status": 403,
+        "body": {
+          "error": "user_required"
+        },
+        "www_authenticate": null
+      }
+    },
+    {
+      "name": "user_required_user_with_scope",
+      "authorization": "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6InZvLTEiLCJ0eXAiOiJhdCtqd3QifQ.eyJpc3MiOiJodHRwczovL2xvZ2luLmV4YW1wbGUudGVzdCIsImF1ZCI6Imh0dHBzOi8vYXBpLmV4YW1wbGUudGVzdCIsImV4cCI6MTc5ODc2NTIwMCwiaWF0IjoxNzk4NzYxNDgwLCJqdGkiOiJqdGktMSIsInN1YiI6InVzZXItMTIzIiwiY2xpZW50X2lkIjoiYXBwLXdlYiIsInNjb3BlIjoib3BlbmlkIG9yZGVyczpyZWFkIG9yZGVyczp3cml0ZSIsInNpZCI6InNlc3MtMSIsIm9yZ19pZCI6Im9yZy05Iiwicm9sZXMiOlsib3JkZXJzOndyaXRlIiwibWVtYmVyIl0sImFjciI6InBocmgiLCJhbXIiOlsiaHdrIiwidXNlciIsIm1mYSJdLCJhdXRoX3RpbWUiOjE3OTg3NjE0ODB9.KfHFZpgrLcSwnOn81Wu49u5ihVB8BhLjf2DnUCtN4BOsOkUOQRtYV31DCevRzcN_FBFMpxt-b5WXOKAGml6nouXOAntr26DKBkeHuFU9LsVmZHOtxtNGy3VpuLK2qhVizzrD-Ol8MffP0fuPhV827itGV9Aea9XD6Mdi1sM54wYgvWjvpd0BChdTHPFQY4eq6GpsmTUSOnee-k0WiwbgKnML0kFlejQ_d8Qo4M1De10zV6d87s12h5MP8VTm4RJWgVmEzIhH_Och5sx77GIS-0IrLV6aKV8sil3HbKvKzKsWKwTCpIvBnyY2hEC98q5vv07074-O5r-Q4aMGPWJahA",
+      "auth": {
+        "allow_clients": false
+      },
+      "guard": {
+        "kind": "scope",
+        "scopes": [
+          "orders:write"
+        ]
+      },
+      "expect": {
+        "status": 200,
+        "body": null,
+        "www_authenticate": null
       }
     }
   ]
