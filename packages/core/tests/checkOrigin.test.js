@@ -19,6 +19,22 @@ describe("checkOrigin", () => {
       expect(check({ origin: "null" })).toEqual(BLOCKED);
     });
 
+    // An opaque origin is never the adopter's own page, whatever else the
+    // request says.
+    it.each(["same-origin", "same-site", "none", "cross-site"])(
+      "refuses a literal null Origin with Sec-Fetch-Site %s",
+      (secFetchSite) => {
+        expect(check({ secFetchSite, origin: "null" })).toEqual(BLOCKED);
+        expect(
+          check({ secFetchSite, origin: "null", allowedOrigins: ["null", LISTED] }),
+        ).toEqual(BLOCKED);
+      },
+    );
+
+    it("refuses a literal null Origin even when allowedOrigins lists it", () => {
+      expect(check({ origin: "null", allowedOrigins: ["null"] })).toEqual(BLOCKED);
+    });
+
     it("refuses a same-site request from an Origin off allowedOrigins", () => {
       expect(
         check({ secFetchSite: "same-site", origin: SIBLING, allowedOrigins: [LISTED] }),
