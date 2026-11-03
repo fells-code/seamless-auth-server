@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   verify:
-    uses: fells-code/seamless-cli/.github/workflows/verify-conformance.yml@1ff9552d68d3d74096992a83d931acc0233edab2 # v0.26.0
+    uses: fells-code/seamless-cli/.github/workflows/verify-conformance.yml@28a363fcd6ba6c2ea3930c7172093638d8c41fe2 # v0.27.2
     with:
       server-ref: ${{ github.event.pull_request.head.sha }}
 
@@ -43,7 +43,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: fells-code/seamless-cli
-          ref: 1ff9552d68d3d74096992a83d931acc0233edab2 # v0.26.0
+          ref: 28a363fcd6ba6c2ea3930c7172093638d8c41fe2 # v0.27.2
           path: seamless-cli
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -89,6 +89,10 @@ jobs:
       - name: Conformance
         env:
           SEAMLESS_API_DIR: ${{ github.workspace }}/seamless-auth-api
+          # This adapter ships the content-type gate, so hold it to the pending
+          # contract (seamless-cli verify/harness/lib/pendingContracts.ts). The
+          # reusable workflow above has no input for it yet.
+          SEAMLESS_VERIFY_CONTRACTS: content-type-gate
         run: node seamless-cli/dist/index.js verify --adapter-url=http://localhost:3002
 
       - name: Reference app log
