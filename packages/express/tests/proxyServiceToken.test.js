@@ -167,6 +167,18 @@ describe("proxied service token", () => {
     warn.mockRestore();
   });
 
+  it("forwards the client IP behind two trusted hops", async () => {
+    const app = createApp((a) => a.set("trust proxy", 2));
+
+    await request(app)
+      .delete("/auth/admin/users")
+      .set("Cookie", createAccessCookie())
+      .set("X-Forwarded-For", "1.2.3.4, 203.0.113.44, 10.0.0.2")
+      .send({ userId: "user-1" });
+
+    expect(lastHeaders()["x-seamless-client-ip"]).toBe("203.0.113.44");
+  });
+
   it("forwards the client IP when trust proxy names the proxy address", async () => {
     const app = createApp((a) => a.set("trust proxy", "loopback"));
 

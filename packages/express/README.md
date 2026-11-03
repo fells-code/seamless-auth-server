@@ -287,9 +287,11 @@ app.set("trust proxy", 1);
 app.set("trust proxy", "10.0.0.0/8");
 ```
 
-With `trust proxy` set to `true`, Express takes `req.ip` from the leftmost `X-Forwarded-For` entry,
-which any client can set. The adapter detects that case, logs a startup warning, and forwards no
-client IP at all rather than forwarding an attacker-chosen one.
+With `trust proxy` set to `true`, or to anything else that trusts every address (subnets that
+together cover the whole address space, or a function that always returns `true`), Express takes
+`req.ip` from the leftmost `X-Forwarded-For` entry, which any client can set. The adapter detects
+that case, logs a warning, and forwards no client IP at all rather than forwarding an
+attacker-chosen one.
 
 If your topology cannot be expressed as a hop count or subnet, supply `resolveClientIp` and derive
 the address yourself, for example from a load-balancer header you know is stripped at the edge:
