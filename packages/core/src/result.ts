@@ -20,3 +20,12 @@ export interface ResultFailure {
   errorBody?: unknown;
   details?: unknown;
 }
+
+/** The body a failure goes out as: the auth API's own, else `{ error, details }`. */
+export function failureBody(result: ResultFailure): unknown {
+  if (result.errorBody !== undefined) return result.errorBody;
+
+  return result.details === undefined
+    ? { error: result.errorCode }
+    : { error: result.errorCode, details: result.details };
+}

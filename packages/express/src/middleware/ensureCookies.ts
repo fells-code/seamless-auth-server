@@ -4,6 +4,7 @@ import {
   ensureCookies,
   type EnsureCookiesOptions,
   EnsureCookiesResult,
+  failureBody,
   refreshAfterRecoveryEnrollment,
 } from "@seamless-auth/core";
 
@@ -126,6 +127,6 @@ function applyMiddlewareResult(
   }
 
   if (result.type === "error") {
-    res.status(result.status ?? 401).json({ error: result.errorCode });
+    res.status(result.status ?? 401).json(failureBody(result));
   }
 }

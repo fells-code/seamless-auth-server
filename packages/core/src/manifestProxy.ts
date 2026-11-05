@@ -12,6 +12,7 @@ import {
   applyExternalDelivery,
   deliverableNoticeKinds,
   deliverAuthMessage,
+  deliverEnrollmentInvites,
 } from "./deliverAuthMessage.js";
 import type { AuthDeliveryInstruction } from "./authMessaging.js";
 import {
@@ -76,6 +77,12 @@ function cookieNameFor(held: AdapterHeld, opts: ManifestProxyOptions) {
     registration: opts.registrationCookieName,
     refresh: opts.refreshCookieName,
   }[held];
+}
+
+// Its payloads come back per recipient in `results[].delivery`, which the manifest's
+// `delivery` flag (one top-level payload) cannot describe.
+function isEnrollmentInvites(route: AdapterManifestRoute) {
+  return route.method === "POST" && route.path === "/admin/enrollment/invites";
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -238,7 +245,9 @@ export async function handleManifestRoute(
         ? `Bearer ${extractBearerToken(input.authorization)}`
         : `Bearer ${input.cookiePayload?.token}`;
 
-  const externalDelivery = Boolean(route.delivery && opts.messaging);
+  const inviteDelivery = isEnrollmentInvites(route) && Boolean(opts.messaging);
+  const externalDelivery =
+    inviteDelivery || Boolean(route.delivery && opts.messaging);
   // Without a kind it can send, the request goes out as before and the API sends the
   // notices itself.
   const noticeKinds = route.notices ? deliverableNoticeKinds(opts.messaging) : [];
@@ -289,7 +298,9 @@ export async function handleManifestRoute(
     return { status: upstream.status, ...readPassthroughFailure(data) };
   }
 
-  if (externalDelivery) {
+  if (inviteDelivery) {
+    data = await deliverEnrollmentInvites(opts.messaging, data);
+  } else if (externalDelivery) {
     data = await applyExternalDelivery(opts.messaging, data);
   }
 

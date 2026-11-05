@@ -128,8 +128,11 @@ describe("createEnsureCookiesMiddleware silent refresh", () => {
     const res = await refreshWithTokenFor("https://app.example.com", {}, "opaque-2");
     spy.mockRestore();
 
-    expect(res.status).toBe(401);
-    expect(res.headers["set-cookie"].join(";")).not.toMatch(/access=ey/);
+    // The rotation completed but its token does not verify, which is not the
+    // auth API refusing the session, so the cookies stay.
+    expect(res.status).toBe(502);
+    expect(res.body).toEqual({ error: "upstream_unavailable" });
+    expect(res.headers["set-cookie"]).toBeUndefined();
   });
 
   // On the local Docker stack the auth server signs as http://auth:5312 while
@@ -156,7 +159,10 @@ describe("createEnsureCookiesMiddleware silent refresh", () => {
     );
     spy.mockRestore();
 
-    expect(res.status).toBe(401);
-    expect(res.headers["set-cookie"].join(";")).not.toMatch(/access=ey/);
+    // The rotation completed but its token does not verify, which is not the
+    // auth API refusing the session, so the cookies stay.
+    expect(res.status).toBe(502);
+    expect(res.body).toEqual({ error: "upstream_unavailable" });
+    expect(res.headers["set-cookie"]).toBeUndefined();
   });
 });

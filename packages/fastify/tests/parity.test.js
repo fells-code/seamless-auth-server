@@ -801,11 +801,14 @@ describe("fastify and express adapters agree", () => {
       global.fetch = refreshUpstream(forged);
       const expressResult = await viaExpress(scenario);
 
-      expect(fastify.status).toBe(401);
+      // A rotated session that fails verification is not the auth API refusing
+      // the token, so the cookies stay.
+      expect(fastify.status).toBe(502);
+      expect(fastify.body).toEqual({ error: "upstream_unavailable" });
+      expect(fastify.cookies).toEqual([]);
       expect(fastify.status).toBe(expressResult.status);
       expect(fastify.body).toEqual(expressResult.body);
       expect(fastify.cookies).toEqual(expressResult.cookies);
-      expect(fastify.cookies.some((c) => c.includes("=<signed>"))).toBe(false);
       expect(fastifyCalls.some((url) => url.endsWith("/users/me"))).toBe(false);
     } finally {
       spy.mockRestore();
@@ -2035,5 +2038,270 @@ describe("fastify and express rotate a recovery session after enrollment", () =>
       expect(result.cookies).toEqual([]);
     }
     expect(viaAdapter.result).toEqual(viaExpressResult.result);
+  });
+});
+
+// The API hands each invite back for the adopter's own messaging to send (#183).
+describe("fastify and express deliver enrollment invites through adopter messaging", () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  const invite = (to) => ({
+    kind: "enrollment_invite_email",
+    to,
+    signInUrl: "https://app.example.com/login",
+  });
+
+  const EXTERNAL_RESPONSE = {
+    sent: 3,
+    skipped: 1,
+    remaining: 4,
+    results: [
+      { userId: "u-1", status: "sent", delivery: invite("one@example.com") },
+      { userId: "u-2", status: "skipped", reason: "already_enrolled" },
+      { userId: "u-3", status: "sent", delivery: invite("three@example.com") },
+      { userId: "u-4", status: "sent", delivery: invite("four@example.com") },
+    ],
+  };
+
+  function invitesUpstream(body) {
+    return jest.fn(async (url) =>
+      String(url).endsWith("/.well-known/jwks.json")
+        ? upstream(200, { keys: [jwk] })
+        : upstream(200, body),
+    );
+  }
+
+  async function run(via, { body = EXTERNAL_RESPONSE, send, messaging = true } = {}) {
+    global.fetch = invitesUpstream(body);
+    const sendEnrollmentInviteEmail = jest.fn(send ?? (async () => {}));
+    const result = await via({
+      method: "post",
+      path: "/admin/enrollment/invites",
+      cookie: accessCookie(),
+      payload: { organizationId: "org-1" },
+      options: messaging ? { messaging: { handlers: { sendEnrollmentInviteEmail } } } : {},
+    });
+    const [, init] = global.fetch.mock.calls.find(([url]) =>
+      String(url).endsWith("/admin/enrollment/invites"),
+    );
+    return { result, init, sendEnrollmentInviteEmail };
+  }
+
+  async function both(scenario) {
+    const other = await run(viaFastify, scenario);
+    const expressRun = await run(viaExpress, scenario);
+    return { other, express: expressRun };
+  }
+
+  it("asks for external delivery with the delivery service token", async () => {
+    const runs = await both();
+
+    for (const { init } of [runs.other, runs.express]) {
+      expect(init.headers["x-seamless-auth-delivery-mode"]).toBe("external");
+      expect(init.headers.Authorization).toBe(`Bearer ${ACCESS_TOKEN}`);
+      const serviceToken = jwt.decode(
+        init.headers["x-seamless-service-token"].replace(/^Bearer /, ""),
+      );
+      expect(serviceToken.sub).toBe("seamless-auth-external-delivery");
+    }
+  });
+
+  it("sends each invite and keeps addresses and links out of the response", async () => {
+    const runs = await both();
+
+    for (const { result, sendEnrollmentInviteEmail } of [runs.other, runs.express]) {
+      expect(sendEnrollmentInviteEmail.mock.calls.map(([input]) => input)).toEqual([
+        { to: "one@example.com", signInUrl: "https://app.example.com/login" },
+        { to: "three@example.com", signInUrl: "https://app.example.com/login" },
+        { to: "four@example.com", signInUrl: "https://app.example.com/login" },
+      ]);
+      expect(result).toEqual({
+        status: 200,
+        body: {
+          sent: 3,
+          skipped: 1,
+          remaining: 4,
+          results: [
+            { userId: "u-1", status: "sent" },
+            { userId: "u-2", status: "skipped", reason: "already_enrolled" },
+            { userId: "u-3", status: "sent" },
+            { userId: "u-4", status: "sent" },
+          ],
+        },
+        cookies: [],
+      });
+    }
+    expect(runs.other.result).toEqual(runs.express.result);
+  });
+
+  it("reports an invite that could not be sent and sends the rest", async () => {
+    const runs = await both({
+      send: async ({ to }) => {
+        if (to === "three@example.com") throw new Error("smtp down");
+      },
+    });
+
+    for (const { result, sendEnrollmentInviteEmail } of [runs.other, runs.express]) {
+      expect(sendEnrollmentInviteEmail).toHaveBeenCalledTimes(3);
+      expect(result.status).toBe(200);
+      expect(result.body).toEqual({
+        sent: 2,
+        skipped: 2,
+        remaining: 4,
+        results: [
+          { userId: "u-1", status: "sent" },
+          { userId: "u-2", status: "skipped", reason: "already_enrolled" },
+          { userId: "u-3", status: "skipped", reason: "delivery_failed" },
+          { userId: "u-4", status: "sent" },
+        ],
+      });
+    }
+    expect(runs.other.result).toEqual(runs.express.result);
+  });
+
+  it("leaves delivery to the auth API without messaging", async () => {
+    const body = {
+      sent: 1,
+      skipped: 0,
+      results: [{ userId: "u-1", status: "sent" }],
+    };
+    const runs = await both({ body, messaging: false });
+
+    for (const { result, init } of [runs.other, runs.express]) {
+      expect(init.headers["x-seamless-auth-delivery-mode"]).toBeUndefined();
+      expect(result).toEqual({ status: 200, body, cookies: [] });
+    }
+  });
+});
+
+// A refresh that fails ends the session only when the auth API refused the
+// token or the refresh cookie cannot be read. After a network failure or any
+// other answer the token may still be good, or rotated with the answer lost, so
+// the cookies stay for the next attempt (seamless-auth-go#22).
+describe("fastify and express keep the session through a refresh that fails transiently", () => {
+  const originalFetch = global.fetch;
+  let errorSpy;
+  beforeEach(() => {
+    errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    global.fetch = originalFetch;
+    errorSpy.mockRestore();
+  });
+
+  let run = 0;
+  const refreshCookie = (secret = COOKIE_SECRET) => {
+    run += 1;
+    const value = jwt.sign(
+      { sub: "user-123", refreshToken: `transient-${run}` },
+      secret,
+      { algorithm: "HS256", expiresIn: "3600s" },
+    );
+    return `seamless-refresh=${value}`;
+  };
+
+  function failingUpstream(answer) {
+    return jest.fn(async (url) => {
+      const href = String(url);
+      if (href.endsWith("/.well-known/jwks.json")) return upstream(200, { keys: [jwk] });
+      if (href.endsWith("/refresh")) return answer();
+      return upstream(200, { user: { id: "u1" } });
+    });
+  }
+
+  async function both(scenario, answer) {
+    global.fetch = failingUpstream(answer);
+    const other = await viaFastify({ ...scenario, cookie: scenario.cookie() });
+    const otherCalls = global.fetch.mock.calls.map(([url]) => new URL(String(url)).pathname);
+
+    global.fetch = failingUpstream(answer);
+    const expressResult = await viaExpress({ ...scenario, cookie: scenario.cookie() });
+    const expressCalls = global.fetch.mock.calls.map(([url]) => new URL(String(url)).pathname);
+
+    return { other, express: expressResult, otherCalls, expressCalls };
+  }
+
+  const names = (cookies) => cookies.map((cookie) => cookie.split("; ")[0]);
+
+  const SILENT = { method: "get", path: "/users/me", cookie: () => refreshCookie() };
+  const ROUTE = { method: "post", path: "/refresh", cookie: () => refreshCookie() };
+
+  const forgedSession = async () =>
+    upstream(200, {
+      sub: "user-123",
+      token: await accessToken(
+        { sub: "user-123", typ: "access" },
+        (await generateKeyPair("RS256")).privateKey,
+      ),
+      refreshToken: "rotated",
+      ttl: 300,
+      refreshTtl: 3600,
+    });
+
+  const KEPT = [
+    [
+      "the auth API cannot be reached",
+      () => Promise.reject(new TypeError("fetch failed")),
+      502,
+      { error: "upstream_unavailable" },
+    ],
+    ["the auth API answers 503", () => upstream(503, { error: "maintenance" }), 503, { error: "maintenance" }],
+    ["the auth API answers 500", () => upstream(500, { error: "internal" }), 500, { error: "internal" }],
+    ["the auth API answers 429", () => upstream(429, { error: "rate_limited" }), 429, { error: "rate_limited" }],
+    ["the rotated session fails verification", forgedSession, 502, { error: "upstream_unavailable" }],
+    ["the auth API answers 200 without a session", () => upstream(200, { message: "ok" }), 502, { error: "upstream_unavailable" }],
+  ];
+
+  describe.each([
+    ["a silent refresh", SILENT],
+    ["POST /refresh", ROUTE],
+  ])("%s", (_flow, scenario) => {
+    it.each(KEPT)("keeps the cookies when %s", async (_label, answer, status, body) => {
+      const result = await both(scenario, answer);
+
+      expect(result.other).toEqual({ status, body, cookies: [] });
+      expect(result.express).toEqual(result.other);
+      expect(result.otherCalls).not.toContain("/users/me");
+    });
+  });
+
+  it("clears the session when the auth API refuses a silent refresh", async () => {
+    const result = await both(SILENT, () => upstream(401, { error: "refresh_token_reused" }));
+
+    expect(result.other.status).toBe(401);
+    expect(result.other.body).toEqual({ error: "Refresh failed" });
+    expect(names(result.other.cookies)).toEqual(
+      expect.arrayContaining(["seamless-access=<cleared>", "seamless-refresh=<cleared>"]),
+    );
+    expect(result.express).toEqual(result.other);
+  });
+
+  it("clears the session when the auth API refuses POST /refresh", async () => {
+    const result = await both(ROUTE, () => upstream(401, { error: "refresh_token_reused" }));
+
+    expect(result.other.status).toBe(401);
+    expect(result.other.body).toEqual({ error: "invalid_refresh_token" });
+    expect(names(result.other.cookies)).toEqual([
+      "seamless-access=<cleared>",
+      "seamless-refresh=<cleared>",
+    ]);
+    expect(result.express).toEqual(result.other);
+  });
+
+  it.each([
+    ["a silent refresh", { ...SILENT, cookie: () => refreshCookie("another-secret-another-secret-another") }],
+    ["POST /refresh", { ...ROUTE, cookie: () => refreshCookie("another-secret-another-secret-another") }],
+  ])("clears the session when %s holds an unreadable refresh cookie", async (_label, scenario) => {
+    const result = await both(scenario, () => upstream(200, {}));
+
+    expect(result.other.status).toBe(401);
+    expect(names(result.other.cookies)).toEqual(
+      expect.arrayContaining(["seamless-access=<cleared>", "seamless-refresh=<cleared>"]),
+    );
+    expect(result.otherCalls).not.toContain("/refresh");
+    expect(result.express).toEqual(result.other);
   });
 });

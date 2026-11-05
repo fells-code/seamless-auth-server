@@ -1,3 +1,4 @@
+import { generateKeyPairSync } from "node:crypto";
 import { jest } from "@jest/globals";
 import cookieParser from "cookie-parser";
 import express from "express";
@@ -17,6 +18,21 @@ function createJsonResponse(status, body) {
     json: async () => body,
   };
 }
+
+// The rotated token has to verify for the access cookie to be set at all.
+const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+const jwk = { ...publicKey.export({ format: "jwk" }), alg: "RS256", kid: "k1", use: "sig" };
+const REFRESHED_ACCESS_TOKEN = jwt.sign(
+  { sub: "user-123", typ: "access", sid: "session-123" },
+  privateKey,
+  {
+    algorithm: "RS256",
+    keyid: "k1",
+    issuer: "https://auth.example.com",
+    audience: "https://auth.example.com",
+    expiresIn: "5m",
+  },
+);
 
 function createRefreshCookie(subject = "user-123") {
   const token = jwt.sign(
@@ -84,10 +100,13 @@ describe("cookie security policy (#64)", () => {
 
   beforeEach(() => {
     global.fetch = jest.fn(async (url) => {
+      if (String(url).endsWith("/.well-known/jwks.json")) {
+        return createJsonResponse(200, { keys: [jwk] });
+      }
       if (String(url).endsWith("/refresh")) {
         return createJsonResponse(200, {
           sub: "user-123",
-          token: "new-access",
+          token: REFRESHED_ACCESS_TOKEN,
           refreshToken: "new-refresh",
           roles: ["user"],
           email: "user@example.com",

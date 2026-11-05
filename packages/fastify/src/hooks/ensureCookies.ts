@@ -5,6 +5,7 @@ import {
   assertSecrets,
   ensureCookies,
   type EnsureCookiesOptions,
+  failureBody,
   refreshAfterRecoveryEnrollment,
   SERVICE_TOKEN_AUDIENCE,
   SERVICE_TOKEN_ISSUER,
@@ -98,7 +99,7 @@ export function createEnsureCookiesHook(
     if (result.type === "error") {
       return reply
         .status(result.status ?? 401)
-        .send({ error: result.errorCode });
+        .send(failureBody(result));
     }
 
     // Fastify keeps one Set-Cookie per name, so the rotated cookies replace the

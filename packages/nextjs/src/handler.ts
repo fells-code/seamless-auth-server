@@ -13,6 +13,7 @@ import {
   type EnsureCookiesOptions,
   handleManifestRoute,
   InvalidPathParamError,
+  failureBody,
   matchManifestRoute,
   redactSensitiveText,
   refreshAfterRecoveryEnrollment,
@@ -244,7 +245,7 @@ async function dispatch(
     }
 
     if (result.type === "error") {
-      return collector.json(result.status ?? 401, { error: result.errorCode });
+      return collector.json(result.status ?? 401, failureBody(result));
     }
 
     refreshRecovery = (status) =>

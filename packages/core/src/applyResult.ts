@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 
 import type { CookiePayload } from "./ensureCookies.js";
-import type { ResultFailure } from "./result.js";
+import { failureBody, type ResultFailure } from "./result.js";
 import type { AuthTransport } from "./transport.js";
 
 export type CookieSameSite = "lax" | "none" | "strict";
@@ -244,18 +244,8 @@ export function applyResult(
     applyCookies(result, adapter, opts);
   }
 
-  if (result.errorBody !== undefined) {
-    adapter.send(result.status, result.errorBody);
-    return;
-  }
-
-  if (result.errorCode !== undefined) {
-    adapter.send(
-      result.status,
-      result.details === undefined
-        ? { error: result.errorCode }
-        : { error: result.errorCode, details: result.details },
-    );
+  if (result.errorBody !== undefined || result.errorCode !== undefined) {
+    adapter.send(result.status, failureBody(result));
     return;
   }
 
