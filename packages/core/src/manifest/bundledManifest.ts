@@ -103,6 +103,21 @@ export const BUNDLED_ADAPTER_MANIFEST: AdapterManifest = {
       "credential": "access"
     },
     {
+      "method": "POST",
+      "path": "/admin/organization-roles",
+      "credential": "access"
+    },
+    {
+      "method": "DELETE",
+      "path": "/admin/organization-roles/{roleName}",
+      "credential": "access"
+    },
+    {
+      "method": "PATCH",
+      "path": "/admin/organization-roles/{roleName}",
+      "credential": "access"
+    },
+    {
       "method": "GET",
       "path": "/admin/organizations",
       "credential": "access"
@@ -159,6 +174,26 @@ export const BUNDLED_ADAPTER_MANIFEST: AdapterManifest = {
     },
     {
       "method": "GET",
+      "path": "/admin/permissions",
+      "credential": "access"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/permissions",
+      "credential": "access"
+    },
+    {
+      "method": "DELETE",
+      "path": "/admin/permissions/{permissionName}",
+      "credential": "access"
+    },
+    {
+      "method": "PATCH",
+      "path": "/admin/permissions/{permissionName}",
+      "credential": "access"
+    },
+    {
+      "method": "GET",
       "path": "/admin/reports/authentication-coverage",
       "credential": "access"
     },
@@ -190,6 +225,16 @@ export const BUNDLED_ADAPTER_MANIFEST: AdapterManifest = {
     {
       "method": "GET",
       "path": "/admin/review-accounts",
+      "credential": "access"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/roles",
+      "credential": "access"
+    },
+    {
+      "method": "PUT",
+      "path": "/admin/roles/{kind}/{roleName}/permissions",
       "credential": "access"
     },
     {
@@ -703,6 +748,11 @@ export const BUNDLED_ADAPTER_MANIFEST: AdapterManifest = {
       "clears": [
         "preAuth"
       ]
+    },
+    {
+      "method": "GET",
+      "path": "/users/me/permissions",
+      "credential": "access"
     },
     {
       "method": "POST",
