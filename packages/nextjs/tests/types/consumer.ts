@@ -5,6 +5,7 @@ import {
   getSeamlessClaims,
   getSeamlessSession,
   requireAuth,
+  requirePermission,
   requireRole,
   type SeamlessGuardUser,
   type SeamlessSession,
@@ -42,6 +43,19 @@ const me = requireAuth(
   (_request, _context, user) => Response.json(user),
   shared,
 );
+const permissioned: (
+  request: Request,
+  context: RouteContext,
+) => Promise<Response> = requirePermission(
+  ["reports:read"],
+  async (_request, _context: RouteContext, user: SeamlessGuardUser) => {
+    const held: string[] | undefined = user.permissions;
+    const omitted: boolean | undefined = user.permissionsOmitted;
+    return Response.json({ held, omitted });
+  },
+  { ...options, match: "all", organizationParam: "id" },
+);
+void permissioned;
 void get;
 void session;
 void guarded;
@@ -56,5 +70,7 @@ createSeamlessAuthHandler(42);
 getSeamlessSession(42);
 // @ts-expect-error getSeamlessClaims takes a cookie reader and options
 getSeamlessClaims(42);
+// @ts-expect-error match is any or all
+requirePermission("a:read", () => new Response(), { ...options, match: "some" });
 // @ts-expect-error requireRole takes the roles first
 requireRole(() => new Response(), options);

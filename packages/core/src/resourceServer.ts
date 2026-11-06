@@ -10,6 +10,13 @@ import {
 import type { JSONWebKeySet, JWTPayload, JWTVerifyGetKey } from "jose";
 
 import type { GuardRejection } from "./guards.js";
+import {
+  INSUFFICIENT_PERMISSION,
+  meetsPermissionRequirement,
+  permissionClaimsOf,
+  type PermissionRequirement,
+  type UserPermissionClaims,
+} from "./permissions.js";
 import { extractBearerToken } from "./verifyAccessToken.js";
 
 /**
@@ -17,7 +24,8 @@ import { extractBearerToken } from "./verifyAccessToken.js";
  * field is set on a user the resource server verified, and absent on a cookie
  * session, so adapters can widen `request.user` with `Partial<>` of it.
  */
-export interface ResourceServerClaims {
+export interface ResourceServerClaims
+  extends Pick<UserPermissionClaims, "permissionsOmitted"> {
   clientId: string;
   /**
    * A client credentials token, where `sub` is the client id: a machine acting
@@ -94,6 +102,18 @@ export interface ResourceServer {
     user: ResourceServerUser | undefined,
     roles: string | string[],
   ): GuardRejection | undefined;
+  /**
+   * The permission guard's rules against a provider token. Provider tokens do not
+   * carry these claims until seamless-auth-oidc-provider#47, so it denies today.
+   * `permissionsOmitted` is a 403 here, not a live read, because the first-party
+   * endpoint refuses provider tokens. An empty list is a 403, not a setup failure,
+   * as on every other permission guard.
+   */
+  authorizePermissions(
+    user: ResourceServerUser | undefined,
+    permissions: string | string[],
+    requirement?: PermissionRequirement,
+  ): GuardRejection | undefined;
   /** Builds an all-of scope check, failing at setup on an empty list. */
   scopes(
     scopes: string | string[],
@@ -125,6 +145,11 @@ const MORE_RECENT = "More recent authentication is required";
 const INSUFFICIENT_ROLE: GuardRejection = {
   status: 403,
   errorCode: "insufficient_role",
+};
+
+const INSUFFICIENT_PERMISSION_REJECTION: GuardRejection = {
+  status: 403,
+  errorCode: INSUFFICIENT_PERMISSION,
 };
 
 const USER_REQUIRED: GuardRejection = {
@@ -274,6 +299,7 @@ function toUser(claims: JWTPayload, token: string): ResourceServerUser | null {
     iat: claims.iat,
     exp: claims.exp,
     token,
+    ...permissionClaimsOf(claims),
   };
 }
 
@@ -450,6 +476,22 @@ export function createResourceServer(
     };
   }
 
+  function authorizePermissions(
+    user: ResourceServerUser | undefined,
+    permissions: string | string[],
+    requirement: PermissionRequirement = {},
+  ): GuardRejection | undefined {
+    if (!user) return MISSING_TOKEN;
+    if (user.permissionsOmitted === true) {
+      return INSUFFICIENT_PERMISSION_REJECTION;
+    }
+
+    const held = { ...user, organizationId: user.orgId };
+    return meetsPermissionRequirement(held, permissions, requirement)
+      ? undefined
+      : INSUFFICIENT_PERMISSION_REJECTION;
+  }
+
   function stepUp(requirement: StepUpRequirement) {
     const { acrValues, amr, maxAge } = requirement;
 
@@ -516,6 +558,7 @@ export function createResourceServer(
     roles: roleCheck,
     authorizeScopes: (user, scopes) => scopeCheck(scopes)(user),
     authorizeRoles: (user, roles) => roleCheck(roles)(user),
+    authorizePermissions,
     stepUp,
   };
 }

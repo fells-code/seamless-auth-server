@@ -2,8 +2,11 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import {
   assertSecretStrength,
   authenticateRequest,
+  authorizePermissions,
   authorizeRoles,
   checkOrigin,
+  permissionRequirement,
+  type PermissionGuardOptions,
 } from "@seamless-auth/core";
 
 import { requestCookies } from "./internal/requestCookies.js";
@@ -176,6 +179,62 @@ export function requireRole(requiredRoles: string | string[]) {
     const rejection = authorizeRoles(req.user, requiredRoles);
 
     if (rejection) {
+      return reply
+        .status(rejection.status)
+        .send({ error: rejection.errorCode, ...rejection.detail });
+    }
+  };
+}
+
+export interface RequirePermissionOptions extends PermissionGuardOptions {
+  /**
+   * Where to read a token that omits its permissions because they did not fit.
+   * Defaults to the `authServerUrl` given to `requireAuth`. A cookie-only
+   * `requireAuth` holds none, so without this such a token gets a 503.
+   */
+  authServerUrl?: string;
+}
+
+/**
+ * Fastify `preHandler` that enforces permission-based authorization, against a
+ * session `requireAuth` has already put on the request.
+ *
+ * Matching is exact and case-sensitive. Refuses with `403 insufficient_permission`,
+ * naming no permissions, and an empty list opens nothing. When a token omits its
+ * permissions the guard reads them from the auth API, and answers
+ * `503 permissions_unavailable` if it cannot.
+ *
+ * ### Example
+ * ```ts
+ * // Bound to the route, so a token for organization A cannot pass on /orgs/B.
+ * app.post("/orgs/:organizationId/projects", {
+ *   preHandler: [
+ *     requireAuth({ cookieSecret, authServerUrl, audience }),
+ *     requirePermission("projects:write", { organizationParam: "organizationId" }),
+ *   ],
+ * }, createProject);
+ * ```
+ */
+export function requirePermission(
+  required: string | string[],
+  options: RequirePermissionOptions = {},
+) {
+  return async function requirePermissionHook(
+    req: FastifyRequest,
+    reply: FastifyReply,
+  ) {
+    const rejection = await authorizePermissions(req.user, required, {
+      ...permissionRequirement(options, req.params),
+      authServerUrl: options.authServerUrl,
+    });
+
+    if (rejection) {
+      if (rejection.warn) {
+        req.log.warn(
+          `[SEAMLESS-AUTH-FASTIFY] - (requirePermission) - ${rejection.warn}`,
+        );
+      }
+
       return reply
         .status(rejection.status)
         .send({ error: rejection.errorCode, ...rejection.detail });

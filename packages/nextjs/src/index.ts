@@ -5,12 +5,13 @@ export type {
   SeamlessConsoleProxyHandlers,
   SeamlessConsoleProxyOptions,
 } from "./consoleProxy.js";
-export { requireAuth, requireRole } from "./guards.js";
+export { requireAuth, requirePermission, requireRole } from "./guards.js";
 export type {
   SeamlessGuardedHandler,
   SeamlessGuardedRoute,
   SeamlessGuardOptions,
   SeamlessGuardUser,
+  SeamlessPermissionGuardOptions,
 } from "./guards.js";
 export {
   getSeamlessClaims,
@@ -40,6 +41,8 @@ export type {
   DeliveryResult,
   EmailMessage,
   EmailTransport,
+  PermissionGuardOptions,
+  PermissionMatch,
   ResourceServerAuthOptions,
   ResourceServerClaims,
   ResourceServerOptions,
@@ -53,6 +56,8 @@ export type {
   StepUpRequirement,
 } from "@seamless-auth/core";
 export {
+  hasAllPermissions,
+  hasPermission,
   hasScopedRole,
   roleGrantsAccess,
   setSeamlessLogger,

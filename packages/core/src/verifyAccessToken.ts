@@ -16,6 +16,11 @@ export interface AccessTokenClaims extends JWTPayload {
   sid?: string;
   roles?: string[];
   org_id?: string;
+  /** The rest are unchecked: `permissionClaimsOf` reads them defensively. */
+  permissions?: unknown;
+  org_roles?: unknown;
+  org_permissions?: unknown;
+  permissions_omitted?: unknown;
 }
 
 /**

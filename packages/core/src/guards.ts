@@ -4,6 +4,12 @@ import { decodeJwt } from "jose";
 import type { CookieSameSite } from "./applyResult.js";
 import { hasScopedRole } from "@seamless-auth/types/role/matching";
 import type { AuthServerIssuerOption } from "./authServerIssuer.js";
+import {
+  permissionClaimsOf,
+  readTokenClaims,
+  rememberAuthServer,
+  type UserPermissionClaims,
+} from "./permissions.js";
 import { assertSecretStrength } from "./validateSecrets.js";
 import { extractBearerToken, verifyAccessToken } from "./verifyAccessToken.js";
 import { verifyCookieJwt } from "./verifyCookieJwt.js";
@@ -228,7 +234,8 @@ function isRecoveryToken(token: unknown): boolean {
  * token's `org_id`, so it is only set on a path that checked that token against
  * the auth API's key set (bearer, or a cookie with bearer verification on).
  */
-export type GuardUser = SeamlessAuthUser & { organizationId?: string };
+export type GuardUser = SeamlessAuthUser &
+  UserPermissionClaims & { organizationId?: string };
 
 function organizationOf(claims: { org_id?: unknown }) {
   return typeof claims.org_id === "string" && claims.org_id
@@ -303,6 +310,9 @@ export function authenticateCookie(input: CookieAuthInput): CookieAuthResult {
       iat: payload.iat,
       exp: payload.exp,
       token: payload.token,
+      // Read from the token inside the cookie, not copied into the cookie, which
+      // has a 4 KiB limit and already holds the token.
+      ...permissionClaimsOf(readTokenClaims(payload.token)),
     },
   };
 }
@@ -370,14 +380,18 @@ export async function authenticateBearer(
   }
 
   return {
-    user: {
-      id: claims.sub,
-      roles: Array.isArray(claims.roles) ? claims.roles : [],
-      iat: claims.iat,
-      exp: claims.exp,
-      token,
-      ...organizationOf(claims),
-    },
+    user: rememberAuthServer<GuardUser>(
+      {
+        id: claims.sub,
+        roles: Array.isArray(claims.roles) ? claims.roles : [],
+        iat: claims.iat,
+        exp: claims.exp,
+        token,
+        ...organizationOf(claims),
+        ...permissionClaimsOf(claims),
+      },
+      input.authServerUrl,
+    ),
   };
 }
 
@@ -439,7 +453,7 @@ export async function authenticateRequest(
 // The cookie secret alone can sign a cookie. Holding the inner token to the
 // auth API's key set means a forged cookie cannot carry claims of its own.
 async function verifyCookieAccessToken(
-  user: SeamlessAuthUser,
+  user: GuardUser,
   verify: NonNullable<RequestAuthInput["bearer"]>,
 ): Promise<AuthResult> {
   const claims = await verifyAccessToken(
@@ -456,11 +470,14 @@ async function verifyCookieAccessToken(
   }
 
   return {
-    user: {
-      ...user,
-      roles: Array.isArray(claims.roles) ? claims.roles : user.roles,
-      ...organizationOf(claims),
-    },
+    user: rememberAuthServer<GuardUser>(
+      {
+        ...user,
+        roles: Array.isArray(claims.roles) ? claims.roles : user.roles,
+        ...organizationOf(claims),
+      },
+      verify.authServerUrl,
+    ),
   };
 }
 

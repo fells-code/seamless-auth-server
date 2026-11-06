@@ -1,6 +1,8 @@
 import {
   createResourceServer as createCoreResourceServer,
   type GuardRejection,
+  type PermissionGuardOptions,
+  permissionRequirement,
   type ResourceServer,
   type ResourceServerOptions,
   type ResourceServerUser,
@@ -18,6 +20,13 @@ export interface ResourceServerRequirements {
   scopes?: string | string[];
   /** Any one of the roles, with scoped role matching. */
   roles?: string | string[];
+  /**
+   * The rules of the first-party `requirePermission`, shaped by `permissionOptions`.
+   * Provider tokens do not carry these claims until seamless-auth-oidc-provider#47,
+   * so it denies today.
+   */
+  permissions?: string | string[];
+  permissionOptions?: PermissionGuardOptions;
   /** Answers the RFC 9470 `insufficient_user_authentication` challenge when unmet. */
   stepUp?: StepUpRequirement;
 }
@@ -33,10 +42,14 @@ export type ResourceServerRouteHandler<Context> = (
 ) => Response | Promise<Response>;
 
 export interface NextResourceServer {
-  /** The verified user, or the `Response` to return instead. */
+  /**
+   * The verified user, or the `Response` to return instead. `context` is the route
+   * context, which `permissionOptions.organizationParam` reads.
+   */
   authenticate(
     request: Request,
     requirements?: ResourceServerRequirements,
+    context?: unknown,
   ): Promise<ResourceServerResult>;
   /** Wraps a route handler so it only runs for a token that meets `requirements`. */
   protect<Context = unknown>(
@@ -94,6 +107,7 @@ export function createResourceServer(
   async function authenticate(
     request: Request,
     requirements: ResourceServerRequirements = {},
+    context?: unknown,
   ): Promise<ResourceServerResult> {
     const { user, rejection } = await verifier.authenticate(
       request.headers.get("authorization") ?? undefined,
@@ -106,6 +120,16 @@ export function createResourceServer(
         verifier.authorizeScopes(user, requirements.scopes)) ||
       (requirements.roles !== undefined &&
         verifier.authorizeRoles(user, requirements.roles)) ||
+      (requirements.permissions !== undefined &&
+        verifier.authorizePermissions(
+          user,
+          requirements.permissions,
+          permissionRequirement(
+            requirements.permissionOptions ?? {},
+            // `params` is a promise from Next.js 15 and a plain object before it.
+            await (context as { params?: unknown } | undefined)?.params,
+          ),
+        )) ||
       (requirements.stepUp !== undefined &&
         stepUpCheck(requirements.stepUp)(user));
 
@@ -124,7 +148,7 @@ export function createResourceServer(
       if (requirements?.stepUp) stepUpCheck(requirements.stepUp);
 
       return async (request, context) => {
-        const result = await authenticate(request, requirements);
+        const result = await authenticate(request, requirements, context);
         return result.response ?? handler(request, context, result.user);
       };
     },

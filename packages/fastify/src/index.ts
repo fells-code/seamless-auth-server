@@ -6,8 +6,8 @@ import { seamlessAuth } from "./plugin.js";
 export { seamlessAuth };
 export { seamlessConsoleProxy } from "./consoleProxy.js";
 export type { SeamlessConsoleProxyOptions } from "./consoleProxy.js";
-export { requireAuth, requireRole } from "./guards.js";
-export type { RequireAuthOptions } from "./guards.js";
+export { requireAuth, requirePermission, requireRole } from "./guards.js";
+export type { RequireAuthOptions, RequirePermissionOptions } from "./guards.js";
 export { createResourceServer } from "./resourceServer.js";
 export type { FastifyResourceServer } from "./resourceServer.js";
 export { getSeamlessUser } from "./getSeamlessUser.js";
@@ -20,6 +20,8 @@ export type {
   DeliveryResult,
   EmailMessage,
   EmailTransport,
+  PermissionGuardOptions,
+  PermissionMatch,
   ResourceServerAuthOptions,
   ResourceServerClaims,
   ResourceServerOptions,
@@ -33,6 +35,8 @@ export type {
   StepUpRequirement,
 } from "@seamless-auth/core";
 export {
+  hasAllPermissions,
+  hasPermission,
   hasScopedRole,
   roleGrantsAccess,
   setSeamlessLogger,

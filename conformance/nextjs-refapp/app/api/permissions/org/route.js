@@ -1,0 +1,3 @@
+import { permissionGuarded } from "../../../../lib/seamless.mjs";
+
+export const GET = permissionGuarded("conformance:org", { organization: true });

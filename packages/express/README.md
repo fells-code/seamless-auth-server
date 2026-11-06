@@ -730,6 +730,70 @@ Compatibility rules:
 The body never names the user's roles or the required ones. These are the codes
 the other Seamless Auth adapters answer with.
 
+---
+
+### `requirePermission(required: string | string[], options?)`
+
+Permission-based authorization middleware, mounted after `requireAuth`. It needs the auth API at
+v0.23, which puts permissions in the access token.
+
+```ts
+const guard = requireAuth({ cookieSecret, authServerUrl, audience });
+
+app.get("/reports", guard, requirePermission("reports:read"), listReports);
+
+app.post(
+  "/invoices",
+  guard,
+  requirePermission(["invoices:write", "invoices:approve"], { match: "all" }),
+  createInvoice,
+);
+
+// Bound to the route: lead with this form for a route that names an organization.
+app.post(
+  "/orgs/:organizationId/projects",
+  guard,
+  requirePermission("projects:write", { organizationParam: "organizationId" }),
+  createProject,
+);
+```
+
+| Option | Meaning |
+| --- | --- |
+| `match` | `"any"` (the default) needs one of the permissions, `"all"` needs every one. Each may come from either claim. |
+| `organization` | `true` counts only the active organization's permissions, and refuses a token with no active organization. On its own this lets a token for organization A through on `/orgs/B/...`. |
+| `organizationParam` | The route parameter naming the organization. Implies `organization`. The parameter must equal the active organization exactly; a missing one or a mismatch is a 403. |
+| `authServerUrl` | Where to read a token that omits its permissions. Defaults to the `authServerUrl` on `requireAuth`. Only a cookie-only `requireAuth` needs it. |
+
+Matching is exact and case-sensitive, with no trimming, wildcards or implied grants, unlike a
+role: `invoices:write` does not satisfy `invoices:read`. Without an organization option a
+permission is held if it is in `permissions` or `organizationPermissions`. Organization roles
+never count for `requireRole`.
+
+When a user's permissions do not fit in the access token, the token carries `permissions_omitted`
+instead, and the guard reads `GET {authServerUrl}/users/me/permissions` with the caller's token on
+each such request. There is no caching and no retry. The URL only ever comes from your
+configuration.
+
+| Refusal | Status | Body |
+| --- | --- | --- |
+| No session on the request, or the live read answered 401 | 401 | `{"error":"unauthenticated"}` |
+| The requirement is not met, or the required list is empty | 403 | `{"error":"insufficient_permission"}` |
+| The live read failed, timed out or answered a malformed body, or no auth server URL is configured | 503 | `{"error":"permissions_unavailable"}` |
+
+The body never names a permission. A missing URL also logs a warning saying what to set.
+
+`req.user` carries `permissions`, `organizationRoles`, `organizationPermissions` and
+`permissionsOmitted` whenever the token was read, cookie or bearer. `permissionsOmitted: true`
+means the three lists say nothing, not that they are empty. On a cookie-only `requireAuth`,
+`organizationId` stays unset on `req.user`, though the guard does read the organization from the
+token inside the cookie.
+
+A resource server has `api.requirePermission(required, options)` with the same rules, except that
+`permissions_omitted` is a 403, not a live read, because the first-party endpoint refuses provider
+tokens. Provider tokens do not carry these claims until seamless-auth-oidc-provider#47, so **this
+guard denies every provider token today**.
+
 Under the `/auth` router, a path that neither a route of its own nor the auth API's adapter
 manifest lists answers `404 { "error": "not_found" }` as JSON, rather than falling through to
 the application's own 404 handler.

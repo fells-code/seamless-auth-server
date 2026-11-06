@@ -1,11 +1,14 @@
 import {
   assertSecretStrength,
   authenticateRequest,
+  authorizePermissions,
   authorizeRoles,
   checkOrigin,
   type GuardRejection,
   type GuardUser,
   getSeamlessLogger,
+  permissionRequirement,
+  type PermissionGuardOptions,
 } from "@seamless-auth/core";
 
 import { readCookies } from "./internal/context.js";
@@ -34,6 +37,9 @@ export type SeamlessGuardOptions = Pick<
    */
   allowRecoverySession?: boolean;
 };
+
+export type SeamlessPermissionGuardOptions = SeamlessGuardOptions &
+  PermissionGuardOptions;
 
 /**
  * The signed-in user a guard hands its route handler. Roles and
@@ -197,6 +203,67 @@ export function requireRole<Context = unknown>(
 
     if (authorizeRoles(result.user, required)) {
       return refuse(403, "insufficient_role");
+    }
+
+    return handler(request, context, result.user);
+  };
+}
+
+/**
+ * `requireAuth`, plus a permission check. Matching is exact and case-sensitive.
+ * Refuses with 403 `insufficient_permission`, naming no permissions. A token that
+ * omits its permissions has them read from `authServerUrl`, and gets 503
+ * `permissions_unavailable` if they cannot be read.
+ *
+ * Unlike `requireRole`, an empty list does not throw when the module loads: it is
+ * a 403 on every request, as in every other Seamless adapter.
+ *
+ * `organizationParam` names a dynamic segment, read from the route context's
+ * `params`, which must equal the active organization.
+ *
+ * ### Example
+ * ```ts
+ * // app/api/orgs/[organizationId]/projects/route.ts
+ * export const POST = requirePermission(
+ *   "projects:write",
+ *   async (request, _context, user) => Response.json(await create(request, user)),
+ *   { ...seamlessOptions, organizationParam: "organizationId" },
+ * );
+ * ```
+ */
+export function requirePermission<Context = unknown>(
+  required: string | string[],
+  handler: SeamlessGuardedHandler<Context>,
+  opts: SeamlessPermissionGuardOptions,
+): SeamlessGuardedRoute<Context> {
+  const authenticate = prepare("requirePermission", opts);
+
+  return async (request, context) => {
+    const result = await authenticate(request);
+
+    if ("response" in result) {
+      return result.response;
+    }
+
+    // `params` is a promise from Next.js 15 and a plain object before it.
+    const params =
+      opts.organizationParam === undefined
+        ? undefined
+        : await (context as { params?: unknown } | undefined)?.params;
+
+    const rejection = await authorizePermissions(result.user, required, {
+      ...permissionRequirement(opts, params),
+      authServerUrl: opts.authServerUrl,
+    });
+
+    if (rejection) {
+      if (rejection.warn) {
+        getSeamlessLogger().warn(
+          `${LOG_PREFIX} - (requirePermission) - ${rejection.warn}`,
+        );
+      }
+
+      return toResponse(rejection);
     }
 
     return handler(request, context, result.user);

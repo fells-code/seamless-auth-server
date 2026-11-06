@@ -5,6 +5,7 @@ import {
   createSeamlessAuthServer,
   getSeamlessUser,
   requireAuth,
+  requirePermission,
   requireRole,
   type EmailMessage,
 } from "@seamless-auth/express";
@@ -23,11 +24,24 @@ app.get(
   },
 );
 
+app.get(
+  "/orgs/:id",
+  requireAuth({ cookieSecret: "x".repeat(64) }),
+  requirePermission(["a:read"], { match: "all", organizationParam: "id" }),
+  (req, res) => {
+    const held: string[] | undefined = req.user?.permissions;
+    const omitted: boolean | undefined = req.user?.permissionsOmitted;
+    res.json({ held, omitted });
+  },
+);
+
 // Each wrong call below must be a type error. If an export resolves to `any`
 // (an unresolvable import in the shipped .d.ts), the directive is unused and
 // tsc fails.
 // @ts-expect-error requireAuth takes an options object
 requireAuth(42);
+// @ts-expect-error match is any or all
+requirePermission("a:read", { match: "some" });
 // @ts-expect-error requireRole takes a role name or list
 requireRole(42);
 // @ts-expect-error createSeamlessAuthServer takes an options object
