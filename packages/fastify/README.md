@@ -76,6 +76,46 @@ app.get(
 );
 ```
 
+`requirePermission` is the same kind of hook, for permissions. It needs the auth API at v0.23:
+
+```ts
+import { requirePermission } from "@seamless-auth/fastify";
+
+app.get(
+  "/reports",
+  { preHandler: [authenticated, requirePermission("reports:read")] },
+  listReports,
+);
+
+// Bound to the route: lead with this form for a route that names an organization.
+app.post(
+  "/orgs/:organizationId/projects",
+  {
+    preHandler: [
+      authenticated,
+      requirePermission("projects:write", { organizationParam: "organizationId" }),
+    ],
+  },
+  createProject,
+);
+```
+
+`match` is `"any"` (the default) or `"all"`. `organization: true` counts only the active
+organization's permissions, and on its own lets a token for organization A through on
+`/orgs/B/...`, so a route that names an organization should use `organizationParam`, which implies
+it and must equal the active organization exactly. Matching is exact and case-sensitive, with no
+wildcards or implied grants, and an empty list opens nothing. A refusal is
+`403 { "error": "insufficient_permission" }`, naming no permissions.
+
+A token whose permissions did not fit carries `permissions_omitted`, and the guard reads
+`GET {authServerUrl}/users/me/permissions` with the caller's token, with no caching and no retry.
+The URL comes from `requireAuth`, or from an `authServerUrl` option on `requirePermission` for a
+cookie-only `requireAuth`. A failed read, or no URL, is
+`503 { "error": "permissions_unavailable" }`, and a 401 from the read is the usual 401.
+
+`request.user` carries `permissions`, `organizationRoles`, `organizationPermissions` and
+`permissionsOmitted` whenever the token was read.
+
 `requireAuth` verifies the request's session and puts it on `request.user`. It
 understands the signed access cookie the plugin issues to browsers, and, when
 `authServerUrl` and `audience` are configured together, the auth API's own access
@@ -173,6 +213,11 @@ app.get(
   listMine,
 );
 ```
+
+`api.requirePermission(required, options)` has the rules of `requirePermission`, except that
+`permissions_omitted` is a 403, not a live read, because the first-party endpoint refuses provider
+tokens. Provider tokens do not carry these claims until seamless-auth-oidc-provider#47, so **this
+guard denies every provider token today**.
 
 Tokens are verified the same way in every Seamless adapter (Express, Fastify, Next.js, Go,
 Python and Rust), held to shared signed test vectors:

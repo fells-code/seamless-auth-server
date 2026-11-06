@@ -14,6 +14,19 @@ export * from "./recoveryEnrollment.js";
 export * from "./getSeamlessUser.js";
 export * from "./logger.js";
 export * from "./guards.js";
+export {
+  authorizePermissions,
+  INSUFFICIENT_PERMISSION,
+  permissionRequirement,
+  PERMISSIONS_UNAVAILABLE,
+} from "./permissions.js";
+export type {
+  AuthorizePermissionsOptions,
+  PermissionGuardOptions,
+  PermissionMatch,
+  PermissionRequirement,
+  UserPermissionClaims,
+} from "./permissions.js";
 export * from "./resourceServer.js";
 export * from "./createServiceToken.js";
 export * from "./validateSecrets.js";
@@ -25,6 +38,10 @@ export {
   hasScopedRole,
   roleGrantsAccess,
 } from "@seamless-auth/types/role/matching";
+export {
+  hasAllPermissions,
+  hasPermission,
+} from "@seamless-auth/types/permission/matching";
 export * from "./apiContract.js";
 export * from "./transport.js";
 export * from "./applyResult.js";

@@ -1,7 +1,11 @@
 // Configuration follows verify/CONFORMANCE.md in fells-code/seamless-cli. Read
 // on the first request, not at import: `next build` loads every route module,
 // and the adapter refuses to start without its secrets.
-import { createSeamlessAuthHandler, requireAuth } from "@seamless-auth/nextjs";
+import {
+  createSeamlessAuthHandler,
+  requireAuth,
+  requirePermission,
+} from "@seamless-auth/nextjs";
 
 const store = (globalThis.__seamlessRefapp ??= { captured: new Map() });
 
@@ -53,6 +57,19 @@ export function guarded(handler) {
   let route;
   return (request, context) => {
     route ??= requireAuth(handler, options());
+    return route(request, context);
+  };
+}
+
+// The permission-guards contract's routes: 200 {"id":"<user id>"} when allowed.
+export function permissionGuarded(required, guardOptions = {}) {
+  let route;
+  return (request, context) => {
+    route ??= requirePermission(
+      required,
+      (_request, _context, user) => Response.json({ id: user.id }),
+      { ...options(), ...guardOptions },
+    );
     return route(request, context);
   };
 }

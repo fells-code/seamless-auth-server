@@ -3,7 +3,7 @@ import {
   authenticateCookie,
   authFetch,
   verifyRefreshCookie,
-  type SeamlessAuthUser,
+  type GuardUser,
 } from "@seamless-auth/core";
 import type { MeResponse } from "@seamless-auth/types";
 
@@ -64,7 +64,7 @@ export interface SeamlessSessionOptions {
 export type SeamlessSession = MeResponse;
 
 /** What the access cookie says about the user, minus the upstream token. */
-export type SeamlessClaims = Omit<SeamlessAuthUser, "token">;
+export type SeamlessClaims = Omit<GuardUser, "token">;
 
 function accessCookie(
   cookies: CookieReader,

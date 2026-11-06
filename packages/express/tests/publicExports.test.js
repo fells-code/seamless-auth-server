@@ -6,8 +6,11 @@ import {
   createSeamlessAuthServer,
   createSeamlessConsoleProxy,
   getSeamlessUser,
+  hasAllPermissions,
+  hasPermission,
   hasScopedRole,
   requireAuth,
+  requirePermission,
   requireRole,
   roleGrantsAccess,
 } from "../dist/index.js";
@@ -20,8 +23,11 @@ const DOCUMENTED_EXPORTS = {
   createSeamlessAuthServer,
   createSeamlessConsoleProxy,
   getSeamlessUser,
+  hasAllPermissions,
+  hasPermission,
   hasScopedRole,
   requireAuth,
+  requirePermission,
   requireRole,
   roleGrantsAccess,
 };

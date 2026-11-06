@@ -2,6 +2,8 @@ import type { NextFunction, Request, RequestHandler, Response } from "express";
 import {
   createResourceServer as createCoreResourceServer,
   type GuardRejection,
+  type PermissionGuardOptions,
+  permissionRequirement,
   type ResourceServer,
   type ResourceServerAuthOptions,
   type ResourceServerOptions,
@@ -20,6 +22,14 @@ export interface ExpressResourceServer {
   requireScope(scopes: string | string[]): RequestHandler;
   /** Any one of the roles. Scoped names match as in `requireRole`. */
   requireRole(roles: string | string[]): RequestHandler;
+  /**
+   * The rules of the first-party `requirePermission`. Provider tokens do not carry
+   * these claims until seamless-auth-oidc-provider#47, so it denies today.
+   */
+  requirePermission(
+    permissions: string | string[],
+    options?: PermissionGuardOptions,
+  ): RequestHandler;
   /** Answers the RFC 9470 `insufficient_user_authentication` challenge when unmet. */
   requireStepUp(requirement: StepUpRequirement): RequestHandler;
   /** The underlying verifier, for checks outside a route. */
@@ -96,6 +106,20 @@ export function createResourceServer(
     },
     requireScope: (scopes) => guard(verifier.scopes(scopes)),
     requireRole: (roles) => guard(verifier.roles(roles)),
+    requirePermission(permissions, options = {}) {
+      return (req: Request, res: Response, next: NextFunction): void => {
+        const rejection = verifier.authorizePermissions(
+          verified.get(req),
+          permissions,
+          permissionRequirement(options, req.params),
+        );
+        if (rejection) {
+          reject(res, rejection);
+          return;
+        }
+        next();
+      };
+    },
     requireStepUp: (requirement) => guard(verifier.stepUp(requirement)),
   };
 }

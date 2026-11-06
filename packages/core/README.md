@@ -119,6 +119,7 @@ remain for direct imports.
 - `authenticateBearer(...)` – verifies a bearer access token into a session
 - `authenticateRequest(...)` – the cookie when present, otherwise the bearer token when enabled
 - `authorizeRoles(...)` – role check against an authenticated session
+- `authorizePermissions(...)`: permission check against an authenticated session, with the live read for a token that omits its permissions
 - `checkOrigin(...)` – cross-site request check for state-changing requests, whatever the `SameSite` setting
 - `checkContentType(...)` – refuses a state-changing request a form or `no-cors` fetch could send without a CORS preflight
 

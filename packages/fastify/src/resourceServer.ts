@@ -2,6 +2,8 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import {
   createResourceServer as createCoreResourceServer,
   type GuardRejection,
+  type PermissionGuardOptions,
+  permissionRequirement,
   type ResourceServer,
   type ResourceServerAuthOptions,
   type ResourceServerOptions,
@@ -25,6 +27,14 @@ export interface FastifyResourceServer {
   requireScope(scopes: string | string[]): PreHandler;
   /** Any one of the roles. Scoped names match as in `requireRole`. */
   requireRole(roles: string | string[]): PreHandler;
+  /**
+   * The rules of the first-party `requirePermission`. Provider tokens do not carry
+   * these claims until seamless-auth-oidc-provider#47, so it denies today.
+   */
+  requirePermission(
+    permissions: string | string[],
+    options?: PermissionGuardOptions,
+  ): PreHandler;
   /** Answers the RFC 9470 `insufficient_user_authentication` challenge when unmet. */
   requireStepUp(requirement: StepUpRequirement): PreHandler;
   /** The underlying verifier, for checks outside a route. */
@@ -94,6 +104,19 @@ export function createResourceServer(
     },
     requireScope: (scopes) => guard(verifier.scopes(scopes)),
     requireRole: (roles) => guard(verifier.roles(roles)),
+    requirePermission(permissions, options = {}) {
+      return async function resourceServerPermissionGuard(
+        req: FastifyRequest,
+        reply: FastifyReply,
+      ) {
+        const rejection = verifier.authorizePermissions(
+          verified.get(req),
+          permissions,
+          permissionRequirement(options, req.params),
+        );
+        if (rejection) return reject(reply, rejection);
+      };
+    },
     requireStepUp: (requirement) => guard(verifier.stepUp(requirement)),
   };
 }

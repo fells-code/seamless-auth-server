@@ -164,12 +164,41 @@ same scoped matching as `hasScopedRole`: a broad `admin` grants `admin:read`, an
 a `:write` role grants the matching `:read`. A role guard with no roles throws when
 the module loads.
 
+`requirePermission` guards by permission, and needs the auth API at v0.23:
+
+```ts
+// app/api/orgs/[organizationId]/projects/route.ts
+import { requirePermission } from "@seamless-auth/nextjs";
+import { seamless } from "@/lib/seamless";
+
+export const POST = requirePermission(
+  "projects:write",
+  async (request, _context, user) => Response.json(await create(request, user)),
+  { ...seamless, organizationParam: "organizationId" },
+);
+```
+
+`match` is `"any"` (the default) or `"all"`. `organization: true` counts only the active
+organization's permissions, and on its own lets a token for organization A through on
+`/orgs/B/...`, so a route that names an organization should use `organizationParam`, which reads
+that dynamic segment from the route context, implies `organization`, and must equal the active
+organization exactly. Matching is exact and case-sensitive, with no wildcards or implied grants.
+Unlike a role guard, an empty list does not throw when the module loads: it is a 403 on every
+request, as in every other adapter.
+
+A token whose permissions did not fit carries `permissions_omitted`, and the guard reads
+`GET {authServerUrl}/users/me/permissions` with the caller's token, with no caching and no retry.
+The user the handler gets carries `permissions`, `organizationRoles`, `organizationPermissions`
+and `permissionsOmitted`, as do the claims from `getSeamlessClaims`.
+
 | Refusal | Status | Body |
 | --- | --- | --- |
 | No session, an invalid or expired one, or a sign-in flow's ephemeral token | 401 | `{"error":"unauthenticated"}` |
 | A recovery session, unless `allowRecoverySession: true` | 403 | `{"error":"enrollment_required"}` |
 | A cookie request the origin check refuses (see `allowedOrigins`) | 403 | `{"error":"cross_site_request_blocked"}` |
 | None of the roles granted | 403 | `{"error":"insufficient_role"}` |
+| The permission requirement is not met, or its list is empty | 403 | `{"error":"insufficient_permission"}` |
+| A token that omits its permissions, and they could not be read | 503 | `{"error":"permissions_unavailable"}` |
 
 The body never names the user's roles or the required ones. These are the codes
 every Seamless Auth adapter answers with.
@@ -284,7 +313,13 @@ export const POST = api.protect(
 );
 ```
 
-`protect` checks `scopes`, then `roles`, then `stepUp`. `api.authenticate(request, requirements)`
+`permissions` and `permissionOptions` apply the rules of `requirePermission`, except that
+`permissions_omitted` is a 403, not a live read, because the first-party endpoint refuses provider
+tokens. Provider tokens do not carry these claims until seamless-auth-oidc-provider#47, so **this
+requirement denies every provider token today**. `permissionOptions.organizationParam` reads the
+route context, which `protect` has and which `authenticate` takes as a third argument.
+
+`protect` checks `scopes`, then `roles`, then `permissions`, then `stepUp`. `api.authenticate(request, requirements)`
 returns `{ user }` or the `{ response }` to send, for handlers that branch on it.
 
 `allowClients: false` in the requirements refuses a client credentials token with

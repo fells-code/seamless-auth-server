@@ -88,6 +88,7 @@ It builds on the core package and adds:
 
 - `requireAuth` middleware for session authentication
 - `requireRole` middleware for role-based authorization
+- `requirePermission` middleware for permission-based authorization, organization aware (needs the auth API at v0.23)
 - scoped-role helpers such as `hasScopedRole`
 - A normalized `req.user` contract for downstream handlers
 
