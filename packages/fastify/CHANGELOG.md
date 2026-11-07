@@ -1,5 +1,68 @@
 # @seamless-auth/fastify
 
+## 0.16.0
+
+### Minor Changes
+
+- b4224ef: Deliver enrollment invites through adopter messaging (#183). With `messaging` configured, `POST /admin/enrollment/invites` now asks the auth API for external delivery (`x-seamless-auth-delivery-mode: external`, with the `seamless-auth-external-delivery` service token) and sends each invite in `results[].delivery` through `deliverAuthMessage`, so `handlers.sendEnrollmentInviteEmail`, `overrides.enrollmentInviteEmail` or the email transport send it instead of the auth API's mail system. Without `messaging` the route is unchanged.
+  
+  The response no longer carries `results[].delivery`, so recipient addresses and sign-in links are not echoed to the browser. A recipient whose delivery throws is reported as `{ "status": "skipped", "reason": "delivery_failed" }` and `sent` and `skipped` are adjusted; the other recipients are still sent and the route answers 200. The auth API has already recorded that recipient as invited, so repeating the call within a day reports them as `recently_invited`.
+- b4224ef: Keep the session cookies when a refresh fails without the auth API refusing it, matching the Go adapter (fells-code/seamless-auth-go#22). The silent refresh on the auth routes and cookie-transport `POST /refresh` used to clear the access and refresh cookies on any failure, so a network blip or an auth API restart signed the browser out.
+  
+  The cookies are now cleared only when the auth API answers the refresh with 401, or the refresh cookie cannot be read. Those keep their current answers (`401 {"error":"Refresh failed"}` on a silent refresh, `401 {"error":"invalid_refresh_token"}` on `POST /refresh`). Otherwise the cookies stay and:
+  
+  - the auth API cannot be reached: `502 {"error":"upstream_unavailable"}`;
+  - the auth API answers any other non-2xx status: that status and body pass through;
+  - the rotated session fails verification, or a 2xx carries no session: `502 {"error":"upstream_unavailable"}`. `POST /refresh` answered these with 500 before.
+  
+  Core adds `refreshCookieSession`, which reports how a cookie rotation ended, and `failureBody`. `refreshAccessToken` keeps its signature. In-flight sharing and the 5 second window for a completed cookie rotation are unchanged, and only a successful rotation is kept. No request's abort signal reaches the upstream call, so a caller that goes away does not cancel a rotation other callers share.
+- 5d33037: Add `requirePermission` guards, organization aware, on Express, Fastify and Next.js (#218). Needs the auth API at v0.23. `match` is `any` or `all`, `organization: true` counts only the active organization's permissions, and `organizationParam` also binds the check to the organization a route names. Matching is exact. A refusal is `403 insufficient_permission`, and an empty list opens nothing. A token carrying `permissions_omitted` has its permissions read from `GET /users/me/permissions` at the configured auth server URL, and `503 permissions_unavailable` fails closed when that read fails. The URL comes from `requireAuth`, or from an `authServerUrl` option for a cookie-only `requireAuth`.
+  
+  The guarded user now carries `permissions`, `organizationRoles`, `organizationPermissions` and `permissionsOmitted`. Core exports `authorizePermissions`, `permissionRequirement`, `INSUFFICIENT_PERMISSION` and `PERMISSIONS_UNAVAILABLE`, and every package exports `hasPermission` and `hasAllPermissions`.
+  
+  Resource servers gain the same guard: `api.requirePermission` on Express and Fastify, `permissions` and `permissionOptions` requirements on Next.js, and `authorizePermissions` on the verifier. Provider tokens do not carry these claims until seamless-auth-oidc-provider#47, so it denies every provider token today. `permissions_omitted` there is a 403, not a live read.
+- 662b6aa: Let a verify-only resource server require a user rather than a client credentials token (#260). The Express and Fastify `requireAuth` guards from `createResourceServer` take `{ allowClients: false }`, the Next.js `protect` and `authenticate` requirements take `allowClients: false`, and core's `authenticate(authorization, { allowClients: false })` does the same. A verified token whose user has `isClient` set is then refused with `403 {"error":"user_required"}` and no `WWW-Authenticate` header, the same shape as `insufficient_role`. A token that fails verification still gets `401` first. `allowClients` defaults to `true`, so existing routes are unchanged.
+  
+  The shared verify-only vectors gain `is_client` on each accepted token and a `user_required_requests` list. Both are additive, so the Go, Python and Rust copies keep passing until those adapters implement the option.
+
+### Patch Changes
+
+- 662b6aa: Run the origin check in the Express and Fastify `requireAuth` guards, as the Next.js guards and the Go, Python and Rust adapters already do (#256), and refuse a literal `null` `Origin` in every case.
+  
+  Requests now refused:
+  
+  - On a cookie session, Express and Fastify `requireAuth` (and so `requireRole` behind it) answer a state-changing request (anything but `GET`, `HEAD` and `OPTIONS`) with `403 {"error":"cross_site_request_blocked"}` when `Sec-Fetch-Site` is `cross-site` or the `Origin` is a literal `null`. A new `allowedOrigins` option, which takes the same list as the auth router, also requires a listed `Origin` for a `same-site` request or one with no `Sec-Fetch-Site`; an empty list is enforced. A bearer request is not checked, and the guards ask for no JSON content type.
+  - `checkOrigin` refuses a literal `null` `Origin` whatever `Sec-Fetch-Site` and `allowedOrigins` say. It used to pass one sent with `Sec-Fetch-Site: same-origin`, `same-site` or `none`. This applies to the auth routes of every adapter and to the Next.js guards.
+- 662b6aa: Stop replaying a completed bearer refresh rotation to later callers (#258). After a successful rotation, the adapter used to hand the new session to any caller presenting the same old refresh cookie or bearer refresh token for the next 5 seconds, without calling the auth API, so a stolen bearer refresh token replayed in that window got the new tokens and the auth API's reuse detection never saw it.
+  
+  Bearer transport now shares only a rotation still in flight. A bearer client that presents a refresh token after its rotation completed goes to the auth API, which treats it as a replay and answers `401 {"error":"refresh_token_reused"}`.
+  
+  Cookie transport keeps the 5 second window, because browser tabs share one refresh cookie and a second tab sending the old cookie just after the first tab's rotation is expected. Within 5 seconds of a successful rotation the old refresh cookie gets the same rotated session; after that it goes to the auth API as a replay. A failed rotation is never kept, and the window is keyed on a hash of the cookie.
+- 662b6aa: Mark client credentials tokens on the resource server user (#260). A user verified by `createResourceServer` now carries `isClient`, `true` when `sub` equals `client_id` (a machine acting for itself, whose `id` is a client id rather than a user id) and `false` otherwise. Code that builds a `ResourceServerUser` by hand, such as a test double, needs the new field.
+- 662b6aa: Close a form-post CSRF gap on the auth routes (#256). A body-less form `POST` from a sibling subdomain, or from a browser that sends no fetch metadata, could reach cookie-authenticated routes such as `/recovery-codes` when cookies were `SameSite=Lax` or `Strict`.
+  
+  Requests now refused:
+  
+  - The origin check runs whatever the `SameSite` setting. A state-changing request with `Sec-Fetch-Site: cross-site` answers `403 {"error":"cross_site_request_blocked"}` under `Lax` and `Strict` too, and `allowedOrigins` is enforced for `same-site` and metadata-free requests under every setting. An empty `allowedOrigins: []` counts as configured. This also applies to the Next.js `requireAuth` and `requireRole` guards.
+  - A state-changing request to the auth routes must declare `Content-Type: application/json` or carry an `x-seamless-auth-transport` header (any value), even with no body, or it answers `415 {"error":"unsupported_media_type"}`. `POST /refresh`, `DELETE /logout` and `DELETE /logout/all` are exempt for now, because the current browser client sends them bare; they still get the origin check. A client of your own that sends a body-less `POST`, `PUT`, `PATCH` or `DELETE` with no content type must add one of the two.
+  
+  Fastify accepts an empty body under `Content-Type: application/json` on the plugin's routes, and Express no longer reads one as `{}`, so a body-less JSON request forwards no body on all three adapters.
+  
+  `checkContentType` is exported from `@seamless-auth/core`. `checkOrigin` ignores its `cookieSecure` and `cookieSameSite` inputs.
+- Updated dependencies [626dcc6]
+- Updated dependencies [029c659]
+- Updated dependencies [b4224ef]
+- Updated dependencies [662b6aa]
+- Updated dependencies [b4224ef]
+- Updated dependencies [662b6aa]
+- Updated dependencies [5d33037]
+- Updated dependencies [662b6aa]
+- Updated dependencies [662b6aa]
+- Updated dependencies [0c2169d]
+- Updated dependencies [5d33037]
+- Updated dependencies [662b6aa]
+  - @seamless-auth/core@0.25.0
+
 ## 0.15.0
 
 ### Minor Changes
