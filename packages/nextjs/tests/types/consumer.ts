@@ -74,3 +74,23 @@ getSeamlessClaims(42);
 requirePermission("a:read", () => new Response(), { ...options, match: "some" });
 // @ts-expect-error requireRole takes the roles first
 requireRole(() => new Response(), options);
+
+import {
+  createWebhookHandler,
+  verifyWebhookRequest,
+} from "@seamless-auth/nextjs/webhook";
+
+export const POST: (request: Request) => Promise<Response> = createWebhookHandler({
+  secret: "whsec_a",
+  onEvent(event) {
+    if (event.type === "user.created") {
+      const userId: string = event.data.userId;
+      void userId;
+    }
+  },
+});
+void verifyWebhookRequest(new Request("https://example.com"), { secret: "whsec_a" }).then(
+  (event) => event.id,
+);
+// @ts-expect-error onEvent is required
+createWebhookHandler({ secret: "whsec_a" });

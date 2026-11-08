@@ -13,3 +13,27 @@ void claims;
 verifyCookieJwt(42);
 // @ts-expect-error loginHandler takes an input and options
 loginHandler(42);
+
+import {
+  verifyWebhook,
+  WebhookVerificationError,
+  type WebhookEvent,
+  type WebhookVerificationReason,
+} from "@seamless-auth/core/webhook";
+
+const event: WebhookEvent = verifyWebhook("{}", new Headers(), {
+  secret: ["whsec_a", "whsec_b"],
+});
+if (event.type === "user.created") {
+  const userId: string = event.data.userId;
+  void userId;
+}
+const reason: WebhookVerificationReason = new WebhookVerificationError(
+  "invalid_signature",
+  "",
+).reason;
+void reason;
+// @ts-expect-error a parsed body cannot be verified
+verifyWebhook({}, {}, { secret: "whsec_a" });
+// @ts-expect-error the reason is a known string
+new WebhookVerificationError("nope", "");

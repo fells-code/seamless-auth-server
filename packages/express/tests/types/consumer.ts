@@ -58,3 +58,20 @@ const unsubscribable: EmailMessage = {
 // @ts-expect-error header values are strings
 const badHeader: EmailMessage = { ...unsubscribable, headers: { "X-Count": 1 } };
 void badHeader;
+
+import { requireWebhook } from "@seamless-auth/express/webhook";
+
+const webhookApp = express();
+webhookApp.post(
+  "/webhooks/seamless",
+  requireWebhook({ secret: "whsec_a" }),
+  (req, res) => {
+    if (req.webhook?.type === "user.created") {
+      const userId: string = req.webhook.data.userId;
+      void userId;
+    }
+    res.sendStatus(204);
+  },
+);
+// @ts-expect-error requireWebhook needs a secret
+requireWebhook({});

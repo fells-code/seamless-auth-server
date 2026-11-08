@@ -316,6 +316,46 @@ from the upstream unchanged, so the dashboard's own caching still applies.
 Unknown paths under the prefix are forwarded too, which is what makes deep links
 into the dashboard work: the upstream answers them with the SPA shell.
 
+## Verifying webhooks
+
+`seamlessWebhook` from `@seamless-auth/fastify/webhook` serves one webhook route, verifies each
+delivery and hands the typed event to `onEvent`.
+
+```ts
+import { seamlessWebhook } from "@seamless-auth/fastify/webhook";
+
+await app.register(seamlessWebhook, {
+  path: "/webhooks/seamless",
+  secret: process.env.SEAMLESS_WEBHOOK_SECRET!,
+  async onEvent(event, request, reply) {
+    if (event.type === "user.created") await provision(event.data.userId);
+  },
+});
+```
+
+The signature covers the raw bytes, so inside its own encapsulated context the plugin replaces
+the JSON parser with a content type parser that keeps the body as a buffer:
+
+```ts
+fastify.removeAllContentTypeParsers();
+fastify.addContentTypeParser("*", { parseAs: "buffer" }, (_request, body, done) =>
+  done(null, body),
+);
+```
+
+The rest of the app keeps parsing JSON. Register the plugin directly, not through
+`fastify-plugin`, or the raw parser applies to every route. `onEvent` answers by returning a
+value or sending on `reply`; otherwise the route answers 204. While the endpoint's secret
+rotates, pass both: `secret: [newSecret, oldSecret]`. `bodyLimit` caps the body read.
+
+A refused webhook gets `400 { "error": "invalid_webhook", "reason": "..." }`, with the reason
+from `WebhookVerificationError`: `missing_header`, `malformed_header`,
+`timestamp_out_of_tolerance`, `unsupported_version`, `invalid_signature` or `invalid_payload`.
+The core README lists what each one means.
+
+`verifyWebhook` and `WebhookVerificationError` are re-exported for a route that sets up its own
+raw body parser.
+
 ## Options
 
 | Option | Default | Purpose |

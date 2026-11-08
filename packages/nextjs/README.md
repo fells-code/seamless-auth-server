@@ -366,6 +366,49 @@ and `authTime`. A client credentials token (`sub` equal to `client_id`) verifies
 `isClient` set to `true` and the client id in `id`, and fails role and step-up checks. Check
 `isClient` before treating `id` as a user id, or pass `allowClients: false`.
 
+## Verifying webhooks
+
+`createWebhookHandler` from `@seamless-auth/nextjs/webhook` is a route handler that verifies a
+Seamless webhook and hands the typed event to `onEvent`.
+
+```ts
+// app/api/webhooks/seamless/route.ts
+import { createWebhookHandler } from "@seamless-auth/nextjs/webhook";
+
+export const POST = createWebhookHandler({
+  secret: process.env.SEAMLESS_WEBHOOK_SECRET!,
+  async onEvent(event) {
+    if (event.type === "user.created") await provision(event.data.userId);
+  },
+});
+```
+
+`onEvent` answers by returning a `Response`; otherwise the handler answers 204. While the
+endpoint's secret rotates, pass both: `secret: [newSecret, oldSecret]`. The handler runs on the
+Node.js runtime.
+
+A refused webhook gets `400 { "error": "invalid_webhook", "reason": "..." }`, with the reason
+from `WebhookVerificationError`: `missing_header`, `malformed_header`,
+`timestamp_out_of_tolerance`, `unsupported_version`, `invalid_signature` or `invalid_payload`.
+The core README lists what each one means.
+
+To verify inside a handler of your own, read the body yourself and do not call
+`request.json()` first:
+
+```ts
+import { verifyWebhookRequest } from "@seamless-auth/nextjs/webhook";
+
+export async function POST(request: Request) {
+  const event = await verifyWebhookRequest(request, { secret });
+  // ...
+}
+```
+
+`verifyWebhookRequest` reads `request.arrayBuffer()`, the exact bytes. Passing
+`await request.text()` to `verifyWebhook(body, request.headers, { secret })` works for the auth
+API's UTF-8 JSON too, but `text()` drops a leading byte order mark, so the raw bytes are the
+safer input.
+
 ## Options
 
 `createSeamlessAuthHandler` takes the same options as the Express and Fastify
