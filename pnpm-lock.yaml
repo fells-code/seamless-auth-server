@@ -39,8 +39,8 @@ importers:
   packages/core:
     dependencies:
       '@seamless-auth/types':
-        specifier: ^0.39.0
-        version: 0.39.0
+        specifier: ^0.40.0
+        version: 0.40.0
       '@types/jsonwebtoken':
         specifier: ^9.0.10
         version: 9.0.10
@@ -159,8 +159,8 @@ importers:
         specifier: workspace:^
         version: link:../core
       '@seamless-auth/types':
-        specifier: ^0.39.0
-        version: 0.39.0
+        specifier: ^0.40.0
+        version: 0.40.0
       cookie:
         specifier: ^1.1.1
         version: 1.1.1
@@ -1116,8 +1116,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@seamless-auth/types@0.39.0':
-    resolution: {integrity: sha512-xoJLkpgkisvVvSh3aBxByC5GfWm6LaIulusf+6A2ghok/l5FP6r2V8lwLEqbXO6dy/g01RNWxfTupjWAp42b0A==}
+  '@seamless-auth/types@0.40.0':
+    resolution: {integrity: sha512-NpFVCWE0VSNrBK9M4yBxsloyQgGHXP6B8/QmDPxsFz48/qV6jcDqdUpuV4PAJslG9B9X+4BcnTSQzI+iPSRNsA==}
     engines: {node: '>=22'}
 
   '@sinclair/typebox@0.27.10':
@@ -3736,7 +3736,7 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.60.4':
     optional: true
 
-  '@seamless-auth/types@0.39.0':
+  '@seamless-auth/types@0.40.0':
     dependencies:
       zod: 4.6.5
 
