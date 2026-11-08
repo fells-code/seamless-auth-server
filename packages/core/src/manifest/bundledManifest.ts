@@ -3,7 +3,7 @@ import type { AdapterManifest } from "./adapterManifest.js";
 
 export const BUNDLED_ADAPTER_MANIFEST: AdapterManifest = {
   "schemaVersion": 1,
-  "apiVersion": "0.22.0",
+  "apiVersion": "0.23.0",
   "session": {
     "subject": "sub",
     "token": "token",
@@ -74,6 +74,36 @@ export const BUNDLED_ADAPTER_MANIFEST: AdapterManifest = {
     },
     {
       "method": "GET",
+      "path": "/admin/audit-sinks",
+      "credential": "access"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/audit-sinks",
+      "credential": "access"
+    },
+    {
+      "method": "DELETE",
+      "path": "/admin/audit-sinks/{id}",
+      "credential": "access"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/audit-sinks/{id}",
+      "credential": "access"
+    },
+    {
+      "method": "PATCH",
+      "path": "/admin/audit-sinks/{id}",
+      "credential": "access"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/audit-sinks/{id}/test",
+      "credential": "access"
+    },
+    {
+      "method": "GET",
       "path": "/admin/auth-events",
       "credential": "access"
     },
@@ -94,12 +124,67 @@ export const BUNDLED_ADAPTER_MANIFEST: AdapterManifest = {
     },
     {
       "method": "GET",
+      "path": "/admin/custom-claims",
+      "credential": "access"
+    },
+    {
+      "method": "DELETE",
+      "path": "/admin/custom-claims/{sourceKind}/{sourceName}",
+      "credential": "access"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/custom-claims/{sourceKind}/{sourceName}",
+      "credential": "access"
+    },
+    {
+      "method": "PUT",
+      "path": "/admin/custom-claims/{sourceKind}/{sourceName}",
+      "credential": "access"
+    },
+    {
+      "method": "GET",
       "path": "/admin/enrollment",
       "credential": "access"
     },
     {
       "method": "POST",
       "path": "/admin/enrollment/invites",
+      "credential": "access"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/login-hooks",
+      "credential": "access"
+    },
+    {
+      "method": "DELETE",
+      "path": "/admin/login-hooks/{trigger}",
+      "credential": "access"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/login-hooks/{trigger}",
+      "credential": "access"
+    },
+    {
+      "method": "PUT",
+      "path": "/admin/login-hooks/{trigger}",
+      "credential": "access"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/login-hooks/{trigger}/invocations",
+      "credential": "access"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/login-hooks/{trigger}/secret",
+      "credential": "access"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/login-hooks/{trigger}/test",
       "credential": "access"
     },
     {
@@ -295,6 +380,56 @@ export const BUNDLED_ADAPTER_MANIFEST: AdapterManifest = {
     {
       "method": "POST",
       "path": "/admin/users/import",
+      "credential": "access"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/webhook-deliveries",
+      "credential": "access"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/webhook-deliveries/{deliveryId}",
+      "credential": "access"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/webhook-deliveries/{deliveryId}/redeliver",
+      "credential": "access"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/webhooks",
+      "credential": "access"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/webhooks",
+      "credential": "access"
+    },
+    {
+      "method": "DELETE",
+      "path": "/admin/webhooks/{id}",
+      "credential": "access"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/webhooks/{id}",
+      "credential": "access"
+    },
+    {
+      "method": "PATCH",
+      "path": "/admin/webhooks/{id}",
+      "credential": "access"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/webhooks/{id}/secret",
+      "credential": "access"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/webhooks/{id}/test",
       "credential": "access"
     },
     {
