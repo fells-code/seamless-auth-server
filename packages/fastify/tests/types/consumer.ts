@@ -54,3 +54,19 @@ requireRole(42);
 getSeamlessUser(42);
 // @ts-expect-error the plugin is registered with an options object
 app.register(seamlessAuth, 42);
+
+import { seamlessWebhook } from "@seamless-auth/fastify/webhook";
+
+const webhookApp = Fastify();
+void webhookApp.register(seamlessWebhook, {
+  path: "/webhooks/seamless",
+  secret: ["whsec_a", "whsec_b"],
+  onEvent(event) {
+    if (event.type === "user.created") {
+      const userId: string = event.data.userId;
+      void userId;
+    }
+  },
+});
+// @ts-expect-error the plugin needs a path, a secret and onEvent
+void webhookApp.register(seamlessWebhook, { secret: "whsec_a" });

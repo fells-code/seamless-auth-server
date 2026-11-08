@@ -28,6 +28,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./webhook": {
+      "types": "./dist/webhook.d.ts",
+      "import": "./dist/webhook.js"
     }
   },
   "engines": {
@@ -35,7 +39,7 @@
   },
   "scripts": {
     "build": "pnpm run build:js && pnpm run build:types",
-    "build:js": "tsup src/index.ts --format esm --out-dir dist --splitting --external @seamless-auth/core --external @seamless-auth/core/*",
+    "build:js": "tsup src/index.ts src/webhook.ts --format esm --out-dir dist --splitting --external @seamless-auth/core --external @seamless-auth/core/*",
     "build:types": "tsc -p tsconfig.build.json",
     "clean": "rm -rf dist",
     "dev": "tsc --watch",
@@ -53,7 +57,7 @@
   },
   "dependencies": {
     "@seamless-auth/core": "workspace:^",
-    "@seamless-auth/types": "^0.38.0",
+    "@seamless-auth/types": "^0.39.0",
     "cookie": "^1.1.1"
   },
   "devDependencies": {

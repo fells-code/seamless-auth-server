@@ -888,6 +888,48 @@ and `authTime`. A client credentials token (`sub` equal to `client_id`) verifies
 
 ---
 
+### `requireWebhook(options)`
+
+Verifies a Seamless webhook and puts the typed event on `req.webhook`. Import it from
+`@seamless-auth/express/webhook`.
+
+```ts
+import express from "express";
+import { requireWebhook } from "@seamless-auth/express/webhook";
+
+const app = express();
+
+// Before express.json(): the signature covers the raw bytes.
+app.post(
+  "/webhooks/seamless",
+  requireWebhook({ secret: process.env.SEAMLESS_WEBHOOK_SECRET! }),
+  async (req, res) => {
+    const event = req.webhook!;
+    if (event.type === "user.created") await provision(event.data.userId);
+    res.sendStatus(204);
+  },
+);
+
+app.use(express.json());
+```
+
+The middleware reads the body itself with `express.raw`, whatever the content type, and verifies
+those bytes. A route that `express.json()` has already parsed cannot be verified: the request
+fails with a `TypeError` passed to `next`, so mount the webhook route first. While the endpoint's
+secret rotates, pass both: `secret: [newSecret, oldSecret]`. `limit` caps the body read
+(default `"1mb"`).
+
+A refused webhook gets `400 { "error": "invalid_webhook", "reason": "..." }`, with the reason
+from `WebhookVerificationError`: `missing_header`, `malformed_header`,
+`timestamp_out_of_tolerance`, `unsupported_version`, `invalid_signature` or `invalid_payload`.
+The core README lists what each one means.
+
+`verifyWebhook` and `WebhookVerificationError` are re-exported for a route that reads the body
+its own way, such as `express.raw({ type: "application/json" })` followed by
+`verifyWebhook(req.body, req.headers, { secret })`.
+
+---
+
 ### `getSeamlessUser(req, options)`
 
 Optional helper that calls the Auth Server to retrieve the **fully hydrated user object**.

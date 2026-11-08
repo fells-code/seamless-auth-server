@@ -295,6 +295,48 @@ adapters wrap it; their READMEs list the rules and responses. `tests/fixtures/ve
 holds the signed vectors every adapter, including Go, Python and Rust, is tested against, with
 the script that generates them.
 
+## Verifying webhooks
+
+`verifyWebhook(rawBody, headers, { secret })` from `@seamless-auth/core/webhook` verifies a
+Seamless webhook and returns the event typed with `WebhookEventSchema` from
+`@seamless-auth/types`. The Express, Fastify and Next.js adapters wrap it (see their READMEs).
+It lives on its own subpath so the main entry stays free of zod.
+
+```ts
+import { verifyWebhook, WebhookVerificationError } from "@seamless-auth/core/webhook";
+
+try {
+  const event = verifyWebhook(rawBody, headers, {
+    secret: process.env.SEAMLESS_WEBHOOK_SECRET!,
+  });
+  if (event.type === "user.created") await provision(event.data.userId);
+} catch (err) {
+  if (err instanceof WebhookVerificationError) return reply(400, err.reason);
+  throw err;
+}
+```
+
+It follows Standard Webhooks, the way the auth API signs:
+
+- `rawBody` is the body exactly as received, a string or bytes. The signature covers
+  `${webhook-id}.${webhook-timestamp}.${body}`, so parsed and re-serialized JSON does not
+  verify, and passing a parsed object throws a `TypeError`.
+- `headers` is a Fetch `Headers` or a Node headers object.
+- `secret` is the endpoint's `whsec_` secret, or an array of two while it rotates. Each `v1`
+  signature in `webhook-signature` is checked against each secret with a constant-time
+  comparison; entries of other versions are ignored.
+- `webhook-timestamp` must be within 300 seconds of this clock, in either direction.
+- The body is parsed only after the signature verifies.
+
+A refused webhook throws `WebhookVerificationError` with a `reason`: `missing_header`,
+`malformed_header` (empty, repeated or badly formed), `timestamp_out_of_tolerance`,
+`unsupported_version` (no `v1` signature), `invalid_signature`, or `invalid_payload` (signed,
+but not a known event). A secret that is not `whsec_` and base64, or more than two secrets,
+throws a `TypeError`.
+
+Delivery is at least once and unordered: dedupe on `event.id`, which equals `webhook-id` and
+stays the same across retries.
+
 ## Scoped Roles
 
 Core exports `hasScopedRole` and `roleGrantsAccess` for framework adapters and custom servers that
