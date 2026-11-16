@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   verify:
-    uses: fells-code/seamless-cli/.github/workflows/verify-conformance.yml@e0dc559550168c53721efa1a0194d7f637f3e18b # v0.28.0
+    uses: fells-code/seamless-cli/.github/workflows/verify-conformance.yml@68d33002037d1dbc18f6f0ce4df7a3a91827245b # v0.30.1
     with:
       server-ref: ${{ github.event.pull_request.head.sha }}
 
@@ -51,7 +51,7 @@ jobs:
           repository: fells-code/seamless-auth-api
           path: seamless-auth-api
 
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           version: 10.33.0
 
