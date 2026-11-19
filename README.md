@@ -159,6 +159,19 @@ packages/nextjs
 
 ---
 
+## Running Multiple Instances
+
+Cookie sessions refresh themselves: when the access cookie is missing or expired, the adapter rotates the refresh cookie at the auth API and sets the new cookies. With several adapter instances behind a load balancer, two instances can receive a refresh from the same browser at nearly the same time, each presenting the same refresh token.
+
+The auth API covers this with a short replay window. Callers that present a refresh token inside the window after it rotated each get a normal `200` response carrying the same successor refresh token, session id and refresh TTL. The access token is minted per call, so it differs between callers but carries the same session id. Every instance then sets the same refresh cookie value, and the browser ends up with one session.
+
+- The window defaults to 5 seconds, allows at most 3 replays, and is set on the auth API with `REFRESH_REPLAY_WINDOW_SECONDS` (0 disables it, the maximum is 60). It matches the 5 second completed-refresh cache the core keeps for a refresh cookie presented twice to one instance, so keep them aligned.
+- No shared lock or cache between adapter instances is needed while the spread between concurrent requests and any clock skew between the instances and the auth API stay under the window.
+- A token presented outside the window, past the replay count, or an older ancestor of the current token is a reuse. The auth API answers `401` with `refresh_token_reused` and revokes the session chain. The adapters treat that as terminal: they clear the session cookies and never retry it. Retrying a reused token cannot succeed and only deepens the revocation.
+- Unknown, revoked or expired tokens answer `401` with `invalid_refresh_token`, as before.
+
+This needs the auth API release that ships fells-code/seamless-auth-api#613. Against an API without it, two instances racing the same refresh token still trip reuse detection and sign the user out, so run a single instance or route a browser's requests to one instance until the API is upgraded.
+
 ## OAuth Login
 
 OAuth support is intentionally split across the same trust boundary as the rest of Seamless Auth:
