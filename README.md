@@ -120,7 +120,11 @@ Example usage:
 ```ts
 app.get(
   "/api/beta_users",
-  requireAuth({ cookieSecret: process.env.COOKIE_SIGNING_KEY! }),
+  requireAuth({
+    cookieSecret: process.env.COOKIE_SIGNING_KEY!,
+    authServerUrl: process.env.AUTH_SERVER_URL!,
+    audience: process.env.AUTH_SERVER_URL!,
+  }),
   requireRole("betaUser"),
   handler,
 );

@@ -9,8 +9,7 @@ import { Request, Response, NextFunction, RequestHandler } from "express";
 export interface RequirePermissionOptions extends PermissionGuardOptions {
   /**
    * Where to read a token that omits its permissions because they did not fit.
-   * Defaults to the `authServerUrl` given to `requireAuth`. A cookie-only
-   * `requireAuth` holds none, so without this such a token gets a 503.
+   * Defaults to the `authServerUrl` given to `requireAuth`.
    */
   authServerUrl?: string;
 }

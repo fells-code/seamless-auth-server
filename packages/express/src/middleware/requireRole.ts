@@ -19,7 +19,7 @@ import { Request, Response, NextFunction, RequestHandler } from "express";
  *
  * ### Example
  * ```ts
- * const guard = requireAuth({ cookieSecret: process.env.COOKIE_SECRET! });
+ * const guard = requireAuth({ cookieSecret, authServerUrl, audience });
  *
  * // Require a single role
  * app.get("/admin/users",

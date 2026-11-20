@@ -5,12 +5,23 @@ import cookieParser from "cookie-parser";
 import jwt from "jsonwebtoken";
 import request from "supertest";
 
+import { testAuthServer } from "../../core/tests/fixtures/authServer.js";
+
 const { requireAuth, requireRole } = await import("../dist/index.js");
 
 const SECRET = "cookie-secret-cookie-secret-cookie-secret";
-const INNER = jwt.sign({ sub: "user-1", typ: "access" }, "upstream-signing-key");
+const server = testAuthServer("express-require-auth-origin");
+const INNER = await server.accessToken({ roles: ["admin"] });
 const cookie = () =>
   `seamless-access=${jwt.sign({ sub: "user-1", roles: ["admin"], token: INNER }, SECRET, { expiresIn: "1h" })}`;
+
+const originalFetch = global.fetch;
+beforeEach(() => {
+  global.fetch = server.fetch();
+});
+afterEach(() => {
+  global.fetch = originalFetch;
+});
 
 const BLOCKED = { error: "cross_site_request_blocked" };
 const LISTED = "https://app.example.com";
@@ -19,7 +30,7 @@ function createApp(options = {}, { role } = {}) {
   const app = express();
   app.use(cookieParser());
   const chain = [
-    requireAuth({ cookieSecret: SECRET, ...options }),
+    requireAuth({ cookieSecret: SECRET, ...server.guardOptions, ...options }),
     ...(role ? [requireRole(role)] : []),
   ];
   app.all("/api/thing", ...chain, (req, res) => res.json({ id: req.user.id }));

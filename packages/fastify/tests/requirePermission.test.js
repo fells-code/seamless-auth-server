@@ -33,7 +33,7 @@ async function run(app, headers, organizationId) {
 }
 
 definePermissionGuardSuite("Fastify", {
-  transports: ["cookie-only", "cookie", "bearer"],
+  transports: ["cookie", "bearer"],
   warnings: () => warnings,
   send({ config, headers, required, options, organizationId }) {
     return run(

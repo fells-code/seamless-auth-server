@@ -11,10 +11,14 @@ import {
 } from "@seamless-auth/express";
 
 const app = express();
+const auth = {
+  authServerUrl: "https://auth.example.com",
+  audience: "https://auth.example.com",
+};
 
 app.get(
   "/me",
-  requireAuth({ cookieSecret: "x".repeat(64) }),
+  requireAuth({ cookieSecret: "x".repeat(64), ...auth }),
   requireRole("admin"),
   (req, res) => {
     const id: string | undefined = req.user?.id;
@@ -26,7 +30,7 @@ app.get(
 
 app.get(
   "/orgs/:id",
-  requireAuth({ cookieSecret: "x".repeat(64) }),
+  requireAuth({ cookieSecret: "x".repeat(64), ...auth }),
   requirePermission(["a:read"], { match: "all", organizationParam: "id" }),
   (req, res) => {
     const held: string[] | undefined = req.user?.permissions;
@@ -40,6 +44,8 @@ app.get(
 // tsc fails.
 // @ts-expect-error requireAuth takes an options object
 requireAuth(42);
+// @ts-expect-error requireAuth needs authServerUrl and audience to verify tokens
+requireAuth({ cookieSecret: "x".repeat(64) });
 // @ts-expect-error match is any or all
 requirePermission("a:read", { match: "some" });
 // @ts-expect-error requireRole takes a role name or list

@@ -109,21 +109,23 @@ wildcards or implied grants, and an empty list opens nothing. A refusal is
 
 A token whose permissions did not fit carries `permissions_omitted`, and the guard reads
 `GET {authServerUrl}/users/me/permissions` with the caller's token, with no caching and no retry.
-The URL comes from `requireAuth`, or from an `authServerUrl` option on `requirePermission` for a
-cookie-only `requireAuth`. A failed read, or no URL, is
+The URL comes from `requireAuth`, or from an `authServerUrl` option on `requirePermission`. A
+failed read is
 `503 { "error": "permissions_unavailable" }`, and a 401 from the read is the usual 401.
 
 `request.user` carries `permissions`, `organizationRoles`, `organizationPermissions` and
 `permissionsOmitted` whenever the token was read.
 
 `requireAuth` verifies the request's session and puts it on `request.user`. It
-understands the signed access cookie the plugin issues to browsers, and, when
-`authServerUrl` and `audience` are configured together, the auth API's own access
-token in `Authorization: Bearer`, which is how a native client with no cookie jar
-authenticates. A bearer token is verified against the auth API's JWKS, including
-`typ: "access"`, so a sign-in flow's ephemeral token is refused. The cookie wins
-when both are present. Leave the pair out and the guard accepts cookies only.
-Pass `authServerIssuer` as well when the auth server signs under an issuer other
+understands the signed access cookie the plugin issues to browsers, and the auth
+API's own access token in `Authorization: Bearer`, which is how a native client
+with no cookie jar authenticates. Either way the access token (the one inside the
+cookie, or the bearer one) is verified against the auth API's JWKS, including
+`typ: "access"`, so a sign-in flow's ephemeral token is refused, and the
+session's roles, permissions and organization come from it. A cookie signed with
+`cookieSecret` alone cannot carry claims of its own. `authServerUrl` and
+`audience` are required, and the guard throws when it is constructed without
+them. The cookie wins when both are present. Pass `authServerIssuer` as well when the auth server signs under an issuer other
 than `authServerUrl`, and set `audience` to that same value, since the auth API
 uses its issuer as the audience too.
 

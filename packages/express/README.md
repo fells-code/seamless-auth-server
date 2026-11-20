@@ -78,7 +78,13 @@ app.use(
 );
 
 // Everything below requires authentication
-app.use(requireAuth({ cookieSecret: process.env.COOKIE_SECRET! }));
+app.use(
+  requireAuth({
+    cookieSecret: process.env.COOKIE_SECRET!,
+    authServerUrl: process.env.AUTH_SERVER_URL!,
+    audience: process.env.AUTH_SERVER_URL!,
+  }),
+);
 
 app.get("/api/me", (req, res) => {
   res.json({ user: req.user });
@@ -255,7 +261,7 @@ A known placeholder is refused the same way: `dev-only-cookie-signing-key-replac
 example can forge sessions with one. The router accepts a placeholder only with
 `cookieSecure: false`, the local HTTP development mode.
 
-The length check also applies to `requireAuth({ cookieSecret })`, which throws when the guard is
+The length check also applies to the `cookieSecret` given to `requireAuth`, which throws when the guard is
 constructed, and to `getSeamlessUser`, which validates through `@seamless-auth/core`.
 
 Generate secrets with a CSPRNG, for example `openssl rand -base64 48`, and supply them through the
@@ -609,11 +615,13 @@ authentication in the Seamless Auth API.
 Express middleware that verifies the request's Seamless Auth session and attaches the decoded user
 payload to `req.user`. Two credentials are understood:
 
-- the signed access cookie the `/auth` router issues to browsers, always;
-- the auth API's own access token in `Authorization: Bearer`, when `authServerUrl` and `audience`
-  are configured. This is how a native client with no cookie jar authenticates. The token is
-  verified against the auth API's JWKS (issuer, audience, expiry, and `typ: "access"`, so a
-  sign-in flow's ephemeral token is refused).
+- the signed access cookie the `/auth` router issues to browsers;
+- the auth API's own access token in `Authorization: Bearer`, which is how a native client with no
+  cookie jar authenticates.
+
+Either way the access token (the one inside the cookie, or the bearer one) is verified against the
+auth API's JWKS (issuer, audience, expiry, and `typ: "access"`, so a sign-in flow's ephemeral token
+is refused), and the session's roles, permissions and organization come from it.
 
 A cookie takes precedence when both are present. `cookieSecret` is required and must match the
 secret given to `createSeamlessAuthServer`. This guard does not attempt token refresh; silent
@@ -638,9 +646,9 @@ app.get("/api/profile", guard, (req, res) => {
 {
   cookieSecret: string;    // required, must match createSeamlessAuthServer
   cookieName?: string;     // optional (defaults to "seamless-access")
-  authServerUrl?: string;  // with audience, enables bearer access tokens
-  audience?: string;       // expected `aud` on a bearer token: the auth server's ISSUER
-  authServerIssuer?: string; // expected `iss` on a bearer token (defaults to authServerUrl)
+  authServerUrl: string;   // required, the auth API whose JWKS verifies access tokens
+  audience: string;        // required, expected `aud`: the auth server's ISSUER
+  authServerIssuer?: string; // expected `iss` (defaults to authServerUrl)
   allowRecoverySession?: boolean; // accept a recovery session (default false)
   allowedOrigins?: string[]; // origin allowlist, as on createSeamlessAuthServer
 }
@@ -667,10 +675,9 @@ the claim at once. If that refresh fails the enrollment answer is unchanged and 
 With `authServerIssuer` set, pass the same value as `audience`: the auth API sets both `iss` and
 `aud` to its `ISSUER`.
 
-`authServerUrl` and `audience` must be given together. Leave both out and the guard accepts
-cookies only, which is what every earlier version did. With them configured, the guard also
-verifies the access token inside the cookie against the auth API's JWKS and takes the session's
-roles from it, so a cookie signed with `cookieSecret` alone cannot carry claims of its own.
+`authServerUrl` and `audience` are required, and the guard throws when it is constructed without
+them. A cookie signed with `cookieSecret` alone cannot carry an identity, roles or permissions of
+its own: the access token inside it must verify, and its `sub` must match the cookie's.
 
 **`req.user` shape (`SeamlessAuthUser`)**
 
@@ -763,7 +770,7 @@ app.post(
 | `match` | `"any"` (the default) needs one of the permissions, `"all"` needs every one. Each may come from either claim. |
 | `organization` | `true` counts only the active organization's permissions, and refuses a token with no active organization. On its own this lets a token for organization A through on `/orgs/B/...`. |
 | `organizationParam` | The route parameter naming the organization. Implies `organization`. The parameter must equal the active organization exactly; a missing one or a mismatch is a 403. |
-| `authServerUrl` | Where to read a token that omits its permissions. Defaults to the `authServerUrl` on `requireAuth`. Only a cookie-only `requireAuth` needs it. |
+| `authServerUrl` | Where to read a token that omits its permissions. Defaults to the `authServerUrl` on `requireAuth`. |
 
 Matching is exact and case-sensitive, with no trimming, wildcards or implied grants, unlike a
 role: `invoices:write` does not satisfy `invoices:read`. Without an organization option a
@@ -785,9 +792,8 @@ The body never names a permission. A missing URL also logs a warning saying what
 
 `req.user` carries `permissions`, `organizationRoles`, `organizationPermissions` and
 `permissionsOmitted` whenever the token was read, cookie or bearer. `permissionsOmitted: true`
-means the three lists say nothing, not that they are empty. On a cookie-only `requireAuth`,
-`organizationId` stays unset on `req.user`, though the guard does read the organization from the
-token inside the cookie.
+means the three lists say nothing, not that they are empty. `organizationId` is the verified
+token's `org_id`.
 
 A resource server has `api.requirePermission(required, options)` with the same rules, except that
 `permissions_omitted` is a 403, not a live read, because the first-party endpoint refuses provider

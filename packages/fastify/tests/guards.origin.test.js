@@ -4,10 +4,21 @@ import cookiePlugin from "@fastify/cookie";
 import Fastify from "fastify";
 import jwt from "jsonwebtoken";
 
+import { testAuthServer } from "../../core/tests/fixtures/authServer.js";
+
 const { requireAuth, requireRole } = await import("../dist/index.js");
 
 const SECRET = "cookie-secret-cookie-secret-cookie-secret";
-const INNER = jwt.sign({ sub: "user-1", typ: "access" }, "upstream-signing-key");
+const server = testAuthServer("fastify-require-auth-origin");
+const INNER = await server.accessToken({ roles: ["admin"] });
+
+const originalFetch = global.fetch;
+beforeEach(() => {
+  global.fetch = server.fetch();
+});
+afterEach(() => {
+  global.fetch = originalFetch;
+});
 const cookie = () =>
   `seamless-access=${jwt.sign({ sub: "user-1", roles: ["admin"], token: INNER }, SECRET, { expiresIn: "1h" })}`;
 
@@ -17,7 +28,7 @@ const LISTED = "https://app.example.com";
 async function send(method, headers, options = {}, { role } = {}) {
   const app = Fastify();
   await app.register(cookiePlugin);
-  const guard = requireAuth({ cookieSecret: SECRET, ...options });
+  const guard = requireAuth({ cookieSecret: SECRET, ...server.guardOptions, ...options });
   app.route({
     method: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     url: "/api/thing",

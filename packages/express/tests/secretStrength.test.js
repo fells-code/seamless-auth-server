@@ -58,7 +58,7 @@ describe("secret strength validation", () => {
 
     expect(() => createSeamlessAuthServer(serverOptions(local))).not.toThrow();
     expect(() => createEnsureCookiesMiddleware(middlewareOptions(local))).not.toThrow();
-    expect(() => requireAuth({ cookieSecret: local.cookieSecret })).not.toThrow();
+    expect(() => requireAuth({ cookieSecret: local.cookieSecret, ...GUARD_AUTH })).not.toThrow();
   });
 
   it("accepts secrets at or above the minimum length", () => {
@@ -107,21 +107,26 @@ describe("secret strength validation", () => {
   });
 });
 
+const GUARD_AUTH = {
+  authServerUrl: "https://auth.example.com",
+  audience: "https://auth.example.com",
+};
+
 describe("requireAuth secret strength", () => {
   it("accepts a strong cookieSecret", () => {
     expect(() =>
-      requireAuth({ cookieSecret: STRONG_COOKIE_SECRET }),
+      requireAuth({ cookieSecret: STRONG_COOKIE_SECRET, ...GUARD_AUTH }),
     ).not.toThrow();
   });
 
   it("throws on a too-short cookieSecret", () => {
-    expect(() => requireAuth({ cookieSecret: "short" })).toThrow(
+    expect(() => requireAuth({ cookieSecret: "short", ...GUARD_AUTH })).toThrow(
       /requireAuth: cookieSecret must be at least 32 characters/,
     );
   });
 
   it("still reports a missing cookieSecret", () => {
-    expect(() => requireAuth({})).toThrow(
+    expect(() => requireAuth({ ...GUARD_AUTH })).toThrow(
       /Missing requireAuth: cookieSecret/,
     );
   });

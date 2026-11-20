@@ -15,25 +15,24 @@ export interface RequireAuthOptions {
   cookieName?: string;
   cookieSecret: string;
   /**
-   * Together with `audience`, lets the guard accept the auth API's own access
-   * token in `Authorization: Bearer`, which is how a native client with no
-   * cookie jar authenticates. Leave both out and the guard accepts cookies
-   * only, as it always has. With both set, the access token inside a cookie
-   * is verified against the auth API's JWKS too.
+   * The auth API whose JWKS the guard verifies access tokens against: the one
+   * inside the session cookie, and one sent as `Authorization: Bearer`, which is
+   * how a native client with no cookie jar authenticates. Required, so a cookie
+   * signed with a leaked `cookieSecret` cannot carry an identity, roles or
+   * permissions of its own.
    */
-  authServerUrl?: string;
+  authServerUrl: string;
   /**
-   * Expected `aud` on a bearer access token. The auth API sets it to its
-   * ISSUER, so this is `authServerUrl`, or `authServerIssuer` when that is set.
+   * Expected `aud` on the access token. The auth API sets it to its ISSUER, so
+   * this is `authServerUrl`, or `authServerIssuer` when that is set. Required.
    */
-  audience?: string;
+  audience: string;
   /**
    * Expected `iss` on a bearer access token. Defaults to `authServerUrl`. Set
    * it when this server reaches the auth server at a different URL from the
    * one the auth server advertises as its issuer, for example a host-run app
-   * against the Docker stack. Only read when bearer tokens are enabled. The
-   * auth API sets `aud` to its ISSUER too, so pass the same value as
-   * `audience`.
+   * against the Docker stack. The auth API sets `aud` to its ISSUER too, so
+   * pass the same value as `audience`.
    */
   authServerIssuer?: string;
   /**
@@ -54,8 +53,9 @@ export interface RequireAuthOptions {
 
 /**
  * Fastify `preHandler` that enforces authentication using an already-issued
- * Seamless Auth session: the signed access cookie, or, when `authServerUrl` and
- * `audience` are configured, a bearer access token from the auth API.
+ * Seamless Auth session: the signed access cookie, or a bearer access token from
+ * the auth API. Either way the access token is verified against the auth API's
+ * JWKS, and the session's roles, permissions and organization come from it.
  *
  * Attaches the decoded session to `request.user` and replies 401 when the
  * credential is missing or invalid. A cookie takes precedence when present.
@@ -68,8 +68,8 @@ export interface RequireAuthOptions {
  * ```ts
  * const guard = requireAuth({
  *   cookieSecret: process.env.COOKIE_SECRET!,
- *   authServerUrl: process.env.AUTH_SERVER_URL,
- *   audience: process.env.AUTH_SERVER_URL,
+ *   authServerUrl: process.env.AUTH_SERVER_URL!,
+ *   audience: process.env.AUTH_SERVER_URL!,
  * });
  *
  * app.get("/api/me", { preHandler: guard }, async (req) => ({ user: req.user }));
@@ -92,26 +92,16 @@ export function requireAuth(opts: RequireAuthOptions) {
     allowPlaceholder: true,
   });
 
-  if ((authServerUrl === undefined) !== (audience === undefined)) {
+  if (!authServerUrl || !audience) {
     throw new Error(
-      "requireAuth: authServerUrl and audience must be configured together to accept bearer tokens",
+      "requireAuth: authServerUrl and audience are required to verify access tokens",
     );
   }
 
-  if (authServerUrl === "" || audience === "") {
-    throw new Error(
-      "requireAuth: authServerUrl and audience must be non-empty to accept bearer tokens",
-    );
-  }
+  const bearer = { authServerUrl, audience, authServerIssuer };
 
-  const bearer =
-    authServerUrl !== undefined && audience !== undefined
-      ? { authServerUrl, audience, authServerIssuer }
-      : undefined;
-
-  const hint = bearer
-    ? "Ensure @fastify/cookie is registered, or that the client sends an `Authorization: Bearer` access token."
-    : "Ensure @fastify/cookie is registered.";
+  const hint =
+    "Ensure @fastify/cookie is registered, or that the client sends an `Authorization: Bearer` access token.";
 
   return async function requireAuthHook(
     req: FastifyRequest,
@@ -167,7 +157,10 @@ export function requireAuth(opts: RequireAuthOptions) {
  * ### Example
  * ```ts
  * app.get("/admin/users", {
- *   preHandler: [requireAuth({ cookieSecret }), requireRole("admin")],
+ *   preHandler: [
+ *     requireAuth({ cookieSecret, authServerUrl, audience }),
+ *     requireRole("admin"),
+ *   ],
  * }, listUsers);
  * ```
  */
@@ -189,8 +182,7 @@ export function requireRole(requiredRoles: string | string[]) {
 export interface RequirePermissionOptions extends PermissionGuardOptions {
   /**
    * Where to read a token that omits its permissions because they did not fit.
-   * Defaults to the `authServerUrl` given to `requireAuth`. A cookie-only
-   * `requireAuth` holds none, so without this such a token gets a 503.
+   * Defaults to the `authServerUrl` given to `requireAuth`.
    */
   authServerUrl?: string;
 }
