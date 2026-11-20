@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   verify:
-    uses: fells-code/seamless-cli/.github/workflows/verify-conformance.yml@e0dc559550168c53721efa1a0194d7f637f3e18b # v0.28.0
+    uses: fells-code/seamless-cli/.github/workflows/verify-conformance.yml@ab96e737efd945dc2c28f1872885cca8c4cc7e90 # v0.30.3
     with:
       server-ref: ${{ github.event.pull_request.head.sha }}
 
@@ -43,7 +43,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: fells-code/seamless-cli
-          ref: e0dc559550168c53721efa1a0194d7f637f3e18b # v0.28.0
+          ref: ab96e737efd945dc2c28f1872885cca8c4cc7e90 # v0.30.3
           path: seamless-cli
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
