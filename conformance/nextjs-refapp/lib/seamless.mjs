@@ -42,6 +42,9 @@ function options() {
     cookieSecret: process.env.COOKIE_SIGNING_KEY,
     serviceSecret: process.env.SEAMLESS_SERVICE_TOKEN,
     jwksKid: process.env.JWKS_KID,
+    // CONFORMANCE.md pins the reference app's cookies to SameSite=None, which is
+    // no longer the adapter default.
+    cookieSameSite: "none",
     // The harness is the only peer and sends each virtual user with its own
     // X-Forwarded-For, so loopback is the one trusted hop.
     trustedProxies: ["127.0.0.1", "::1"],
