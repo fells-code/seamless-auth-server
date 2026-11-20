@@ -425,8 +425,8 @@ adapters, plus `basePath`.
 | `basePath` | `/auth` | Where the catch-all route is mounted |
 | `cookieDomain` | none | Domain attribute for the auth cookies |
 | `cookieSecure` | `true` | Set `false` only for local HTTP development |
-| `cookieSameSite` | `none` when secure, else `lax` | SameSite policy |
-| `allowedOrigins` | none | Origin allowlist for state-changing requests that are `same-site` or come from browsers without `Sec-Fetch-Site`. Set, even to `[]`, it is enforced. Whatever it says, a `cross-site` request or a literal `null` `Origin` is refused with `403 cross_site_request_blocked` |
+| `cookieSameSite` | `lax` | SameSite policy. Set `none` only for a browser app on another site |
+| `allowedOrigins` | none | Origin allowlist for state-changing requests that are `same-site` or come from browsers without `Sec-Fetch-Site`. Set, even to `[]`, it is enforced. Unset, the `Origin` host must equal the request's `Host`. Whatever it says, a `cross-site` request or a literal `null` `Origin` is refused with `403 cross_site_request_blocked` |
 | `accessCookieName` | `seamless-access` | Session cookie name |
 | `registrationCookieName` | `seamless-ephemeral` | Registration cookie name |
 | `refreshCookieName` | `seamless-refresh` | Refresh cookie name |

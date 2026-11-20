@@ -125,12 +125,12 @@ describe("cookie security policy (#64)", () => {
     delete process.env.NODE_ENV;
   });
 
-  it("defaults to Secure and SameSite=None", async () => {
+  it("defaults to Secure and SameSite=Lax (#283)", async () => {
     const cookies = await setCookieHeaders(createApp());
 
     expect(cookies).toHaveLength(1);
     expect(cookies[0]).toMatch(/; Secure/);
-    expect(cookies[0]).toMatch(/; SameSite=None/);
+    expect(cookies[0]).toMatch(/; SameSite=Lax/);
   });
 
   it("stays secure when NODE_ENV is unset", async () => {
@@ -139,7 +139,7 @@ describe("cookie security policy (#64)", () => {
     const cookies = await setCookieHeaders(createApp());
 
     expect(cookies[0]).toMatch(/; Secure/);
-    expect(cookies[0]).toMatch(/; SameSite=None/);
+    expect(cookies[0]).toMatch(/; SameSite=Lax/);
   });
 
   it("stays secure when NODE_ENV says development", async () => {
@@ -148,10 +148,10 @@ describe("cookie security policy (#64)", () => {
     const cookies = await setCookieHeaders(createApp());
 
     expect(cookies[0]).toMatch(/; Secure/);
-    expect(cookies[0]).toMatch(/; SameSite=None/);
+    expect(cookies[0]).toMatch(/; SameSite=Lax/);
   });
 
-  it("drops Secure and falls back to SameSite=Lax when cookieSecure is false", async () => {
+  it("drops Secure and keeps SameSite=Lax when cookieSecure is false", async () => {
     const cookies = await setCookieHeaders(createApp({ cookieSecure: false }));
 
     expect(cookies[0]).not.toMatch(/; Secure/);
@@ -167,12 +167,12 @@ describe("cookie security policy (#64)", () => {
     expect(cookies[0]).toMatch(/; SameSite=Strict/);
   });
 
-  it("clears cookies with Secure and SameSite=None (#96)", async () => {
+  it("clears cookies with the same Secure and SameSite=Lax it set them with (#96)", async () => {
     const cookies = await clearCookieHeaders(createApp());
 
     expect(cookies).toHaveLength(1);
     expect(cookies[0]).toMatch(/; Secure/);
-    expect(cookies[0]).toMatch(/; SameSite=None/);
+    expect(cookies[0]).toMatch(/; SameSite=Lax/);
     expect(cookies[0]).toMatch(/Expires=Thu, 01 Jan 1970/);
   });
 
@@ -182,6 +182,13 @@ describe("cookie security policy (#64)", () => {
     expect(cookies).toHaveLength(1);
     expect(cookies[0]).not.toMatch(/; Secure/);
     expect(cookies[0]).toMatch(/; SameSite=Lax/);
+  });
+
+  it("issues SameSite=None only when asked for", async () => {
+    const cookies = await setCookieHeaders(createApp({ cookieSameSite: "none" }));
+
+    expect(cookies[0]).toMatch(/; Secure/);
+    expect(cookies[0]).toMatch(/; SameSite=None/);
   });
 
   it("honors an explicit cookieSameSite override on the clear path", async () => {
@@ -217,6 +224,6 @@ describe("cookie security policy (#64)", () => {
     const cookies = await setCookieHeaders(app, "/users/me");
 
     expect(cookies[0]).toMatch(/; Secure/);
-    expect(cookies[0]).toMatch(/; SameSite=None/);
+    expect(cookies[0]).toMatch(/; SameSite=Lax/);
   });
 });

@@ -57,6 +57,7 @@ function upstreamCalls(path) {
 }
 
 const SIBLING = "https://sibling.example.com";
+const SIBLING_HOST = "sibling.example.com";
 
 describe("form POST CSRF with SameSite=Lax cookies (#256)", () => {
   const originalFetch = global.fetch;
@@ -84,6 +85,7 @@ describe("form POST CSRF with SameSite=Lax cookies (#256)", () => {
         path: "/recovery-codes",
         headers: {
           cookie: accessCookie(),
+          host: SIBLING_HOST,
           origin: SIBLING,
           "sec-fetch-site": site,
           "content-type": contentType,
@@ -95,6 +97,77 @@ describe("form POST CSRF with SameSite=Lax cookies (#256)", () => {
       expect(res.body).toEqual({ error: "unsupported_media_type" });
     },
   );
+
+  // Without allowedOrigins the Origin must name the request's Host, so a
+  // sibling subdomain is refused even with a JSON body (#283).
+  it.each([["same-site"], [undefined], ["none"]])(
+    "refuses an Origin that is not the Host for Sec-Fetch-Site %s",
+    async (site) => {
+      const res = await send({
+        path: "/recovery-codes",
+        headers: {
+          cookie: accessCookie(),
+          host: "app.example.com",
+          origin: SIBLING,
+          "sec-fetch-site": site,
+          "content-type": "application/json",
+        },
+        payload: "{}",
+      });
+
+      expect(upstreamCalls("/recovery-codes")).toHaveLength(0);
+      expect(res.status).toBe(403);
+      expect(res.body).toEqual({ error: "cross_site_request_blocked" });
+    },
+  );
+
+  it("refuses a same-site POST that carries no Origin", async () => {
+    const res = await send({
+      path: "/recovery-codes",
+      headers: {
+        cookie: accessCookie(),
+        "sec-fetch-site": "same-site",
+        "content-type": "application/json",
+      },
+      payload: "{}",
+    });
+
+    expect(upstreamCalls("/recovery-codes")).toHaveLength(0);
+    expect(res.status).toBe(403);
+  });
+
+  it("refuses a Sec-Fetch-Site value the spec does not define", async () => {
+    const res = await send({
+      path: "/recovery-codes",
+      headers: {
+        cookie: accessCookie(),
+        host: SIBLING_HOST,
+        origin: SIBLING,
+        "sec-fetch-site": "same-planet",
+        "content-type": "application/json",
+      },
+      payload: "{}",
+    });
+
+    expect(upstreamCalls("/recovery-codes")).toHaveLength(0);
+    expect(res.status).toBe(403);
+  });
+
+  it("accepts an Origin that names the Host", async () => {
+    const res = await send({
+      path: "/recovery-codes",
+      headers: {
+        cookie: accessCookie(),
+        host: SIBLING_HOST,
+        origin: SIBLING,
+        "content-type": "application/json",
+      },
+      payload: "{}",
+    });
+
+    expect(res.status).toBe(200);
+    expect(upstreamCalls("/recovery-codes")).toHaveLength(1);
+  });
 
   it("refuses a cross-site POST whatever the SameSite setting", async () => {
     const res = await send({
@@ -168,6 +241,8 @@ describe("form POST CSRF with SameSite=Lax cookies (#256)", () => {
       path: "/recovery-codes",
       headers: {
         cookie: accessCookie(),
+        host: SIBLING_HOST,
+        origin: SIBLING,
         "sec-fetch-site": "same-site",
         "x-seamless-auth-transport": "cookie",
       },

@@ -25,14 +25,14 @@ export interface ApplyResultOptions extends CookieSecurityOptions {
 
 /**
  * Resolves the effective `SameSite` policy. Shared so the cookie attributes and
- * any policy that keys off `SameSite=None` cannot drift. Browsers reject
- * `SameSite=None` without `Secure`, so the default tracks `secure`.
+ * any policy that keys off `SameSite=None` cannot drift. The default is `lax`
+ * whatever `cookieSecure` says: a deployment whose browser app is on another
+ * site opts into `none` (which needs `Secure`) explicitly.
  */
 export function resolveCookieSameSite(
   opts: Pick<CookieSecurityOptions, "cookieSecure" | "cookieSameSite">,
 ): CookieSameSite {
-  const secure = opts.cookieSecure ?? true;
-  return opts.cookieSameSite ?? (secure ? "none" : "lax");
+  return opts.cookieSameSite ?? "lax";
 }
 
 export interface SetCookieCommand {

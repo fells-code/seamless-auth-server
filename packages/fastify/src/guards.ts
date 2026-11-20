@@ -46,8 +46,8 @@ export interface RequireAuthOptions {
    * `Origin` allowlist for a state-changing request on a cookie session that is
    * `same-site` or carries no `Sec-Fetch-Site`, as on the auth router. Pass the
    * same list. Set, even to `[]`, it is enforced; left out, such a request
-   * passes. A `cross-site` one or a literal `null` `Origin` is refused either
-   * way.
+   * must name an `Origin` whose host is the request's `Host`. A `cross-site`
+   * one or a literal `null` `Origin` is refused either way.
    */
   allowedOrigins?: string[];
 }
@@ -125,6 +125,7 @@ export function requireAuth(opts: RequireAuthOptions) {
         method: req.method,
         secFetchSite: firstHeader(req.headers["sec-fetch-site"]),
         origin: firstHeader(req.headers.origin),
+        host: req.host,
         allowedOrigins,
       });
 

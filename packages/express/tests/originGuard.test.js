@@ -64,10 +64,12 @@ describe("origin guard (#104)", () => {
     expect(res.body).not.toEqual(BLOCKED);
   });
 
-  it("accepts a same-site request", async () => {
+  it("accepts a same-site request from the Host's own Origin", async () => {
     const res = await request(createApp())
       .post("/auth/magic-link")
       .set("Content-Type", "application/json")
+      .set("Host", "app.example.com")
+      .set("Origin", "https://app.example.com")
       .set("Sec-Fetch-Site", "same-site");
 
     expect(res.status).not.toBe(403);
@@ -180,14 +182,43 @@ describe("origin guard (#104)", () => {
       expect(res.body).toEqual(BLOCKED);
     });
 
-    it("accepts any Origin when allowedOrigins is unset", async () => {
+    // Without allowedOrigins the Origin must name the Host (#283).
+    it("rejects an Origin that is not the Host when allowedOrigins is unset", async () => {
       const res = await request(createApp())
         .post("/auth/magic-link")
-      .set("Content-Type", "application/json")
+        .set("Content-Type", "application/json")
+        .set("Host", "app.example.com")
         .set("Origin", "https://evil.example.com");
+
+      expect(res.status).toBe(403);
+      expect(res.body).toEqual(BLOCKED);
+    });
+
+    it("accepts the Host's own Origin when allowedOrigins is unset", async () => {
+      const res = await request(createApp())
+        .post("/auth/magic-link")
+        .set("Content-Type", "application/json")
+        .set("Host", "app.example.com")
+        .set("Origin", "https://app.example.com");
 
       expect(res.status).not.toBe(403);
       expect(res.body).not.toEqual(BLOCKED);
+    });
+
+    it("honours X-Forwarded-Host only behind a trusted proxy", async () => {
+      const forwarded = (trust) => {
+        const app = createApp();
+        app.set("trust proxy", trust);
+        return request(app)
+          .post("/auth/magic-link")
+          .set("Content-Type", "application/json")
+          .set("Host", "internal:3000")
+          .set("X-Forwarded-Host", "app.example.com")
+          .set("Origin", "https://app.example.com");
+      };
+
+      expect((await forwarded(true)).status).not.toBe(403);
+      expect((await forwarded(false)).status).toBe(403);
     });
   });
 
