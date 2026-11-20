@@ -9,12 +9,16 @@ import seamlessAuth, {
 } from "@seamless-auth/fastify";
 
 const app = Fastify();
+const auth = {
+  authServerUrl: "https://auth.example.com",
+  audience: "https://auth.example.com",
+};
 
 app.get(
   "/me",
   {
     preHandler: [
-      requireAuth({ cookieSecret: "x".repeat(64) }),
+      requireAuth({ cookieSecret: "x".repeat(64), ...auth }),
       requireRole("admin"),
     ],
   },
@@ -30,7 +34,7 @@ app.get(
   "/orgs/:id",
   {
     preHandler: [
-      requireAuth({ cookieSecret: "x".repeat(64) }),
+      requireAuth({ cookieSecret: "x".repeat(64), ...auth }),
       requirePermission(["a:read"], { match: "all", organizationParam: "id" }),
     ],
   },
@@ -48,6 +52,8 @@ app.get(
 requirePermission("a:read", { match: "some" });
 // @ts-expect-error requireAuth takes an options object
 requireAuth(42);
+// @ts-expect-error requireAuth needs authServerUrl and audience to verify tokens
+requireAuth({ cookieSecret: "x".repeat(64) });
 // @ts-expect-error requireRole takes a role name or list
 requireRole(42);
 // @ts-expect-error getSeamlessUser takes a request and options

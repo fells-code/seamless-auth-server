@@ -27,7 +27,7 @@ async function run(app, headers, organizationId) {
 }
 
 definePermissionGuardSuite("Express", {
-  transports: ["cookie-only", "cookie", "bearer"],
+  transports: ["cookie", "bearer"],
   warnings: () => warnings,
   send({ config, headers, required, options, organizationId }) {
     const guards = [requireAuth(config), requirePermission(required, options)];

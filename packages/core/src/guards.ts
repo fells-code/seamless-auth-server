@@ -418,7 +418,8 @@ export interface RequestAuthInput extends CookieAuthInput {
  * cookie at all and the adopter has opted in.
  *
  * With `bearer` configured, a cookie's inner access token is also verified
- * against the auth API's key set, and its roles come from that token.
+ * against the auth API's key set, and its roles, permissions and organization
+ * come from that token alone. Every first-party guard configures it.
  */
 export async function authenticateRequest(
   input: RequestAuthInput,
@@ -469,12 +470,16 @@ async function verifyCookieAccessToken(
     };
   }
 
+  // Roles, permissions and org come only from the verified token. The cookie's
+  // copy of the roles came from the unsigned login response body, so falling
+  // back to it would let a forged cookie choose its own.
   return {
     user: rememberAuthServer<GuardUser>(
       {
         ...user,
-        roles: Array.isArray(claims.roles) ? claims.roles : user.roles,
+        roles: Array.isArray(claims.roles) ? claims.roles : [],
         ...organizationOf(claims),
+        ...permissionClaimsOf(claims),
       },
       verify.authServerUrl,
     ),

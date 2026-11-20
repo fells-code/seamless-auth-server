@@ -96,20 +96,6 @@ describe("requireAuth with bearer tokens (express)", () => {
     });
   });
 
-  it("keeps rejecting bearer tokens when the option pair is not configured", async () => {
-    const server = nextServer();
-    mockAuthServer(server);
-    const token = await accessToken(server);
-
-    const res = await request(buildApp({ cookieSecret: COOKIE_SECRET }))
-      .get("/protected")
-      .set("Authorization", `Bearer ${token}`);
-
-    expect(res.status).toBe(401);
-    expect(res.body).toEqual({ error: "unauthenticated" });
-    expect(global.fetch).not.toHaveBeenCalled();
-  });
-
   it("rejects an ephemeral token", async () => {
     const server = nextServer();
     mockAuthServer(server);
@@ -195,15 +181,6 @@ describe("requireAuth with bearer tokens (express)", () => {
       expect(res.status).toBe(200);
       expect(res.body.user.roles).toEqual(["athlete"]);
     });
-
-    it("only decodes the inner token when the guard has no JWKS to check against", async () => {
-      const res = await request(buildApp({ cookieSecret: COOKIE_SECRET }))
-        .get("/protected")
-        .set("Cookie", [cookieFor({ sub: "user-1", roles: ["admin"], token: INNER })]);
-
-      expect(res.status).toBe(200);
-      expect(res.body.user.roles).toEqual(["admin"]);
-    });
   });
 
   it("mentions both credentials in the warning when neither is sent", async () => {
@@ -217,7 +194,10 @@ describe("requireAuth with bearer tokens (express)", () => {
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/Authorization: Bearer/));
   });
 
-  it("refuses a half-configured option pair at setup", () => {
+  it("refuses to build without both authServerUrl and audience", () => {
+    expect(() => requireAuth({ cookieSecret: COOKIE_SECRET })).toThrow(
+      /authServerUrl and audience are required/,
+    );
     expect(() =>
       requireAuth({ cookieSecret: COOKIE_SECRET, authServerUrl: "https://a.example.com" }),
     ).toThrow(/authServerUrl and audience/);
@@ -226,7 +206,7 @@ describe("requireAuth with bearer tokens (express)", () => {
     ).toThrow(/authServerUrl and audience/);
     expect(() =>
       requireAuth({ cookieSecret: COOKIE_SECRET, authServerUrl: "https://a.example.com", audience: "" }),
-    ).toThrow(/non-empty/);
+    ).toThrow(/authServerUrl and audience are required/);
   });
 });
 

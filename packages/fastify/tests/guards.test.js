@@ -4,10 +4,6 @@ import Fastify from "fastify";
 import jwt from "jsonwebtoken";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 
-// An auth API access token as the cookie carries it. The guard reads its type,
-// so a placeholder string would not pass for a session.
-const INNER = jwt.sign({ sub: "user-1", typ: "access" }, "upstream-signing-key");
-
 const {
   default: seamlessAuth,
   requireAuth,
@@ -33,7 +29,10 @@ function mockAuthServer(authServerUrl) {
   const meCalls = [];
   global.fetch = jest.fn(async (url, init) => {
     const href = url.toString();
-    if (href === `${authServerUrl}/.well-known/jwks.json`) {
+    if (
+      href === `${authServerUrl}/.well-known/jwks.json` ||
+      href === `${COOKIE_SERVER}/.well-known/jwks.json`
+    ) {
       return new Response(JSON.stringify({ keys: [jwk] }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -57,6 +56,21 @@ async function accessToken(authServerUrl, overrides = {}, issuer = authServerUrl
     .setExpirationTime("5m")
     .sign(privateKey);
 }
+
+// The auth server the cookie sessions' inner access tokens come from. The guard
+// verifies them against its JWKS.
+const COOKIE_SERVER = nextServer();
+const COOKIE_GUARD = {
+  cookieSecret: COOKIE_SECRET,
+  authServerUrl: COOKIE_SERVER,
+  audience: COOKIE_SERVER,
+};
+const INNER = await accessToken(COOKIE_SERVER, { sub: "user-1", roles: ["admin"] });
+const RECOVERY = await accessToken(COOKIE_SERVER, { sub: "user-1", recovery: true });
+
+beforeEach(() => {
+  mockAuthServer(COOKIE_SERVER);
+});
 
 function signedCookie(payload) {
   return jwt.sign(payload, COOKIE_SECRET, { algorithm: "HS256", expiresIn: "300s" });
@@ -95,7 +109,7 @@ describe("requireAuth (fastify)", () => {
   });
 
   it("accepts a valid access cookie and sets request.user", async () => {
-    const app = await buildApp({ cookieSecret: COOKIE_SECRET });
+    const app = await buildApp(COOKIE_GUARD);
 
     const res = await get(app, {
       cookie: `seamless-access=${signedCookie({ sub: "user-1", roles: ["admin"], token: INNER })}`,
@@ -106,7 +120,7 @@ describe("requireAuth (fastify)", () => {
   });
 
   it("rejects a request with no credential", async () => {
-    const res = await get(await buildApp({ cookieSecret: COOKIE_SECRET }));
+    const res = await get(await buildApp(COOKIE_GUARD));
 
     expect(res.status).toBe(401);
     expect(res.body).toEqual({ error: "unauthenticated" });
@@ -115,7 +129,7 @@ describe("requireAuth (fastify)", () => {
   it("rejects a cookie signed by another secret", async () => {
     const forged = jwt.sign({ sub: "user-1" }, "attacker-secret-attacker-secret-attacker");
 
-    const res = await get(await buildApp({ cookieSecret: COOKIE_SECRET }), {
+    const res = await get(await buildApp(COOKIE_GUARD), {
       cookie: `seamless-access=${forged}`,
     });
 
@@ -135,18 +149,6 @@ describe("requireAuth (fastify)", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.user).toMatchObject({ id: "user-123", roles: ["athlete"], token });
-  });
-
-  it("keeps rejecting bearer tokens when the option pair is not configured", async () => {
-    const server = nextServer();
-    mockAuthServer(server);
-
-    const res = await get(await buildApp({ cookieSecret: COOKIE_SECRET }), {
-      authorization: `Bearer ${await accessToken(server)}`,
-    });
-
-    expect(res.status).toBe(401);
-    expect(global.fetch).not.toHaveBeenCalled();
   });
 
   it("rejects an ephemeral token", async () => {
@@ -213,6 +215,25 @@ describe("requireAuth (fastify)", () => {
     expect(res.body.user.roles).toEqual(["athlete"]);
   });
 
+  // A leaked cookieSecret signs any cookie, so the cookie's own copy of the
+  // roles and permissions must never stand in for the token's (#284).
+  it("holds no role or permission the verified token does not carry", async () => {
+    const inner = await accessToken(COOKIE_SERVER, { sub: "user-1", roles: undefined });
+    const cookie = `seamless-access=${signedCookie({
+      sub: "user-1",
+      roles: ["admin"],
+      permissions: ["a:write"],
+      token: inner,
+    })}`;
+
+    const allowed = await get(await buildApp(COOKIE_GUARD), { cookie });
+    const denied = await get(await buildApp(COOKIE_GUARD, { role: "admin" }), { cookie });
+
+    expect(allowed.status).toBe(200);
+    expect(allowed.body.user).toMatchObject({ roles: [], permissions: [] });
+    expect(denied.status).toBe(403);
+  });
+
   it("feeds requireRole from a bearer session", async () => {
     const server = nextServer();
     mockAuthServer(server);
@@ -238,7 +259,10 @@ describe("requireAuth (fastify)", () => {
     expect(denied.body).toEqual({ error: "insufficient_role" });
   });
 
-  it("refuses a half-configured option pair at setup", () => {
+  it("refuses to build without both authServerUrl and audience", () => {
+    expect(() => requireAuth({ cookieSecret: COOKIE_SECRET })).toThrow(
+      /authServerUrl and audience are required/,
+    );
     expect(() =>
       requireAuth({ cookieSecret: COOKIE_SECRET, authServerUrl: "https://a.example.com" }),
     ).toThrow(/authServerUrl and audience/);
@@ -434,7 +458,7 @@ describe("routes outside the plugin, with no cookie plugin of their own", () => 
     });
     app.get(
       "/api/me",
-      { preHandler: requireAuth({ cookieSecret: COOKIE_SECRET }) },
+      { preHandler: requireAuth(COOKIE_GUARD) },
       async (req) => ({ user: req.user }),
     );
     await app.ready();
@@ -534,14 +558,10 @@ describe("routes outside the plugin, with no cookie plugin of their own", () => 
 });
 
 describe("requireAuth (fastify) and recovery sessions", () => {
-  const recovery = jwt.sign(
-    { sub: "user-1", typ: "access", recovery: true },
-    "upstream-signing-key",
-  );
-  const header = { cookie: `seamless-access=${signedCookie({ sub: "user-1", token: recovery })}` };
+  const header = { cookie: `seamless-access=${signedCookie({ sub: "user-1", token: RECOVERY })}` };
 
   it("refuses a recovery session with enrollment_required by default", async () => {
-    const res = await get(await buildApp({ cookieSecret: COOKIE_SECRET }), header);
+    const res = await get(await buildApp(COOKIE_GUARD), header);
 
     expect(res.status).toBe(403);
     expect(res.body).toEqual({ error: "enrollment_required" });
@@ -549,7 +569,7 @@ describe("requireAuth (fastify) and recovery sessions", () => {
 
   it("accepts it when the guard allows recovery sessions", async () => {
     const res = await get(
-      await buildApp({ cookieSecret: COOKIE_SECRET, allowRecoverySession: true }),
+      await buildApp({ ...COOKIE_GUARD, allowRecoverySession: true }),
       header,
     );
 

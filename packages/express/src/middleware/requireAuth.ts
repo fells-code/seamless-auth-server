@@ -10,25 +10,24 @@ export interface RequireAuthOptions {
   cookieName?: string;
   cookieSecret: string;
   /**
-   * Together with `audience`, lets the guard accept the auth API's own access
-   * token in `Authorization: Bearer`, which is how a native client with no
-   * cookie jar authenticates. Leave both out and the guard accepts cookies
-   * only, as it always has. With both set, the access token inside a cookie
-   * is verified against the auth API's JWKS too.
+   * The auth API whose JWKS the guard verifies access tokens against: the one
+   * inside the session cookie, and one sent as `Authorization: Bearer`, which is
+   * how a native client with no cookie jar authenticates. Required, so a cookie
+   * signed with a leaked `cookieSecret` cannot carry an identity, roles or
+   * permissions of its own.
    */
-  authServerUrl?: string;
+  authServerUrl: string;
   /**
-   * Expected `aud` on a bearer access token. The auth API sets it to its
-   * ISSUER, so this is `authServerUrl`, or `authServerIssuer` when that is set.
+   * Expected `aud` on the access token. The auth API sets it to its ISSUER, so
+   * this is `authServerUrl`, or `authServerIssuer` when that is set. Required.
    */
-  audience?: string;
+  audience: string;
   /**
    * Expected `iss` on a bearer access token. Defaults to `authServerUrl`. Set
    * it when this server reaches the auth server at a different URL from the
    * one the auth server advertises as its issuer, for example a host-run app
-   * against the Docker stack. Only read when bearer tokens are enabled. The
-   * auth API sets `aud` to its ISSUER too, so pass the same value as
-   * `audience`.
+   * against the Docker stack. The auth API sets `aud` to its ISSUER too, so
+   * pass the same value as `audience`.
    */
   authServerIssuer?: string;
   /**
@@ -49,8 +48,9 @@ export interface RequireAuthOptions {
 
 /**
  * Express middleware that enforces authentication using an already-issued
- * Seamless Auth session: the signed access cookie, or, when `authServerUrl` and
- * `audience` are configured, a bearer access token from the auth API.
+ * Seamless Auth session: the signed access cookie, or a bearer access token from
+ * the auth API. Either way the access token is verified against the auth API's
+ * JWKS, and the session's roles, permissions and organization come from it.
  *
  * Attaches the decoded session to `req.user` and responds 401 when the
  * credential is missing or invalid. A cookie takes precedence when present.
@@ -63,8 +63,8 @@ export interface RequireAuthOptions {
  * ```ts
  * const guard = requireAuth({
  *   cookieSecret: process.env.COOKIE_SECRET!,
- *   authServerUrl: process.env.AUTH_SERVER_URL,
- *   audience: process.env.AUTH_SERVER_URL,
+ *   authServerUrl: process.env.AUTH_SERVER_URL!,
+ *   audience: process.env.AUTH_SERVER_URL!,
  * });
  *
  * app.get("/api/me", guard, (req, res) => {
@@ -73,9 +73,9 @@ export interface RequireAuthOptions {
  * ```
  *
  * @param opts - `cookieSecret` (required, must match createSeamlessAuthServer),
- *   `cookieName` (defaults to `"seamless-access"`), and the optional
- *   `authServerUrl` + `audience` pair that enables bearer tokens, with
- *   `authServerIssuer` when the auth server signs under a different issuer.
+ *   `cookieName` (defaults to `"seamless-access"`), `authServerUrl` and
+ *   `audience` (required, to verify access tokens against the auth API's JWKS),
+ *   and `authServerIssuer` when the auth server signs under a different issuer.
  *
  * @returns An Express middleware function that enforces authentication.
  */
@@ -96,26 +96,16 @@ export function requireAuth(opts: RequireAuthOptions) {
     allowPlaceholder: true,
   });
 
-  if ((authServerUrl === undefined) !== (audience === undefined)) {
+  if (!authServerUrl || !audience) {
     throw new Error(
-      "requireAuth: authServerUrl and audience must be configured together to accept bearer tokens",
+      "requireAuth: authServerUrl and audience are required to verify access tokens",
     );
   }
 
-  if (authServerUrl === "" || audience === "") {
-    throw new Error(
-      "requireAuth: authServerUrl and audience must be non-empty to accept bearer tokens",
-    );
-  }
+  const bearer = { authServerUrl, audience, authServerIssuer };
 
-  const bearer =
-    authServerUrl !== undefined && audience !== undefined
-      ? { authServerUrl, audience, authServerIssuer }
-      : undefined;
-
-  const hint = bearer
-    ? "Ensure you are using `cookieParser` in your express server, or that the client sends an `Authorization: Bearer` access token"
-    : "Ensure you are using `cookieParser` in your express server";
+  const hint =
+    "Ensure you are using `cookieParser` in your express server, or that the client sends an `Authorization: Bearer` access token";
 
   return async function (req: Request, res: Response, next: NextFunction) {
     const token = req.cookies?.[cookieName];
