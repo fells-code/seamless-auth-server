@@ -322,14 +322,15 @@ agent, and its breakdown by device class reads `unknown` for every sign-in.
 
 #### Cookie security
 
-Auth cookies are issued with `Secure` and `SameSite=None` by default, so a deployment that
+Auth cookies are issued with `Secure` and `SameSite=Lax` by default, so a deployment that
 forgets to set an environment variable still gets safe cookies. Cookie security is driven by
 explicit options, never by ambient `NODE_ENV`.
 
 - `cookieSecure` defaults to `true`. Set it to `false` only when serving the adapter over plain
   HTTP on a local development machine.
-- `cookieSameSite` defaults to `none` when `cookieSecure` is `true`, and `lax` when it is `false`.
-  Browsers reject `SameSite=None` without `Secure`, so the default pairing stays valid either way.
+- `cookieSameSite` defaults to `lax`, which keeps the cookie off a cross-site request. Set it to
+  `none` only when your browser app is on a different site from this adapter, and keep
+  `cookieSecure` on, since browsers reject `SameSite=None` without `Secure`.
 
 ```ts
 app.use(
@@ -356,10 +357,12 @@ and needs no configuration.
 - The guard reads `Sec-Fetch-Site`, which current Chrome, Firefox, and Safari
   send and page JavaScript cannot forge. A non-safe request (anything other than
   `GET`, `HEAD`, or `OPTIONS`) is rejected with `403 { "error":
-  "cross_site_request_blocked" }` when that header is `cross-site`. Same-origin
-  single-page-app calls send `same-origin` or `same-site` and pass with no
-  allowlist; with `allowedOrigins` set, a `same-site` call must also come from a
-  listed `Origin`.
+  "cross_site_request_blocked" }` when that header is `cross-site`, or any value
+  the Fetch Metadata spec does not define. `same-origin` passes. A `same-site`
+  call, and one with no `Sec-Fetch-Site` or with `none` that names an `Origin`,
+  must come from an `Origin` whose host is the request's `Host` (the
+  `X-Forwarded-Host` Express reports under `trust proxy`), or from a listed
+  `Origin` when `allowedOrigins` is set.
 - A non-safe request must also declare `Content-Type: application/json` or carry
   an `x-seamless-auth-transport` header (any value), even with no body, or it is
   rejected with `415 { "error": "unsupported_media_type" }`. An HTML form or a
@@ -383,10 +386,11 @@ otherwise the request is rejected. `same-site` covers every subdomain of your
 registrable domain, so without the list a page on a sibling subdomain can send
 a request that carries your cookie. A `same-origin` request always passes. An
 empty list is a configured list: it admits no `same-site` request and no
-metadata-free request that names an `Origin`. When `allowedOrigins` is unset a
-`same-site` request passes, as does one with no `Sec-Fetch-Site`, so setting it
-is never required. Set it when you do not trust every subdomain of your site, or
-support browsers old enough to lack `Sec-Fetch-Site`:
+metadata-free request that names an `Origin`. When `allowedOrigins` is unset,
+those requests must come from an `Origin` whose host is the request's `Host`, so
+a sibling subdomain is refused. Set the list when your browser app is served from
+a different host than this adapter, or when a proxy in front of it rewrites
+`Host` and Express does not trust that proxy's `X-Forwarded-Host`:
 
 ```ts
 app.use(
@@ -657,8 +661,9 @@ app.get("/api/profile", guard, (req, res) => {
 On a cookie session the guard runs the same origin check as the auth router on a
 state-changing request: a `cross-site` one or a literal `null` `Origin` is
 refused with `403 { "error": "cross_site_request_blocked" }`, and with
-`allowedOrigins` set (pass the router's list) a `same-site` one or one with no
-`Sec-Fetch-Site` must come from a listed `Origin`. A bearer request is not
+a `same-site` one or one with no `Sec-Fetch-Site` must come from an `Origin`
+whose host is the request's `Host`, or from a listed `Origin` when
+`allowedOrigins` is set (pass the router's list). A bearer request is not
 checked, since no browser attaches its token on its own. Your own routes need no
 JSON content type.
 

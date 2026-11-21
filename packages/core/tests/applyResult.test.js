@@ -20,8 +20,9 @@ function recorder() {
 }
 
 describe("resolveCookieSameSite", () => {
-  it("defaults to none when secure and lax when not", () => {
-    expect(resolveCookieSameSite({})).toBe("none");
+  it("defaults to lax whether or not the cookie is secure (#283)", () => {
+    expect(resolveCookieSameSite({})).toBe("lax");
+    expect(resolveCookieSameSite({ cookieSecure: true })).toBe("lax");
     expect(resolveCookieSameSite({ cookieSecure: false })).toBe("lax");
   });
 
@@ -132,7 +133,7 @@ describe("cookies", () => {
     expect(cookie).toMatchObject({
       httpOnly: true,
       secure: true,
-      sameSite: "none",
+      sameSite: "lax",
       path: "/",
     });
   });
@@ -151,7 +152,7 @@ describe("cookies", () => {
         domain: "acme.test",
         expires: new Date(0),
         secure: true,
-        sameSite: "none",
+        sameSite: "lax",
         path: "/",
       },
     ]);

@@ -74,6 +74,77 @@ describe("checkOrigin", () => {
       expect(check({ allowedOrigins: [LISTED] })).toBeUndefined();
     });
 
+    // Without allowedOrigins the Origin must name the request's Host (#283).
+    describe("without allowedOrigins", () => {
+      const HOST = "app.example.com";
+
+      it.each([undefined, "same-site", "none"])(
+        "refuses a sibling Origin with Sec-Fetch-Site %s",
+        (secFetchSite) => {
+          expect(check({ secFetchSite, origin: SIBLING, host: HOST })).toEqual(BLOCKED);
+        },
+      );
+
+      it.each([undefined, "same-site", "none", "SAME-SITE"])(
+        "accepts the Host's own Origin with Sec-Fetch-Site %s",
+        (secFetchSite) => {
+          expect(check({ secFetchSite, origin: LISTED, host: HOST })).toBeUndefined();
+        },
+      );
+
+      it("refuses a same-site request with no Origin", () => {
+        expect(check({ secFetchSite: "same-site", host: HOST })).toEqual(BLOCKED);
+      });
+
+      it("refuses an Origin when the Host is unknown", () => {
+        expect(check({ origin: LISTED })).toEqual(BLOCKED);
+        expect(check({ origin: LISTED, host: "" })).toEqual(BLOCKED);
+      });
+
+      it("matches the port, spelled out or left as the default", () => {
+        expect(check({ origin: LISTED, host: "app.example.com:443" })).toBeUndefined();
+        expect(
+          check({ origin: "http://app.example.com", host: "app.example.com:80" }),
+        ).toBeUndefined();
+        expect(
+          check({ origin: "http://localhost:3000", host: "localhost:3000" }),
+        ).toBeUndefined();
+        expect(check({ origin: "http://localhost:3000", host: "localhost" })).toEqual(
+          BLOCKED,
+        );
+        expect(check({ origin: LISTED, host: "app.example.com:8443" })).toEqual(BLOCKED);
+      });
+
+      it("ignores case and refuses an Origin that does not parse", () => {
+        expect(
+          check({ origin: "https://APP.example.com", host: "App.Example.com" }),
+        ).toBeUndefined();
+        expect(check({ origin: "not a url", host: HOST })).toEqual(BLOCKED);
+      });
+
+      it("prefers allowedOrigins over the Host when both are set", () => {
+        expect(
+          check({ origin: LISTED, host: HOST, allowedOrigins: [SIBLING] }),
+        ).toEqual(BLOCKED);
+        expect(
+          check({ origin: SIBLING, host: HOST, allowedOrigins: [SIBLING] }),
+        ).toBeUndefined();
+      });
+    });
+
+    it.each(["same-planet", "", "cross-site, same-origin"])(
+      "refuses a Sec-Fetch-Site value the spec does not define (%j)",
+      (secFetchSite) => {
+        expect(
+          check({ secFetchSite, origin: LISTED, host: "app.example.com" }),
+        ).toEqual(BLOCKED);
+      },
+    );
+
+    it("accepts a same-origin request with no Host", () => {
+      expect(check({ secFetchSite: "same-origin", origin: SIBLING })).toBeUndefined();
+    });
+
     it("leaves safe methods alone", () => {
       for (const method of ["GET", "HEAD", "OPTIONS"]) {
         expect(

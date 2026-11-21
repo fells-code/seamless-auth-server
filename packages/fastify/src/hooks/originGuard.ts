@@ -27,6 +27,7 @@ export function createOriginGuardHook(
         method: req.method,
         secFetchSite: firstHeader(req.headers["sec-fetch-site"]),
         origin: firstHeader(req.headers.origin),
+        host: req.host,
         allowedOrigins: opts.allowedOrigins,
       }) ??
       checkContentType({

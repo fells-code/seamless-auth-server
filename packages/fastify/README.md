@@ -146,8 +146,9 @@ calls `/auth/refresh` itself.
 
 On a cookie session, `requireAuth` runs the same origin check as the plugin on a
 state-changing request: a `cross-site` one or a literal `null` `Origin` is
-refused, and with `allowedOrigins` set (pass the plugin's list) a `same-site` one
-or one with no `Sec-Fetch-Site` must come from a listed `Origin`. A bearer
+refused, and a `same-site` one or one with no `Sec-Fetch-Site` must come from an
+`Origin` whose host is the request's `Host`, or from a listed `Origin` when
+`allowedOrigins` is set (pass the plugin's list). A bearer
 request is not checked, since no browser attaches its token on its own. Your own
 routes need no JSON content type.
 
@@ -370,8 +371,8 @@ raw body parser.
 | `jwksKid` | `dev-main` | `kid` header on the HS256 service tokens the adapter signs; warns when left as the placeholder |
 | `cookieDomain` | none | Domain attribute for the auth cookies |
 | `cookieSecure` | `true` | Set `false` only for local HTTP development |
-| `cookieSameSite` | `none` when secure, else `lax` | SameSite policy |
-| `allowedOrigins` | none | Origin allowlist for state-changing requests that are `same-site` or come from browsers without `Sec-Fetch-Site`. Set, even to `[]`, it is enforced. Whatever it says, a `cross-site` request or a literal `null` `Origin` is refused with `403 cross_site_request_blocked` |
+| `cookieSameSite` | `lax` | SameSite policy. Set `none` only for a browser app on another site |
+| `allowedOrigins` | none | Origin allowlist for state-changing requests that are `same-site` or come from browsers without `Sec-Fetch-Site`. Set, even to `[]`, it is enforced. Unset, the `Origin` host must equal the request's `Host`. Whatever it says, a `cross-site` request or a literal `null` `Origin` is refused with `403 cross_site_request_blocked` |
 | `accessCookieName` | `seamless-access` | Session cookie name |
 | `registrationCookieName` | `seamless-ephemeral` | Registration cookie name |
 | `refreshCookieName` | `seamless-refresh` | Refresh cookie name |

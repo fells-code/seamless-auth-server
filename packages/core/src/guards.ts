@@ -54,6 +54,13 @@ export interface OriginCheckInput {
   /** `Origin`, already reduced to a single value. */
   origin?: string;
   /**
+   * The request's `Host` header, already reduced to a single value. Without
+   * `allowedOrigins`, an `Origin` must name this host or the request is refused,
+   * so leaving it out refuses every request that carries an `Origin` a
+   * same-origin `Sec-Fetch-Site` does not vouch for.
+   */
+  host?: string;
+  /**
    * No longer consulted. The check runs whatever the cookie policy, because a
    * `Lax` or `Strict` cookie still rides a same-site request. Kept so existing
    * callers compile.
@@ -61,7 +68,10 @@ export interface OriginCheckInput {
   cookieSecure?: boolean;
   /** As `cookieSecure`. */
   cookieSameSite?: CookieSameSite;
-  /** Set, even to `[]`, it is enforced for same-site and metadata-free requests. */
+  /**
+   * Set, even to `[]`, it replaces the `Host` match: the `Origin` of a same-site
+   * or metadata-free request must be on it.
+   */
   allowedOrigins?: string[];
 }
 
@@ -79,12 +89,14 @@ function normalizeOrigin(value: string): string {
  * A literal `null` `Origin` is refused first, in every case.
  *
  * `Sec-Fetch-Site` is the primary signal: current browsers send it and page
- * JavaScript cannot forge it. `cross-site` is refused and `same-origin` passes.
- * `same-site` also covers a sibling subdomain, so when the adopter configured
- * `allowedOrigins` the `Origin` must be on it as well. When `Sec-Fetch-Site` is
- * absent the `Origin` is matched against `allowedOrigins`, again only when the
- * adopter configured it. Without the list both pass here, and
- * `checkContentType` is what keeps a forged form post out.
+ * JavaScript cannot forge it. `same-origin` passes, and `cross-site` or any
+ * value the Fetch Metadata spec does not define is refused. `same-site` also
+ * covers a sibling subdomain, so it needs an `Origin` that passes the origin
+ * match below. `none`, or no `Sec-Fetch-Site` at all, passes without an
+ * `Origin` (a non-browser caller) and is held to the origin match with one.
+ *
+ * The origin match is `allowedOrigins` when the adopter configured it, and
+ * otherwise the `Origin` host must equal the request's `Host`.
  */
 export function checkOrigin(
   input: OriginCheckInput,
@@ -105,35 +117,73 @@ export function checkOrigin(
   }
 
   if (input.secFetchSite !== undefined) {
-    const site = input.secFetchSite.toLowerCase();
+    const site = input.secFetchSite.trim().toLowerCase();
 
-    if (site === "cross-site") {
-      return rejection;
-    }
-
-    if (site !== "same-site" || !input.allowedOrigins) {
+    if (site === "same-origin") {
       return undefined;
     }
 
-    return input.origin !== undefined &&
-      isAllowedOrigin(input.origin, input.allowedOrigins)
-      ? undefined
-      : rejection;
+    if (site === "same-site") {
+      return input.origin !== undefined && originMatches(input)
+        ? undefined
+        : rejection;
+    }
+
+    if (site !== "none") {
+      return rejection;
+    }
   }
 
-  // No `Origin` and no `Sec-Fetch-Site` is a same-origin or non-browser
-  // server-to-server caller.
+  // No `Origin` and no cross-origin `Sec-Fetch-Site` is a same-origin or
+  // non-browser server-to-server caller. A browser sends `Origin` on every
+  // non-safe cross-origin request.
   if (input.origin === undefined) {
     return undefined;
   }
 
-  if (!input.allowedOrigins) {
-    return undefined;
+  return originMatches(input) ? undefined : rejection;
+}
+
+function originMatches(input: OriginCheckInput): boolean {
+  const origin = input.origin as string;
+
+  if (input.allowedOrigins) {
+    return isAllowedOrigin(origin, input.allowedOrigins);
   }
 
-  return isAllowedOrigin(input.origin, input.allowedOrigins)
-    ? undefined
-    : rejection;
+  return input.host !== undefined && originHostIs(origin, input.host);
+}
+
+const DEFAULT_PORTS: Record<string, string> = { "http:": "80", "https:": "443" };
+
+// `URL` drops a default port from `host`, but a client may still spell it out
+// in `Host`, so both spellings of the same authority match.
+function originHostIs(origin: string, host: string): boolean {
+  let url: URL;
+
+  try {
+    url = new URL(origin.trim());
+  } catch {
+    return false;
+  }
+
+  const expected = host.trim().toLowerCase();
+
+  if (!expected) {
+    return false;
+  }
+
+  if (url.host.toLowerCase() === expected) {
+    return true;
+  }
+
+  const port = DEFAULT_PORTS[url.protocol];
+
+  return (
+    url.port === "" &&
+    port !== undefined &&
+    `${url.hostname.toLowerCase()}:${port}` === expected
+  );
 }
 
 export interface ContentTypeCheckInput {

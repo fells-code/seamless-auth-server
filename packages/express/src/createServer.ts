@@ -215,7 +215,7 @@ function clientErrorStatus(err: unknown): number | null {
  *     placeholder `dev-main` and warns)
  *   - `cookieDomain` - Domain attribute applied to all auth cookies
  *   - `cookieSecure` (defaults to `true`; set `false` only for local HTTP dev)
- *   - `cookieSameSite` (defaults to `none` when secure, `lax` otherwise)
+ *   - `cookieSameSite` (defaults to `lax`)
  *   - `accessCookieName` - Name of the session access cookie
  *   - `registrationCookieName` - Name of the ephemeral registration cookie
  *   - `refreshCookieName` - Name of the refresh token cookie
